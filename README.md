@@ -23,7 +23,8 @@ jobs:
   score:
     runs-on: ubuntu-latest
     steps:
-      - uses: good-egg/good-egg@v1
+      - uses: 2ndSetAI/good-egg@main
+        # Use @v1 after the first release has been tagged
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -52,11 +53,51 @@ jobs:
 # Install
 pip install good-egg
 
+# Or install directly from GitHub
+pip install git+https://github.com/2ndSetAI/good-egg.git
+
 # Score a PR author
 good-egg score <username> --repo <owner/repo>
 
 # With a GitHub token for higher rate limits
 GITHUB_TOKEN=ghp_... good-egg score <username> --repo <owner/repo>
+```
+
+## MCP Server
+
+Good Egg includes an MCP (Model Context Protocol) server for integration with AI assistants like Claude Desktop.
+
+### Running
+
+```bash
+GITHUB_TOKEN=ghp_... good-egg-mcp
+```
+
+### Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `score_user` | Full trust score with all metadata |
+| `check_pr_author` | Compact summary: trust level, score, PR count |
+| `get_trust_details` | Expanded breakdown with contributions and flags |
+| `cache_stats` | Show cache statistics |
+| `clear_cache` | Clear cache (optionally by category) |
+
+### Claude Desktop Configuration
+
+Add to your Claude Desktop config (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "good-egg": {
+      "command": "good-egg-mcp",
+      "env": {
+        "GITHUB_TOKEN": "ghp_your_token_here"
+      }
+    }
+  }
+}
 ```
 
 ## How It Works
