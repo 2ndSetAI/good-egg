@@ -51,13 +51,13 @@ def format_markdown_comment(score: TrustScore) -> str:
 
     # Flags section
     flags_to_show: list[str] = []
-    if score.flags.get("new_account"):
+    if score.flags.get("is_new_account"):
         flags_to_show.append("\u26a0\ufe0f New account (< 30 days)")
-    if score.flags.get("insufficient_data"):
+    if score.flags.get("has_insufficient_data"):
         flags_to_show.append("\u2139\ufe0f Insufficient data for confident scoring")
-    if score.flags.get("bot_detected"):
+    if score.flags.get("is_bot"):
         flags_to_show.append("\U0001f916 Bot account detected")
-    if score.flags.get("cached_data"):
+    if score.flags.get("used_cached_data"):
         flags_to_show.append("\U0001f4be Using cached data")
 
     if flags_to_show:

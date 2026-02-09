@@ -73,5 +73,5 @@ This requires `gh` CLI authenticated. Results are written to the `validation/` d
 1. Create a feature branch from `main`
 2. Make your changes with tests
 3. Ensure `uv run pytest --cov=good_egg -v` passes with >= 90% coverage
-4. Ensure `uv run ruff check src/ tests/` is clean
+4. Ensure `uv run ruff check src/ tests/ scripts/` is clean
 5. Open a PR with a clear description
