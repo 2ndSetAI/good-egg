@@ -17,7 +17,9 @@ class PageRankConfig(BaseModel):
     tolerance: float = 1e-6
     context_repo_weight: float = 0.5
     same_language_weight: float = 0.3
-    other_weight: float = 0.01
+    other_weight: float = 0.03
+    diversity_scale: float = 0.5
+    volume_scale: float = 0.3
 
 
 class EdgeWeightConfig(BaseModel):
@@ -138,6 +140,9 @@ def load_config(path: str | Path | None = None) -> GoodEggConfig:
         "GOOD_EGG_HIGH_TRUST": ("thresholds", "high_trust", float),
         "GOOD_EGG_MEDIUM_TRUST": ("thresholds", "medium_trust", float),
         "GOOD_EGG_HALF_LIFE_DAYS": ("recency", "half_life_days", int),
+        "GOOD_EGG_OTHER_WEIGHT": ("pagerank", "other_weight", float),
+        "GOOD_EGG_DIVERSITY_SCALE": ("pagerank", "diversity_scale", float),
+        "GOOD_EGG_VOLUME_SCALE": ("pagerank", "volume_scale", float),
     }
 
     for env_var, (section, key, type_fn) in env_mapping.items():

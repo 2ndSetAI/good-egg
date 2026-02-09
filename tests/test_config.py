@@ -100,3 +100,26 @@ class TestLoadConfig:
         config = load_config(config_file)
         # Env var takes precedence
         assert config.pagerank.alpha == 0.75
+
+
+class TestDiversityConfig:
+    def test_default_values(self) -> None:
+        config = PageRankConfig()
+        assert config.other_weight == 0.03
+        assert config.diversity_scale == 0.5
+        assert config.volume_scale == 0.3
+
+    def test_env_var_other_weight(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("GOOD_EGG_OTHER_WEIGHT", "0.05")
+        config = load_config()
+        assert config.pagerank.other_weight == 0.05
+
+    def test_env_var_diversity_scale(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("GOOD_EGG_DIVERSITY_SCALE", "0.8")
+        config = load_config()
+        assert config.pagerank.diversity_scale == 0.8
+
+    def test_env_var_volume_scale(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("GOOD_EGG_VOLUME_SCALE", "0.5")
+        config = load_config()
+        assert config.pagerank.volume_scale == 0.5

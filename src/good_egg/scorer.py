@@ -68,6 +68,10 @@ class TrustScorer:
         if user_data.profile.is_suspected_bot:
             flags["is_suspected_bot"] = True
 
+        # ---- Contribution stats ----
+        total_prs = len(user_data.merged_prs)
+        unique_repos = len({pr.repo_name_with_owner for pr in user_data.merged_prs})
+
         # ---- Build graph ----
         graph = self._graph_builder.build_graph(user_data, context_repo)
 
@@ -78,7 +82,8 @@ class TrustScorer:
 
         # ---- Build personalization vector ----
         personalization = self._graph_builder.build_personalization_vector(
-            graph, context_repo, context_language
+            graph, context_repo, context_language,
+            total_prs=total_prs, unique_repos=unique_repos,
         )
 
         # ---- Run PageRank ----
@@ -106,10 +111,6 @@ class TrustScorer:
         # ---- Language match ----
         language_match = self._check_language_match(
             user_data, context_language
-        )
-
-        unique_repos = len(
-            {pr.repo_name_with_owner for pr in user_data.merged_prs}
         )
 
         return TrustScore(

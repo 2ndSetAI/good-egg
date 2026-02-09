@@ -383,3 +383,63 @@ class TestPersonalizationVector:
         for node, weight in pv.items():
             if graph.nodes[node].get("kind") == "user":
                 assert weight == 0.0
+
+
+class TestDiversityMultiplier:
+    def test_newcomer_weight_near_base(self) -> None:
+        """Newcomer (1 repo, 2 PRs) should get weight close to base 0.03."""
+        from good_egg.config import PageRankConfig
+        config = PageRankConfig()
+        weight = TrustGraphBuilder._compute_adjusted_other_weight(config, 2, 1)
+        assert 0.03 <= weight <= 0.035
+
+    def test_prolific_weight_higher(self) -> None:
+        """Prolific contributor (20+ repos, 100+ PRs) gets higher weight."""
+        from good_egg.config import PageRankConfig
+        config = PageRankConfig()
+        weight = TrustGraphBuilder._compute_adjusted_other_weight(config, 100, 20)
+        assert 0.055 <= weight <= 0.065
+
+    def test_zero_prs_returns_base(self) -> None:
+        """Zero PRs should return base weight unchanged."""
+        from good_egg.config import PageRankConfig
+        config = PageRankConfig()
+        weight = TrustGraphBuilder._compute_adjusted_other_weight(config, 0, 0)
+        assert weight == config.other_weight
+
+    def test_prolific_gets_higher_personalization_share(self) -> None:
+        """Prolific user's 'other' repos get higher share than newcomer's."""
+        builder = TrustGraphBuilder(_make_config())
+        pr1 = MergedPR(
+            repo_name_with_owner="org/python-lib",
+            title="PR",
+            merged_at=datetime.now(UTC),
+        )
+        pr2 = MergedPR(
+            repo_name_with_owner="org/rust-lib",
+            title="PR",
+            merged_at=datetime.now(UTC),
+        )
+        repos = {
+            "org/python-lib": RepoMetadata(
+                name_with_owner="org/python-lib",
+                stargazer_count=100,
+                primary_language="Python",
+            ),
+            "org/rust-lib": RepoMetadata(
+                name_with_owner="org/rust-lib",
+                stargazer_count=100,
+                primary_language="Rust",
+            ),
+        }
+        data = _make_user_data(merged_prs=[pr1, pr2], repos=repos)
+        graph = builder.build_graph(data, "ctx/repo")
+
+        pv_newcomer = builder.build_personalization_vector(
+            graph, "ctx/repo", "Rust", total_prs=2, unique_repos=1
+        )
+        pv_prolific = builder.build_personalization_vector(
+            graph, "ctx/repo", "Rust", total_prs=100, unique_repos=20
+        )
+        # The Python repo is "other" (not Rust), so prolific should get more weight on it
+        assert pv_prolific["repo:org/python-lib"] > pv_newcomer["repo:org/python-lib"]
