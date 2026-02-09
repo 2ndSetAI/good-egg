@@ -328,7 +328,7 @@ class GitHubClient:
             data = result["data"]  # type: ignore[index]
 
             for alias, full_name in alias_map.items():
-                repo_data = data.get(alias)  # type: ignore[union-attr]
+                repo_data = data.get(alias)  # type: ignore[union-attr,attr-defined]
                 if repo_data is None:
                     continue
                 primary_lang = repo_data.get("primaryLanguage")
@@ -548,7 +548,7 @@ class GitHubClient:
             reraise=True,
         ):
             with attempt:
-                response = await self._client.request(method, url, **kwargs)
+                response = await self._client.request(method, url, **kwargs)  # type: ignore[arg-type]
                 response.raise_for_status()
                 return response
         raise GitHubAPIError("REST retry logic exhausted without result")  # pragma: no cover
@@ -600,7 +600,7 @@ class GitHubClient:
         for comment in comments:
             body = str(comment.get("body", ""))
             if COMMENT_MARKER in body:
-                return int(comment["id"])  # type: ignore[arg-type]
+                return int(comment["id"])  # type: ignore[arg-type,call-overload]
 
         return None
 

@@ -28,7 +28,7 @@ class TrustGraphBuilder:
         Edges carry a ``weight`` attribute computed from recency decay,
         repository quality, and edge-type multipliers.
         """
-        graph = nx.DiGraph()
+        graph: nx.DiGraph = nx.DiGraph()
         login = user_data.profile.login
         user_node = f"user:{login}"
 

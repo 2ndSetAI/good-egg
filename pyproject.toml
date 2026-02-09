@@ -43,6 +43,10 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 
+[[tool.mypy.overrides]]
+module = ["good_egg.cache", "good_egg.github_client", "good_egg.scorer"]
+warn_return_any = false
+
 [dependency-groups]
 dev = [
     "pytest>=8.0",
@@ -51,4 +55,6 @@ dev = [
     "ruff>=0.3",
     "mypy>=1.8",
     "pytest-cov>=4.1",
+    "types-PyYAML>=6.0",
+    "types-networkx>=3.2",
 ]

@@ -24,7 +24,7 @@ jobs:
         run: uv sync
 
       - name: Lint
-        run: uv run ruff check src/ tests/
+        run: uv run ruff check src/ tests/ scripts/
 
       - name: Type check
         run: uv run mypy src/good_egg/
