@@ -5,6 +5,13 @@ description = "Trust scoring for GitHub contributors using graph-based ranking o
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.12"
+keywords = ["github", "trust", "security", "pull-request", "code-review"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Quality Assurance",
+]
 dependencies = [
     "httpx>=0.27",
     "networkx>=3.2",
@@ -14,10 +21,17 @@ dependencies = [
     "pydantic>=2.5",
     "pyyaml>=6.0",
     "tenacity>=8.2",
+    "mcp>=1.0",
 ]
 
 [project.scripts]
 good-egg = "good_egg.cli:main"
+good-egg-mcp = "good_egg.mcp_server:main"
+
+[project.urls]
+Homepage = "https://github.com/2ndSetAI/good-egg"
+Repository = "https://github.com/2ndSetAI/good-egg"
+Issues = "https://github.com/2ndSetAI/good-egg/issues"
 
 [build-system]
 requires = ["hatchling"]
