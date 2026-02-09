@@ -20,7 +20,6 @@ import asyncio
 import json
 import subprocess
 import sys
-import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -78,53 +77,46 @@ def fetch_pr_authors(repo: str, limit: int) -> list[str]:
         return []
 
 
-async def score_author(
-    login: str, repo: str, token: str
-) -> dict[str, Any] | None:
-    """Score a single author against a repo."""
-    from good_egg.scorer import score_pr_author
-
-    owner, name = repo.split("/", 1)
-    try:
-        result = await score_pr_author(
-            login=login,
-            repo_owner=owner,
-            repo_name=name,
-            token=token,
-        )
-        return {
-            "login": login,
-            "context_repo": repo,
-            "normalized_score": result.normalized_score,
-            "trust_level": result.trust_level.value,
-            "account_age_days": result.account_age_days,
-            "total_merged_prs": result.total_merged_prs,
-            "unique_repos": result.unique_repos_contributed,
-            "language_match": result.language_match,
-            "flags": result.flags,
-            "raw_score": result.raw_score,
-        }
-    except Exception as exc:
-        print(f"  Error scoring {login} against {repo}: {exc}")
-        return None
-
-
 async def score_all_authors(
     authors_by_repo: dict[str, list[str]], token: str
 ) -> list[dict[str, Any]]:
-    """Score all authors sequentially with rate limit handling."""
+    """Score all authors using a single shared client with built-in retry."""
+    from good_egg.config import load_config
+    from good_egg.github_client import GitHubClient
+    from good_egg.scorer import TrustScorer
+
     results: list[dict[str, Any]] = []
     total = sum(len(a) for a in authors_by_repo.values())
     done = 0
 
-    for repo, authors in authors_by_repo.items():
-        for login in authors:
-            done += 1
-            print(f"  [{done}/{total}] Scoring {login} against {repo}...")
-            result = await score_author(login, repo, token)
-            if result is not None:
-                results.append(result)
-            time.sleep(1)  # Rate limit courtesy
+    config = load_config()
+    scorer = TrustScorer(config)
+
+    async with GitHubClient(token=token, config=config) as client:
+        for repo, authors in authors_by_repo.items():
+            owner, name = repo.split("/", 1)
+            for login in authors:
+                done += 1
+                print(f"  [{done}/{total}] Scoring {login} against {repo}...")
+                try:
+                    user_data = await client.get_user_contribution_data(
+                        login, context_repo=repo
+                    )
+                    result = scorer.score(user_data, repo)
+                    results.append({
+                        "login": login,
+                        "context_repo": repo,
+                        "normalized_score": result.normalized_score,
+                        "trust_level": result.trust_level.value,
+                        "account_age_days": result.account_age_days,
+                        "total_merged_prs": result.total_merged_prs,
+                        "unique_repos": result.unique_repos_contributed,
+                        "language_match": result.language_match,
+                        "flags": result.flags,
+                        "raw_score": result.raw_score,
+                    })
+                except Exception as exc:
+                    print(f"  Error scoring {login} against {repo}: {exc}")
 
     return results
 

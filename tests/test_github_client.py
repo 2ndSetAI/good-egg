@@ -719,3 +719,287 @@ class TestCacheIntegration:
 
         assert data.profile.login == "testuser"
         assert len(data.merged_prs) == 2
+
+
+# ---------------------------------------------------------------------------
+# REST error handling
+# ---------------------------------------------------------------------------
+
+
+class TestRESTErrorHandling:
+    """Tests for REST endpoint error handling with retry."""
+
+    @respx.mock
+    async def test_post_comment_403_no_retry(self) -> None:
+        """403 on comment post should not retry (client error)."""
+        route = respx.post(f"{BASE_URL}/repos/my-org/my-repo/issues/42/comments")
+        route.mock(return_value=httpx.Response(403, json={"message": "Forbidden"}))
+
+        async with _make_client() as client:
+            with pytest.raises(httpx.HTTPStatusError) as exc_info:
+                await client.post_pr_comment("my-org", "my-repo", 42, "Hello")
+
+        assert exc_info.value.response.status_code == 403
+        assert route.call_count == 1
+
+    @respx.mock
+    async def test_post_comment_404_no_retry(self) -> None:
+        """404 on comment post should not retry."""
+        route = respx.post(f"{BASE_URL}/repos/my-org/my-repo/issues/42/comments")
+        route.mock(return_value=httpx.Response(404, json={"message": "Not Found"}))
+
+        async with _make_client() as client:
+            with pytest.raises(httpx.HTTPStatusError) as exc_info:
+                await client.post_pr_comment("my-org", "my-repo", 42, "Hello")
+
+        assert exc_info.value.response.status_code == 404
+        assert route.call_count == 1
+
+    @respx.mock
+    async def test_update_comment_500_retries_then_fails(self) -> None:
+        """500 on comment update should retry 4 times then fail."""
+        route = respx.patch(f"{BASE_URL}/repos/my-org/my-repo/issues/comments/99")
+        route.mock(return_value=httpx.Response(500, json={"message": "Internal Server Error"}))
+
+        async with _make_client() as client:
+            with pytest.raises(httpx.HTTPStatusError) as exc_info:
+                await client.update_pr_comment("my-org", "my-repo", 99, "Updated")
+
+        assert exc_info.value.response.status_code == 500
+        assert route.call_count == 4
+
+    @respx.mock
+    async def test_find_existing_comment_500_retries_then_fails(self) -> None:
+        """500 on find existing comment should retry 4 times then fail."""
+        route = respx.get(f"{BASE_URL}/repos/my-org/my-repo/issues/42/comments")
+        route.mock(return_value=httpx.Response(500, json={"message": "Internal Server Error"}))
+
+        async with _make_client() as client:
+            with pytest.raises(httpx.HTTPStatusError) as exc_info:
+                await client.find_existing_comment("my-org", "my-repo", 42)
+
+        assert exc_info.value.response.status_code == 500
+        assert route.call_count == 4
+
+    @respx.mock
+    async def test_create_check_run_422_no_retry(self) -> None:
+        """422 on create check run should not retry (client error)."""
+        route = respx.post(f"{BASE_URL}/repos/my-org/my-repo/check-runs")
+        route.mock(return_value=httpx.Response(422, json={"message": "Unprocessable"}))
+
+        async with _make_client() as client:
+            with pytest.raises(httpx.HTTPStatusError) as exc_info:
+                await client.create_check_run("my-org", "my-repo", "sha123", "Title", "Summary")
+
+        assert exc_info.value.response.status_code == 422
+        assert route.call_count == 1
+
+    @respx.mock
+    async def test_create_check_run_500_retries_then_fails(self) -> None:
+        """500 on create check run should retry 4 times then fail."""
+        route = respx.post(f"{BASE_URL}/repos/my-org/my-repo/check-runs")
+        route.mock(return_value=httpx.Response(500, json={"message": "Internal Server Error"}))
+
+        async with _make_client() as client:
+            with pytest.raises(httpx.HTTPStatusError) as exc_info:
+                await client.create_check_run("my-org", "my-repo", "sha123", "Title", "Summary")
+
+        assert exc_info.value.response.status_code == 500
+        assert route.call_count == 4
+
+
+# ---------------------------------------------------------------------------
+# Cascading failures
+# ---------------------------------------------------------------------------
+
+
+class TestCascadingFailures:
+    """Tests for cascading failure scenarios."""
+
+    @respx.mock
+    async def test_user_prs_ok_but_context_repo_fetch_fails(self) -> None:
+        """User+PRs fetch OK but context repo metadata fetch fails -> GitHubAPIError."""
+        fixture = _load_fixture("user_prs.json")
+        # First call succeeds (user contribution data)
+        # Second call fails (context repo metadata batch fetch)
+        route = respx.post(GRAPHQL_URL)
+        route.side_effect = [
+            httpx.Response(200, json=fixture),
+            # 4 retries for the context repo metadata fetch (502 is transient)
+            httpx.Response(502, json={"message": "Bad Gateway"}),
+            httpx.Response(502, json={"message": "Bad Gateway"}),
+            httpx.Response(502, json={"message": "Bad Gateway"}),
+            httpx.Response(502, json={"message": "Bad Gateway"}),
+        ]
+
+        async with _make_client() as client:
+            with pytest.raises(GitHubAPIError):
+                await client.get_user_contribution_data(
+                    "testuser", context_repo="rust-lang/rust"
+                )
+
+
+# ---------------------------------------------------------------------------
+# Timeout handling
+# ---------------------------------------------------------------------------
+
+
+class TestTimeoutHandling:
+    """Tests for timeout handling."""
+
+    @respx.mock
+    async def test_graphql_timeout_raises(self) -> None:
+        """GraphQL request timeout should raise."""
+        respx.post(GRAPHQL_URL).mock(side_effect=httpx.ReadTimeout("Read timed out"))
+
+        async with _make_client() as client:
+            with pytest.raises(httpx.ReadTimeout):
+                await client.fetch_user_profile("testuser")
+
+    @respx.mock
+    async def test_rest_timeout_raises(self) -> None:
+        """REST request timeout should raise."""
+        respx.post(f"{BASE_URL}/repos/my-org/my-repo/issues/42/comments").mock(
+            side_effect=httpx.ReadTimeout("Read timed out")
+        )
+
+        async with _make_client() as client:
+            with pytest.raises(httpx.ReadTimeout):
+                await client.post_pr_comment("my-org", "my-repo", 42, "Hello")
+
+
+# ---------------------------------------------------------------------------
+# Retry behavior
+# ---------------------------------------------------------------------------
+
+
+class TestRetryBehavior:
+    """Tests for retry/backoff behavior."""
+
+    @respx.mock
+    async def test_retry_on_rate_limit(self) -> None:
+        """Rate limit error should be retried after sleeping."""
+        route = respx.post(GRAPHQL_URL)
+        route.side_effect = [
+            httpx.Response(
+                429,
+                json={"message": "rate limit"},
+                headers={"X-RateLimit-Reset": "1700000000"},
+            ),
+            httpx.Response(
+                200,
+                json={
+                    "data": {
+                        "user": {
+                            "login": "testuser",
+                            "createdAt": "2020-01-01T00:00:00Z",
+                            "__typename": "User",
+                            "followers": {"totalCount": 50},
+                            "repositories": {"totalCount": 20},
+                        }
+                    }
+                },
+            ),
+        ]
+
+        from unittest.mock import patch as mock_patch
+
+        with mock_patch("good_egg.github_client.asyncio.sleep", return_value=None) as mock_sleep:
+            async with _make_client() as client:
+                profile = await client.fetch_user_profile("testuser")
+
+        assert profile.login == "testuser"
+        assert route.call_count == 2
+        assert mock_sleep.call_count >= 1
+
+    @respx.mock
+    async def test_retry_on_502(self) -> None:
+        """502 Bad Gateway should be retried."""
+        route = respx.post(GRAPHQL_URL)
+        route.side_effect = [
+            httpx.Response(
+                502,
+                json={"message": "Bad Gateway"},
+                headers={"X-RateLimit-Remaining": "4999"},
+            ),
+            httpx.Response(
+                200,
+                json={
+                    "data": {
+                        "user": {
+                            "login": "testuser",
+                            "createdAt": "2020-01-01T00:00:00Z",
+                            "__typename": "User",
+                            "followers": {"totalCount": 50},
+                            "repositories": {"totalCount": 20},
+                        }
+                    }
+                },
+            ),
+        ]
+
+        async with _make_client() as client:
+            profile = await client.fetch_user_profile("testuser")
+
+        assert profile.login == "testuser"
+        assert route.call_count == 2
+
+    @respx.mock
+    async def test_max_retries_exceeded(self) -> None:
+        """Persistent 502 should fail after 4 attempts."""
+        route = respx.post(GRAPHQL_URL)
+        route.mock(
+            return_value=httpx.Response(
+                502,
+                json={"message": "Bad Gateway"},
+                headers={"X-RateLimit-Remaining": "4999"},
+            )
+        )
+
+        async with _make_client() as client:
+            with pytest.raises(GitHubAPIError) as exc_info:
+                await client.fetch_user_profile("testuser")
+
+        assert exc_info.value.status_code == 502
+        assert route.call_count == 4
+
+    @respx.mock
+    async def test_no_retry_on_404(self) -> None:
+        """User not found (404-like) should not be retried."""
+        route = respx.post(GRAPHQL_URL)
+        route.mock(
+            return_value=httpx.Response(200, json={"data": {"user": None}})
+        )
+
+        async with _make_client() as client:
+            with pytest.raises(UserNotFoundError):
+                await client.fetch_user_profile("ghost-user")
+
+        assert route.call_count == 1
+
+    @respx.mock
+    async def test_rest_retry_on_5xx(self) -> None:
+        """REST 503 should be retried, then succeed."""
+        route = respx.post(f"{BASE_URL}/repos/my-org/my-repo/issues/42/comments")
+        route.side_effect = [
+            httpx.Response(503, json={"message": "Service Unavailable"}),
+            httpx.Response(201, json={"id": 100, "body": "Hello"}),
+        ]
+
+        async with _make_client() as client:
+            result = await client.post_pr_comment("my-org", "my-repo", 42, "Hello")
+
+        assert result["id"] == 100
+        assert route.call_count == 2
+
+    @respx.mock
+    async def test_rest_no_retry_on_4xx(self) -> None:
+        """REST 403 should not be retried."""
+        route = respx.post(f"{BASE_URL}/repos/my-org/my-repo/issues/42/comments")
+        route.mock(return_value=httpx.Response(403, json={"message": "Forbidden"}))
+
+        async with _make_client() as client:
+            with pytest.raises(httpx.HTTPStatusError):
+                await client.post_pr_comment("my-org", "my-repo", 42, "Hello")
+
+        assert route.call_count == 1
