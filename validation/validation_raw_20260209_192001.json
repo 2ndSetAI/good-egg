@@ -1,0 +1,144 @@
+{
+  "results": [
+    {
+      "login": "ccurme",
+      "context_repo": "langchain-ai/langchain",
+      "normalized_score": 0.8654537309421941,
+      "trust_level": "HIGH",
+      "account_age_days": 3248,
+      "total_merged_prs": 500,
+      "unique_repos": 13,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.4594562455846981
+    },
+    {
+      "login": "Nitin75408",
+      "context_repo": "langchain-ai/langchain",
+      "normalized_score": 0.0,
+      "trust_level": "UNKNOWN",
+      "account_age_days": 1167,
+      "total_merged_prs": 0,
+      "unique_repos": 0,
+      "language_match": false,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": true,
+        "used_cached_data": false
+      },
+      "raw_score": 0.0
+    },
+    {
+      "login": "Leeaoyin",
+      "context_repo": "langchain-ai/langchain",
+      "normalized_score": 0.0,
+      "trust_level": "UNKNOWN",
+      "account_age_days": 2458,
+      "total_merged_prs": 0,
+      "unique_repos": 0,
+      "language_match": false,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": true,
+        "used_cached_data": false
+      },
+      "raw_score": 0.0
+    },
+    {
+      "login": "zanesq",
+      "context_repo": "block/goose",
+      "normalized_score": 0.0,
+      "trust_level": "UNKNOWN",
+      "account_age_days": 1889,
+      "total_merged_prs": 0,
+      "unique_repos": 0,
+      "language_match": false,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": true,
+        "used_cached_data": false
+      },
+      "raw_score": 0.0
+    },
+    {
+      "login": "codefromthecrypt",
+      "context_repo": "block/goose",
+      "normalized_score": 0.9680518696902386,
+      "trust_level": "HIGH",
+      "account_age_days": 6173,
+      "total_merged_prs": 500,
+      "unique_repos": 65,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.4591020641537424
+    },
+    {
+      "login": "michaelneale",
+      "context_repo": "block/goose",
+      "normalized_score": 0.9396186471398319,
+      "trust_level": "HIGH",
+      "account_age_days": 6438,
+      "total_merged_prs": 500,
+      "unique_repos": 33,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.45768836327559076
+    }
+  ],
+  "analysis": {
+    "total_scored": 6,
+    "mean_score": 0.4622,
+    "std_dev": 0.4632,
+    "coefficient_of_variation": 1.0022,
+    "min_score": 0.0,
+    "max_score": 0.9681,
+    "trust_level_distribution": {
+      "HIGH": 3,
+      "UNKNOWN": 3
+    },
+    "language_match_impact": {
+      "with_match_mean": 0.9244,
+      "without_match_mean": 0.0,
+      "with_match_count": 3,
+      "without_match_count": 3
+    },
+    "correlations": {
+      "account_age_vs_score": 0.8749,
+      "merged_prs_vs_score": 0.9978,
+      "unique_repos_vs_score": 0.8109
+    },
+    "per_repo": {
+      "langchain-ai/langchain": {
+        "count": 3,
+        "mean": 0.2885,
+        "min": 0.0,
+        "max": 0.8655
+      },
+      "block/goose": {
+        "count": 3,
+        "mean": 0.6359,
+        "min": 0.0,
+        "max": 0.9681
+      }
+    },
+    "surprising_lows": []
+  }
+}

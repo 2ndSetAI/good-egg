@@ -1,0 +1,47 @@
+{
+  "data": {
+    "user": {
+      "login": "testuser",
+      "createdAt": "2020-01-01T00:00:00Z",
+      "__typename": "User",
+      "followers": {"totalCount": 50},
+      "repositories": {"totalCount": 20},
+      "pullRequests": {
+        "totalCount": 3,
+        "pageInfo": {"hasNextPage": false, "endCursor": null},
+        "nodes": [
+          {
+            "title": "Fix pattern matching edge case",
+            "mergedAt": "2024-06-15T00:00:00Z",
+            "additions": 45,
+            "deletions": 12,
+            "changedFiles": 3,
+            "repository": {
+              "nameWithOwner": "elixir-lang/elixir",
+              "stargazerCount": 23000,
+              "forkCount": 3200,
+              "primaryLanguage": {"name": "Elixir"},
+              "isArchived": false,
+              "isFork": false
+            }
+          },
+          {
+            "title": "Add WebSocket compression support",
+            "mergedAt": "2024-03-10T00:00:00Z",
+            "additions": 200,
+            "deletions": 30,
+            "changedFiles": 8,
+            "repository": {
+              "nameWithOwner": "phoenixframework/phoenix",
+              "stargazerCount": 20000,
+              "forkCount": 2800,
+              "primaryLanguage": {"name": "Elixir"},
+              "isArchived": false,
+              "isFork": false
+            }
+          }
+        ]
+      }
+    }
+  }
+}

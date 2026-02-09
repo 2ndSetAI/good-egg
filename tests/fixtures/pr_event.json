@@ -1,0 +1,16 @@
+{
+  "action": "opened",
+  "number": 42,
+  "pull_request": {
+    "number": 42,
+    "user": {
+      "login": "testuser"
+    },
+    "head": {
+      "sha": "abc123def456"
+    }
+  },
+  "repository": {
+    "full_name": "my-org/my-repo"
+  }
+}

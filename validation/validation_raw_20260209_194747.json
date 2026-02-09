@@ -1,0 +1,817 @@
+{
+  "results": [
+    {
+      "login": "ccurme",
+      "context_repo": "langchain-ai/langchain",
+      "normalized_score": 0.865453730942194,
+      "trust_level": "HIGH",
+      "account_age_days": 3248,
+      "total_merged_prs": 500,
+      "unique_repos": 13,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.459456245584698
+    },
+    {
+      "login": "Nitin75408",
+      "context_repo": "langchain-ai/langchain",
+      "normalized_score": 0.0,
+      "trust_level": "UNKNOWN",
+      "account_age_days": 1167,
+      "total_merged_prs": 0,
+      "unique_repos": 0,
+      "language_match": false,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": true,
+        "used_cached_data": false
+      },
+      "raw_score": 0.0
+    },
+    {
+      "login": "Leeaoyin",
+      "context_repo": "langchain-ai/langchain",
+      "normalized_score": 0.0,
+      "trust_level": "UNKNOWN",
+      "account_age_days": 2458,
+      "total_merged_prs": 0,
+      "unique_repos": 0,
+      "language_match": false,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": true,
+        "used_cached_data": false
+      },
+      "raw_score": 0.0
+    },
+    {
+      "login": "TomAlon",
+      "context_repo": "langchain-ai/langchain",
+      "normalized_score": 0.5783299715819322,
+      "trust_level": "MEDIUM",
+      "account_age_days": 3753,
+      "total_merged_prs": 8,
+      "unique_repos": 2,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.4571741983114046
+    },
+    {
+      "login": "jasiecky",
+      "context_repo": "langchain-ai/langchain",
+      "normalized_score": 0.6470485750592556,
+      "trust_level": "MEDIUM",
+      "account_age_days": 1840,
+      "total_merged_prs": 8,
+      "unique_repos": 3,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.45831276582031505
+    },
+    {
+      "login": "justin55afdfdsf5ds45f4ds5f45ds4",
+      "context_repo": "langchain-ai/langchain",
+      "normalized_score": 0.0,
+      "trust_level": "UNKNOWN",
+      "account_age_days": 617,
+      "total_merged_prs": 0,
+      "unique_repos": 0,
+      "language_match": false,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": true,
+        "used_cached_data": false
+      },
+      "raw_score": 0.0
+    },
+    {
+      "login": "VintLin",
+      "context_repo": "langchain-ai/langchain",
+      "normalized_score": 0.0,
+      "trust_level": "LOW",
+      "account_age_days": 3266,
+      "total_merged_prs": 4,
+      "unique_repos": 2,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.0
+    },
+    {
+      "login": "mdrxy",
+      "context_repo": "langchain-ai/langchain",
+      "normalized_score": 0.9135288090436587,
+      "trust_level": "HIGH",
+      "account_age_days": 2178,
+      "total_merged_prs": 500,
+      "unique_repos": 22,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.4593280540280415
+    },
+    {
+      "login": "keenborder786",
+      "context_repo": "langchain-ai/langchain",
+      "normalized_score": 0.8585275697845075,
+      "trust_level": "HIGH",
+      "account_age_days": 2637,
+      "total_merged_prs": 120,
+      "unique_repos": 15,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.37928218968034455
+    },
+    {
+      "login": "MohammedYaseenAhmedKhan",
+      "context_repo": "langchain-ai/langchain",
+      "normalized_score": 0.0,
+      "trust_level": "UNKNOWN",
+      "account_age_days": 118,
+      "total_merged_prs": 0,
+      "unique_repos": 0,
+      "language_match": false,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": true,
+        "used_cached_data": false
+      },
+      "raw_score": 0.0
+    },
+    {
+      "login": "ddelgadovargas-cyber",
+      "context_repo": "pytorch/pytorch",
+      "normalized_score": 0.0,
+      "trust_level": "UNKNOWN",
+      "account_age_days": 59,
+      "total_merged_prs": 0,
+      "unique_repos": 0,
+      "language_match": false,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": true,
+        "used_cached_data": false
+      },
+      "raw_score": 0.0
+    },
+    {
+      "login": "albanD",
+      "context_repo": "pytorch/pytorch",
+      "normalized_score": 0.9518908709466066,
+      "trust_level": "HIGH",
+      "account_age_days": 4414,
+      "total_merged_prs": 130,
+      "unique_repos": 52,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.373322183660136
+    },
+    {
+      "login": "anijain2305",
+      "context_repo": "pytorch/pytorch",
+      "normalized_score": 0.8707170795933157,
+      "trust_level": "HIGH",
+      "account_age_days": 3830,
+      "total_merged_prs": 315,
+      "unique_repos": 16,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.3961749284411671
+    },
+    {
+      "login": "chuanqi129",
+      "context_repo": "pytorch/pytorch",
+      "normalized_score": 0.9001783714386887,
+      "trust_level": "HIGH",
+      "account_age_days": 3844,
+      "total_merged_prs": 144,
+      "unique_repos": 19,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.45089345085458704
+    },
+    {
+      "login": "gderossi",
+      "context_repo": "pytorch/pytorch",
+      "normalized_score": 0.0,
+      "trust_level": "LOW",
+      "account_age_days": 4148,
+      "total_merged_prs": 2,
+      "unique_repos": 1,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.0
+    },
+    {
+      "login": "desertfire",
+      "context_repo": "pytorch/pytorch",
+      "normalized_score": 0.8830433809304568,
+      "trust_level": "HIGH",
+      "account_age_days": 4736,
+      "total_merged_prs": 187,
+      "unique_repos": 16,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.44412816224741225
+    },
+    {
+      "login": "CuiYifeng",
+      "context_repo": "pytorch/pytorch",
+      "normalized_score": 0.7624324144791641,
+      "trust_level": "HIGH",
+      "account_age_days": 2407,
+      "total_merged_prs": 49,
+      "unique_repos": 6,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.458475494943369
+    },
+    {
+      "login": "VishnuVV27",
+      "context_repo": "vllm-project/vllm",
+      "normalized_score": 0.0,
+      "trust_level": "UNKNOWN",
+      "account_age_days": 1804,
+      "total_merged_prs": 0,
+      "unique_repos": 0,
+      "language_match": false,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": true,
+        "used_cached_data": false
+      },
+      "raw_score": 0.0
+    },
+    {
+      "login": "crawdaddie",
+      "context_repo": "vllm-project/vllm",
+      "normalized_score": 0.7403834888790368,
+      "trust_level": "HIGH",
+      "account_age_days": 4127,
+      "total_merged_prs": 24,
+      "unique_repos": 8,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.31687057091427084
+    },
+    {
+      "login": "Etelis",
+      "context_repo": "vllm-project/vllm",
+      "normalized_score": 0.8844780457979173,
+      "trust_level": "HIGH",
+      "account_age_days": 1583,
+      "total_merged_prs": 70,
+      "unique_repos": 17,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.42535351440678437
+    },
+    {
+      "login": "dllehr-amd",
+      "context_repo": "vllm-project/vllm",
+      "normalized_score": 0.841882843602055,
+      "trust_level": "HIGH",
+      "account_age_days": 1595,
+      "total_merged_prs": 54,
+      "unique_repos": 13,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.38031602767617045
+    },
+    {
+      "login": "daniel7an",
+      "context_repo": "huggingface/transformers",
+      "normalized_score": 0.0,
+      "trust_level": "UNKNOWN",
+      "account_age_days": 1765,
+      "total_merged_prs": 0,
+      "unique_repos": 0,
+      "language_match": false,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": true,
+        "used_cached_data": false
+      },
+      "raw_score": 0.0
+    },
+    {
+      "login": "Deep-unlearning",
+      "context_repo": "huggingface/transformers",
+      "normalized_score": 0.8347018772472146,
+      "trust_level": "HIGH",
+      "account_age_days": 2257,
+      "total_merged_prs": 34,
+      "unique_repos": 10,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.4590614072135746
+    },
+    {
+      "login": "eustlb",
+      "context_repo": "huggingface/transformers",
+      "normalized_score": 0.7628199737994685,
+      "trust_level": "HIGH",
+      "account_age_days": 1540,
+      "total_merged_prs": 57,
+      "unique_repos": 6,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.4594580906202317
+    },
+    {
+      "login": "thecaptain789",
+      "context_repo": "huggingface/transformers",
+      "normalized_score": 0.9135505821853324,
+      "trust_level": "HIGH",
+      "account_age_days": 12,
+      "total_merged_prs": 26,
+      "unique_repos": 22,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": true,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.4594546907759276
+    },
+    {
+      "login": "OiPunk",
+      "context_repo": "huggingface/transformers",
+      "normalized_score": 0.4788730248759155,
+      "trust_level": "MEDIUM",
+      "account_age_days": 2163,
+      "total_merged_prs": 1,
+      "unique_repos": 1,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.4594590644265652
+    },
+    {
+      "login": "tohtana",
+      "context_repo": "huggingface/transformers",
+      "normalized_score": 0.8481673579634849,
+      "trust_level": "HIGH",
+      "account_age_days": 1783,
+      "total_merged_prs": 160,
+      "unique_repos": 12,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.429707617842659
+    },
+    {
+      "login": "11happy",
+      "context_repo": "astral-sh/ruff",
+      "normalized_score": 0.8457889231399137,
+      "trust_level": "HIGH",
+      "account_age_days": 1870,
+      "total_merged_prs": 59,
+      "unique_repos": 11,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.4570515406335387
+    },
+    {
+      "login": "mtshiba",
+      "context_repo": "astral-sh/ruff",
+      "normalized_score": 0.8780229641188709,
+      "trust_level": "HIGH",
+      "account_age_days": 2641,
+      "total_merged_prs": 225,
+      "unique_repos": 16,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.4234273220443266
+    },
+    {
+      "login": "Alex-ley-scrub",
+      "context_repo": "astral-sh/ruff",
+      "normalized_score": 0.6476185978146176,
+      "trust_level": "MEDIUM",
+      "account_age_days": 1552,
+      "total_merged_prs": 8,
+      "unique_repos": 3,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.45945855385545814
+    },
+    {
+      "login": "koba1t",
+      "context_repo": "kubernetes/kubernetes",
+      "normalized_score": 0.8639699686924925,
+      "trust_level": "HIGH",
+      "account_age_days": 3195,
+      "total_merged_prs": 127,
+      "unique_repos": 15,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.39695736687153604
+    },
+    {
+      "login": "youwalther65",
+      "context_repo": "kubernetes/kubernetes",
+      "normalized_score": 0.85517480494698,
+      "trust_level": "HIGH",
+      "account_age_days": 3163,
+      "total_merged_prs": 25,
+      "unique_repos": 12,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.45422122358979755
+    },
+    {
+      "login": "rata",
+      "context_repo": "kubernetes/kubernetes",
+      "normalized_score": 0.944931914545197,
+      "trust_level": "HIGH",
+      "account_age_days": 6153,
+      "total_merged_prs": 272,
+      "unique_repos": 50,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.3364576161086086
+    },
+    {
+      "login": "varshadeshmane92",
+      "context_repo": "kubernetes/kubernetes",
+      "normalized_score": 0.4788730248759155,
+      "trust_level": "MEDIUM",
+      "account_age_days": 234,
+      "total_merged_prs": 1,
+      "unique_repos": 1,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.4594590644265652
+    },
+    {
+      "login": "mischnic",
+      "context_repo": "vercel/next.js",
+      "normalized_score": 0.8344642565607175,
+      "trust_level": "HIGH",
+      "account_age_days": 4636,
+      "total_merged_prs": 500,
+      "unique_repos": 10,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.458271944076479
+    },
+    {
+      "login": "pavan-sh",
+      "context_repo": "vercel/next.js",
+      "normalized_score": 0.8919687518265627,
+      "trust_level": "HIGH",
+      "account_age_days": 4433,
+      "total_merged_prs": 31,
+      "unique_repos": 17,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.45869894483089396
+    },
+    {
+      "login": "timneutkens",
+      "context_repo": "vercel/next.js",
+      "normalized_score": 0.9099748228922698,
+      "trust_level": "HIGH",
+      "account_age_days": 4418,
+      "total_merged_prs": 500,
+      "unique_repos": 21,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.45945471343146027
+    },
+    {
+      "login": "nimeshakya",
+      "context_repo": "vercel/next.js",
+      "normalized_score": 0.0,
+      "trust_level": "LOW",
+      "account_age_days": 1907,
+      "total_merged_prs": 70,
+      "unique_repos": 8,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.0
+    },
+    {
+      "login": "feedthejim",
+      "context_repo": "vercel/next.js",
+      "normalized_score": 0.8459151995559555,
+      "trust_level": "HIGH",
+      "account_age_days": 4009,
+      "total_merged_prs": 199,
+      "unique_repos": 13,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.39213805696519094
+    },
+    {
+      "login": "devjiwonchoi",
+      "context_repo": "vercel/next.js",
+      "normalized_score": 0.8265238369949001,
+      "trust_level": "HIGH",
+      "account_age_days": 1160,
+      "total_merged_prs": 500,
+      "unique_repos": 12,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.3664985182433753
+    },
+    {
+      "login": "zanesq",
+      "context_repo": "block/goose",
+      "normalized_score": 0.0,
+      "trust_level": "UNKNOWN",
+      "account_age_days": 1889,
+      "total_merged_prs": 0,
+      "unique_repos": 0,
+      "language_match": false,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": true,
+        "used_cached_data": false
+      },
+      "raw_score": 0.0
+    },
+    {
+      "login": "dorien-koelemeijer",
+      "context_repo": "block/goose",
+      "normalized_score": 0.47887302487591543,
+      "trust_level": "MEDIUM",
+      "account_age_days": 2142,
+      "total_merged_prs": 13,
+      "unique_repos": 1,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.45945906442656503
+    },
+    {
+      "login": "sw-square",
+      "context_repo": "block/goose",
+      "normalized_score": 0.7121493149045529,
+      "trust_level": "HIGH",
+      "account_age_days": 1664,
+      "total_merged_prs": 26,
+      "unique_repos": 6,
+      "language_match": true,
+      "flags": {
+        "is_bot": false,
+        "is_new_account": false,
+        "has_insufficient_data": false,
+        "used_cached_data": false
+      },
+      "raw_score": 0.3534319064802714
+    }
+  ],
+  "analysis": {
+    "total_scored": 43,
+    "mean_score": 0.5942,
+    "std_dev": 0.3669,
+    "coefficient_of_variation": 0.6175,
+    "min_score": 0.0,
+    "max_score": 0.9519,
+    "trust_level_distribution": {
+      "HIGH": 26,
+      "UNKNOWN": 8,
+      "MEDIUM": 6,
+      "LOW": 3
+    },
+    "language_match_impact": {
+      "with_match_mean": 0.73,
+      "without_match_mean": 0.0,
+      "with_match_count": 35,
+      "without_match_count": 8
+    },
+    "correlations": {
+      "account_age_vs_score": 0.408,
+      "merged_prs_vs_score": 0.5137,
+      "unique_repos_vs_score": 0.6591
+    },
+    "per_repo": {
+      "langchain-ai/langchain": {
+        "count": 10,
+        "mean": 0.3863,
+        "min": 0.0,
+        "max": 0.9135
+      },
+      "pytorch/pytorch": {
+        "count": 7,
+        "mean": 0.624,
+        "min": 0.0,
+        "max": 0.9519
+      },
+      "vllm-project/vllm": {
+        "count": 4,
+        "mean": 0.6167,
+        "min": 0.0,
+        "max": 0.8845
+      },
+      "huggingface/transformers": {
+        "count": 6,
+        "mean": 0.6397,
+        "min": 0.0,
+        "max": 0.9136
+      },
+      "astral-sh/ruff": {
+        "count": 3,
+        "mean": 0.7905,
+        "min": 0.6476,
+        "max": 0.878
+      },
+      "kubernetes/kubernetes": {
+        "count": 4,
+        "mean": 0.7857,
+        "min": 0.4789,
+        "max": 0.9449
+      },
+      "vercel/next.js": {
+        "count": 6,
+        "mean": 0.7181,
+        "min": 0.0,
+        "max": 0.91
+      },
+      "block/goose": {
+        "count": 3,
+        "mean": 0.397,
+        "min": 0.0,
+        "max": 0.7121
+      }
+    },
+    "surprising_lows": [
+      {
+        "login": "nimeshakya",
+        "repo": "vercel/next.js",
+        "prs": 70
+      }
+    ]
+  }
+}

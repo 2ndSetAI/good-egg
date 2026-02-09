@@ -1,0 +1,102 @@
+"""Tests for configuration."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+import yaml
+
+from good_egg.config import (
+    CacheTTLConfig,
+    GoodEggConfig,
+    LanguageNormalization,
+    PageRankConfig,
+    load_config,
+)
+
+
+class TestPageRankConfig:
+    def test_defaults(self) -> None:
+        config = PageRankConfig()
+        assert config.alpha == 0.85
+        assert config.max_iterations == 100
+        assert config.tolerance == 1e-6
+        assert config.context_repo_weight == 0.5
+
+
+class TestLanguageNormalization:
+    def test_known_language(self) -> None:
+        ln = LanguageNormalization()
+        assert ln.get_multiplier("Elixir") == 8.0
+        assert ln.get_multiplier("Rust") == 5.0
+
+    def test_unknown_language(self) -> None:
+        ln = LanguageNormalization()
+        assert ln.get_multiplier("Fortran") == 2.0
+
+    def test_none_language(self) -> None:
+        ln = LanguageNormalization()
+        assert ln.get_multiplier(None) == 2.0
+
+
+class TestCacheTTLConfig:
+    def test_to_seconds(self) -> None:
+        ttl = CacheTTLConfig()
+        secs = ttl.to_seconds()
+        assert secs["repo_metadata"] == 7 * 24 * 3600
+        assert secs["user_profile"] == 24 * 3600
+        assert secs["user_prs"] == 14 * 24 * 3600
+
+
+class TestGoodEggConfig:
+    def test_defaults(self) -> None:
+        config = GoodEggConfig()
+        assert config.pagerank.alpha == 0.85
+        assert config.thresholds.high_trust == 0.7
+        assert config.fetch.max_prs == 500
+
+
+class TestLoadConfig:
+    def test_load_defaults(self) -> None:
+        config = load_config()
+        assert isinstance(config, GoodEggConfig)
+        assert config.pagerank.alpha == 0.85
+
+    def test_load_yaml(self, tmp_path: Path) -> None:
+        config_file = tmp_path / ".good-egg.yml"
+        config_file.write_text(yaml.dump({
+            "pagerank": {"alpha": 0.9},
+            "thresholds": {"high_trust": 0.8},
+        }))
+        config = load_config(config_file)
+        assert config.pagerank.alpha == 0.9
+        assert config.thresholds.high_trust == 0.8
+        # Defaults preserved
+        assert config.pagerank.max_iterations == 100
+
+    def test_load_nonexistent_path(self, tmp_path: Path) -> None:
+        config = load_config(tmp_path / "nonexistent.yml")
+        assert config.pagerank.alpha == 0.85
+
+    def test_env_var_override(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("GOOD_EGG_ALPHA", "0.9")
+        config = load_config()
+        assert config.pagerank.alpha == 0.9
+
+    def test_env_var_max_prs(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("GOOD_EGG_MAX_PRS", "200")
+        config = load_config()
+        assert config.fetch.max_prs == 200
+
+    def test_yaml_plus_env_override(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        config_file = tmp_path / ".good-egg.yml"
+        config_file.write_text(yaml.dump({
+            "pagerank": {"alpha": 0.9},
+        }))
+        monkeypatch.setenv("GOOD_EGG_ALPHA", "0.75")
+        config = load_config(config_file)
+        # Env var takes precedence
+        assert config.pagerank.alpha == 0.75

@@ -1,0 +1,69 @@
+name: 'Good Egg'
+description: 'Score PR author trustworthiness using contribution graph analysis'
+author: 'Good Egg'
+
+inputs:
+  github-token:
+    description: 'GitHub token for API access'
+    required: true
+    default: ${{ github.token }}
+  config-path:
+    description: 'Path to .good-egg.yml config file'
+    required: false
+  comment:
+    description: 'Post a PR comment with the trust score'
+    required: false
+    default: 'true'
+  check-run:
+    description: 'Create a check run with the trust score'
+    required: false
+    default: 'false'
+  fail-on-low:
+    description: 'Fail the action if trust level is LOW'
+    required: false
+    default: 'false'
+
+outputs:
+  score:
+    description: 'Normalized trust score (0.0 - 1.0)'
+    value: ${{ steps.score.outputs.score }}
+  trust-level:
+    description: 'Trust level (HIGH, MEDIUM, LOW, UNKNOWN, BOT)'
+    value: ${{ steps.score.outputs.trust-level }}
+  user:
+    description: 'GitHub username that was scored'
+    value: ${{ steps.score.outputs.user }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+
+    - name: Install good-egg
+      shell: bash
+      run: |
+        cd ${{ github.action_path }}
+        uv sync --frozen
+
+    - name: Run Good Egg
+      id: score
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        INPUT_CONFIG_PATH: ${{ inputs.config-path }}
+        INPUT_COMMENT: ${{ inputs.comment }}
+        INPUT_CHECK-RUN: ${{ inputs.check-run }}
+        INPUT_FAIL-ON-LOW: ${{ inputs.fail-on-low }}
+      run: |
+        cd ${{ github.action_path }}
+        uv run python -m good_egg.action
+
+branding:
+  icon: 'shield'
+  color: 'green'
