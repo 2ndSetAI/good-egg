@@ -7,7 +7,7 @@ from collections import defaultdict
 
 import networkx as nx
 
-from good_egg.config import GoodEggConfig, PageRankConfig
+from good_egg.config import GoodEggConfig, GraphScoringConfig
 from good_egg.models import RepoMetadata, UserContributionData
 
 
@@ -90,13 +90,13 @@ class TrustGraphBuilder:
         total_prs: int = 0,
         unique_repos: int = 0,
     ) -> dict[str, float]:
-        """Build a personalization (restart) vector for PageRank.
+        """Build a personalization (restart) vector for graph scoring.
 
         The context repo gets the highest weight, same-language repos get
         medium weight, everything else gets a low weight, and user nodes
         get zero.
         """
-        pr_config = self.config.pagerank
+        pr_config = self.config.graph_scoring
         adjusted_other_weight = self._compute_adjusted_other_weight(
             pr_config, total_prs, unique_repos
         )
@@ -156,7 +156,7 @@ class TrustGraphBuilder:
 
     @staticmethod
     def _compute_adjusted_other_weight(
-        pr_config: PageRankConfig,
+        pr_config: GraphScoringConfig,
         total_prs: int,
         unique_repos: int,
     ) -> float:

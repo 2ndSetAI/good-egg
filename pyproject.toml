@@ -1,7 +1,7 @@
 [project]
 name = "good-egg"
 version = "0.1.0"
-description = "Trust scoring for GitHub contributors using PageRank on contribution graphs"
+description = "Trust scoring for GitHub contributors using graph-based ranking on contribution graphs"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.12"

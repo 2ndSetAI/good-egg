@@ -139,9 +139,9 @@ class TestEdgeWeights:
             primary_language="Python",
         )
         quality = builder._repo_quality(meta)
-        # log1p(10000 * 1.5) = log1p(15000) > 0
+        # log1p(10000 * 1.13) = log1p(11300) > 0
         assert quality > 0
-        expected = math.log1p(10000 * 1.5)
+        expected = math.log1p(10000 * 1.13)
         assert abs(quality - expected) < 1e-9
 
     def test_repo_quality_archived_penalty(self) -> None:
@@ -184,12 +184,12 @@ class TestEdgeWeights:
 
     def test_language_multiplier(self) -> None:
         builder = TrustGraphBuilder(_make_config())
-        assert builder._get_language_multiplier("Elixir") == 8.0
-        assert builder._get_language_multiplier("Python") == 1.5
+        assert builder._get_language_multiplier("Elixir") == 4.04
+        assert builder._get_language_multiplier("Python") == 1.13
         assert builder._get_language_multiplier("JavaScript") == 1.0
         # Unknown language gets default
-        assert builder._get_language_multiplier("Fortran") == 2.0
-        assert builder._get_language_multiplier(None) == 2.0
+        assert builder._get_language_multiplier("Fortran") == 3.0
+        assert builder._get_language_multiplier(None) == 3.0
 
 
 class TestSelfContribution:
@@ -388,22 +388,22 @@ class TestPersonalizationVector:
 class TestDiversityMultiplier:
     def test_newcomer_weight_near_base(self) -> None:
         """Newcomer (1 repo, 2 PRs) should get weight close to base 0.03."""
-        from good_egg.config import PageRankConfig
-        config = PageRankConfig()
+        from good_egg.config import GraphScoringConfig
+        config = GraphScoringConfig()
         weight = TrustGraphBuilder._compute_adjusted_other_weight(config, 2, 1)
         assert 0.03 <= weight <= 0.035
 
     def test_prolific_weight_higher(self) -> None:
         """Prolific contributor (20+ repos, 100+ PRs) gets higher weight."""
-        from good_egg.config import PageRankConfig
-        config = PageRankConfig()
+        from good_egg.config import GraphScoringConfig
+        config = GraphScoringConfig()
         weight = TrustGraphBuilder._compute_adjusted_other_weight(config, 100, 20)
         assert 0.055 <= weight <= 0.065
 
     def test_zero_prs_returns_base(self) -> None:
         """Zero PRs should return base weight unchanged."""
-        from good_egg.config import PageRankConfig
-        config = PageRankConfig()
+        from good_egg.config import GraphScoringConfig
+        config = GraphScoringConfig()
         weight = TrustGraphBuilder._compute_adjusted_other_weight(config, 0, 0)
         assert weight == config.other_weight
 

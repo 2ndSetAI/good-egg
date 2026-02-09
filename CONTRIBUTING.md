@@ -28,7 +28,7 @@ good-egg/
 │   ├── github_client.py  # Async GitHub GraphQL/REST client with retry
 │   ├── graph_builder.py  # Bipartite trust graph construction
 │   ├── models.py         # Pydantic data models
-│   └── scorer.py         # PageRank scoring engine
+│   └── scorer.py         # Graph-based trust scoring engine
 ├── tests/                # pytest test suite
 ├── scripts/
 │   └── validate_scoring.py  # Validation against real repos

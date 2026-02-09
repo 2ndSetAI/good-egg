@@ -1,8 +1,8 @@
 # Good Egg
 
-![Good Egg](assets/egg.jpg)
+<img src="assets/egg.jpg" alt="Good Egg" width="200">
 
-Trust scoring for GitHub PR authors using PageRank on contribution graphs. Good Egg analyses a contributor's merged pull requests across the GitHub ecosystem, builds a weighted contribution graph, and computes a personalised PageRank score to surface how established and trustworthy the author of an incoming pull request is relative to your project.
+Trust scoring for GitHub PR authors using graph-based ranking on contribution graphs. Good Egg analyses a contributor's merged pull requests across the GitHub ecosystem, builds a weighted contribution graph, and computes a personalised trust score to surface how established and trustworthy the author of an incoming pull request is relative to your project.
 
 ## Quick Start
 
@@ -63,12 +63,12 @@ GITHUB_TOKEN=ghp_... good-egg score <username> --repo <owner/repo>
 
 1. **Fetch** -- Retrieves the user's merged pull requests and the metadata of repositories they have contributed to via the GitHub API.
 2. **Build Graph** -- Constructs a directed graph where nodes represent users and repositories, and weighted edges encode contributions. Edge weights account for recency (exponential decay) and ecosystem size (language normalization).
-3. **PageRank** -- Runs personalised PageRank seeded from the context repository, so contributions to related projects carry more weight.
-4. **Classify** -- Normalizes the raw PageRank score to a 0-1 range and maps it to a trust level.
+3. **Score** -- Runs personalised graph scoring seeded from the context repository, so contributions to related projects carry more weight.
+4. **Classify** -- Normalizes the raw graph score to a 0-1 range and maps it to a trust level.
 
 ## Configuration
 
-Create a `.good-egg.yml` in your repository root to customize thresholds, PageRank parameters, and more:
+Create a `.good-egg.yml` in your repository root to customize thresholds, scoring parameters, and more:
 
 ```yaml
 thresholds:
@@ -76,7 +76,7 @@ thresholds:
   medium_trust: 0.3
   new_account_days: 30
 
-pagerank:
+graph_scoring:
   alpha: 0.85
 
 recency:
@@ -88,7 +88,7 @@ recency:
 Full `.good-egg.yml` schema:
 
 ```yaml
-pagerank:
+graph_scoring:
   alpha: 0.85              # Damping factor (0-1)
   context_repo_weight: 0.5 # Weight for the PR's target repo
   same_language_weight: 0.3 # Weight for repos in the same language
@@ -119,10 +119,10 @@ cache_ttl:
 
 | Variable | Config Path | Type |
 |----------|-------------|------|
-| `GOOD_EGG_ALPHA` | `pagerank.alpha` | float |
-| `GOOD_EGG_OTHER_WEIGHT` | `pagerank.other_weight` | float |
-| `GOOD_EGG_DIVERSITY_SCALE` | `pagerank.diversity_scale` | float |
-| `GOOD_EGG_VOLUME_SCALE` | `pagerank.volume_scale` | float |
+| `GOOD_EGG_ALPHA` | `graph_scoring.alpha` | float |
+| `GOOD_EGG_OTHER_WEIGHT` | `graph_scoring.other_weight` | float |
+| `GOOD_EGG_DIVERSITY_SCALE` | `graph_scoring.diversity_scale` | float |
+| `GOOD_EGG_VOLUME_SCALE` | `graph_scoring.volume_scale` | float |
 | `GOOD_EGG_MAX_PRS` | `fetch.max_prs` | int |
 | `GOOD_EGG_HIGH_TRUST` | `thresholds.high_trust` | float |
 | `GOOD_EGG_MEDIUM_TRUST` | `thresholds.medium_trust` | float |

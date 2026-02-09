@@ -1,4 +1,4 @@
-"""Trust scoring engine using PageRank over contribution graphs."""
+"""Trust scoring engine using graph-based ranking over contribution graphs."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from good_egg.models import (
 
 
 class TrustScorer:
-    """Compute trust scores for GitHub users via personalised PageRank."""
+    """Compute trust scores for GitHub users via personalised graph scoring."""
 
     def __init__(self, config: GoodEggConfig) -> None:
         self.config = config
@@ -86,14 +86,14 @@ class TrustScorer:
             total_prs=total_prs, unique_repos=unique_repos,
         )
 
-        # ---- Run PageRank ----
+        # ---- Run graph scoring ----
         pr_scores = nx.pagerank(
             graph,
-            alpha=self.config.pagerank.alpha,
+            alpha=self.config.graph_scoring.alpha,
             personalization=personalization if personalization else None,
             weight="weight",
-            max_iter=self.config.pagerank.max_iterations,
-            tol=self.config.pagerank.tolerance,
+            max_iter=self.config.graph_scoring.max_iterations,
+            tol=self.config.graph_scoring.tolerance,
         )
 
         user_node = f"user:{login}"
@@ -146,7 +146,7 @@ class TrustScorer:
         return None
 
     def _normalize(self, raw_score: float, graph: nx.DiGraph) -> float:
-        """Heuristic normalization of a raw PageRank score to [0, 1].
+        """Heuristic normalization of a raw graph score to [0, 1].
 
         Uses the number of nodes in the graph as a scaling reference:
         a uniform distribution would give 1/N per node; we scale relative

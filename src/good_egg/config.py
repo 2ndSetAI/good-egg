@@ -10,8 +10,8 @@ import yaml
 from pydantic import BaseModel, Field
 
 
-class PageRankConfig(BaseModel):
-    """PageRank algorithm parameters."""
+class GraphScoringConfig(BaseModel):
+    """Graph-based scoring algorithm parameters."""
     alpha: float = 0.85
     max_iterations: int = 100
     tolerance: float = 1e-6
@@ -65,17 +65,36 @@ class LanguageNormalization(BaseModel):
     to niche but high-quality projects are valued appropriately.
     """
     multipliers: dict[str, float] = Field(default_factory=lambda: {
-        "Elixir": 8.0,
-        "Rust": 5.0,
-        "Go": 3.0,
-        "Python": 1.5,
         "JavaScript": 1.0,
-        "TypeScript": 1.0,
-        "Haskell": 10.0,
-        "OCaml": 10.0,
-        "Erlang": 10.0,
+        "Python": 1.13,
+        "TypeScript": 1.30,
+        "Java": 1.55,
+        "C++": 1.66,
+        "C": 1.67,
+        "PHP": 1.97,
+        "C#": 2.03,
+        "Ruby": 2.17,
+        "Kotlin": 2.24,
+        "Go": 2.30,
+        "Swift": 2.40,
+        "Objective-C": 2.53,
+        "Lua": 2.61,
+        "Rust": 2.63,
+        "Dart": 2.82,
+        "Perl": 3.07,
+        "R": 3.18,
+        "Scala": 3.50,
+        "Julia": 3.52,
+        "Haskell": 3.63,
+        "Elixir": 4.04,
+        "Clojure": 4.28,
+        "OCaml": 4.63,
+        "Erlang": 5.18,
+        "Zig": 5.44,
+        "F#": 5.57,
+        "Nim": 5.96,
     })
-    default: float = 2.0
+    default: float = 3.0
 
     def get_multiplier(self, language: str | None) -> float:
         """Get the normalization multiplier for a language."""
@@ -93,7 +112,7 @@ class FetchConfig(BaseModel):
 
 class GoodEggConfig(BaseModel):
     """Top-level configuration composing all sub-configs."""
-    pagerank: PageRankConfig = Field(default_factory=PageRankConfig)
+    graph_scoring: GraphScoringConfig = Field(default_factory=GraphScoringConfig)
     edge_weights: EdgeWeightConfig = Field(default_factory=EdgeWeightConfig)
     recency: RecencyConfig = Field(default_factory=RecencyConfig)
     thresholds: ThresholdConfig = Field(default_factory=ThresholdConfig)
@@ -135,14 +154,14 @@ def load_config(path: str | Path | None = None) -> GoodEggConfig:
 
     # Apply environment variable overrides
     env_mapping = {
-        "GOOD_EGG_ALPHA": ("pagerank", "alpha", float),
+        "GOOD_EGG_ALPHA": ("graph_scoring", "alpha", float),
         "GOOD_EGG_MAX_PRS": ("fetch", "max_prs", int),
         "GOOD_EGG_HIGH_TRUST": ("thresholds", "high_trust", float),
         "GOOD_EGG_MEDIUM_TRUST": ("thresholds", "medium_trust", float),
         "GOOD_EGG_HALF_LIFE_DAYS": ("recency", "half_life_days", int),
-        "GOOD_EGG_OTHER_WEIGHT": ("pagerank", "other_weight", float),
-        "GOOD_EGG_DIVERSITY_SCALE": ("pagerank", "diversity_scale", float),
-        "GOOD_EGG_VOLUME_SCALE": ("pagerank", "volume_scale", float),
+        "GOOD_EGG_OTHER_WEIGHT": ("graph_scoring", "other_weight", float),
+        "GOOD_EGG_DIVERSITY_SCALE": ("graph_scoring", "diversity_scale", float),
+        "GOOD_EGG_VOLUME_SCALE": ("graph_scoring", "volume_scale", float),
     }
 
     for env_var, (section, key, type_fn) in env_mapping.items():
