@@ -160,3 +160,72 @@ class TestSetOutput:
         with patch.dict(os.environ, {}, clear=True):
             # Should not raise
             _set_output("test-key", "test-value")
+
+
+class TestMalformedInput:
+    """Tests for malformed action inputs."""
+
+    @pytest.mark.asyncio
+    async def test_malformed_event_json(self, tmp_path):
+        """Malformed event JSON should exit gracefully."""
+        event_file = tmp_path / "bad_event.json"
+        event_file.write_text("not valid json{{{")
+
+        env = {
+            "GITHUB_TOKEN": "ghp_testtoken123",
+            "GITHUB_EVENT_PATH": str(event_file),
+            "GITHUB_REPOSITORY": "my-org/my-repo",
+            "INPUT_COMMENT": "true",
+            "INPUT_CHECK-RUN": "false",
+            "INPUT_FAIL-ON-LOW": "false",
+        }
+
+        with patch.dict(os.environ, env, clear=False), \
+             pytest.raises((SystemExit, json.JSONDecodeError)):
+            await run_action()
+
+    @pytest.mark.asyncio
+    async def test_missing_pull_request_data(self, tmp_path):
+        """Missing pull_request data should exit with code 1."""
+        event_file = tmp_path / "no_pr_event.json"
+        event_file.write_text(json.dumps({"action": "opened"}))
+
+        env = {
+            "GITHUB_TOKEN": "ghp_testtoken123",
+            "GITHUB_EVENT_PATH": str(event_file),
+            "GITHUB_REPOSITORY": "my-org/my-repo",
+            "INPUT_COMMENT": "true",
+            "INPUT_CHECK-RUN": "false",
+            "INPUT_FAIL-ON-LOW": "false",
+        }
+
+        with patch.dict(os.environ, env, clear=False), \
+             pytest.raises(SystemExit) as exc_info:
+            await run_action()
+        assert exc_info.value.code == 1
+
+    @pytest.mark.asyncio
+    async def test_invalid_repository_format(self, tmp_path):
+        """Invalid GITHUB_REPOSITORY format should exit with code 1."""
+        event_file = tmp_path / "event.json"
+        event_file.write_text(json.dumps({
+            "pull_request": {
+                "number": 1,
+                "user": {"login": "testuser"},
+                "head": {"sha": "abc123"},
+            }
+        }))
+
+        env = {
+            "GITHUB_TOKEN": "ghp_testtoken123",
+            "GITHUB_EVENT_PATH": str(event_file),
+            "GITHUB_REPOSITORY": "invalid-no-slash",
+            "INPUT_COMMENT": "true",
+            "INPUT_CHECK-RUN": "false",
+            "INPUT_FAIL-ON-LOW": "false",
+        }
+
+        with patch.dict(os.environ, env, clear=False), \
+             pytest.raises(SystemExit) as exc_info:
+            await run_action()
+        assert exc_info.value.code == 1
