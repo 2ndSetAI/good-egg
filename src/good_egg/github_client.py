@@ -2,11 +2,20 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import random
 import re
 from datetime import UTC, datetime
 
 import httpx
+from tenacity import (
+    AsyncRetrying,
+    retry_if_exception,
+    stop_after_attempt,
+    stop_after_delay,
+    wait_exponential,
+)
 
 from good_egg.cache import Cache
 from good_egg.config import GoodEggConfig, load_config
@@ -89,7 +98,7 @@ class GitHubClient:
     async def __aexit__(self, *args: object) -> None:
         await self._client.aclose()
 
-    async def _graphql(self, query: str, variables: dict[str, object]) -> dict[str, object]:
+    async def _graphql_once(self, query: str, variables: dict[str, object]) -> dict[str, object]:
         """Execute a GraphQL query with error and rate-limit handling.
 
         Raises:
@@ -131,6 +140,37 @@ class GitHubClient:
 
         return data  # type: ignore[return-value]
 
+    async def _graphql(self, query: str, variables: dict[str, object]) -> dict[str, object]:
+        """Execute a GraphQL query with automatic retry on rate limits and transient errors.
+
+        - Rate limit (429/403): sleeps until reset time + jitter, then retries
+        - Transient (502/503): exponential backoff via tenacity
+        - Stops after 4 attempts or 300 seconds total
+        """
+        async for attempt in AsyncRetrying(
+            retry=retry_if_exception(
+                lambda exc: self._is_rate_limit_error(exc) or self._is_transient_error(exc)
+            ),
+            stop=stop_after_attempt(4) | stop_after_delay(300),
+            wait=wait_exponential(multiplier=1, min=1, max=30),
+            reraise=True,
+        ):
+            with attempt:
+                try:
+                    return await self._graphql_once(query, variables)
+                except RateLimitExhaustedError as exc:
+                    wait_seconds = max(0, (exc.reset_at - datetime.now(UTC)).total_seconds())
+                    jitter = random.uniform(0.5, 2.0)
+                    logger.warning(
+                        "Rate limit hit, sleeping %.1f seconds (reset at %s)",
+                        wait_seconds + jitter,
+                        exc.reset_at.isoformat(),
+                    )
+                    await asyncio.sleep(wait_seconds + jitter)
+                    raise  # re-raise for tenacity to count the attempt
+        # This should never be reached, but satisfies type checker
+        raise GitHubAPIError("Retry logic exhausted without result")  # pragma: no cover
+
     _BOT_SUFFIX_RE = re.compile(r"(\[bot\]|-bot|_bot|-app)$", re.IGNORECASE)
     _BOT_PREFIX_RE = re.compile(
         r"^(dependabot|renovate|greenkeeper|snyk-|codecov|stale"
@@ -145,6 +185,16 @@ class GitHubClient:
             GitHubClient._BOT_SUFFIX_RE.search(login)
             or GitHubClient._BOT_PREFIX_RE.search(login)
         )
+
+    @staticmethod
+    def _is_transient_error(exc: BaseException) -> bool:
+        """Check if an exception represents a transient server error (502/503)."""
+        return isinstance(exc, GitHubAPIError) and exc.status_code in (502, 503)
+
+    @staticmethod
+    def _is_rate_limit_error(exc: BaseException) -> bool:
+        """Check if an exception is a rate limit error."""
+        return isinstance(exc, RateLimitExhaustedError)
 
     async def fetch_user_profile(self, login: str) -> UserProfile:
         """Fetch a user profile via GraphQL.
@@ -278,7 +328,7 @@ class GitHubClient:
             data = result["data"]  # type: ignore[index]
 
             for alias, full_name in alias_map.items():
-                repo_data = data.get(alias)  # type: ignore[union-attr]
+                repo_data = data.get(alias)  # type: ignore[union-attr,attr-defined]
                 if repo_data is None:
                     continue
                 primary_lang = repo_data.get("primaryLanguage")
@@ -481,6 +531,28 @@ class GitHubClient:
     # REST helpers for PR comments, check runs, etc.
     # ------------------------------------------------------------------
 
+    async def _rest_request_with_retry(
+        self, method: str, url: str, **kwargs: object
+    ) -> httpx.Response:
+        """Execute a REST request with retry on 5xx server errors.
+
+        Retries up to 4 attempts with exponential backoff for status >= 500.
+        """
+        async for attempt in AsyncRetrying(
+            retry=retry_if_exception(
+                lambda exc: isinstance(exc, httpx.HTTPStatusError)
+                and exc.response.status_code >= 500
+            ),
+            stop=stop_after_attempt(4),
+            wait=wait_exponential(multiplier=1, min=1, max=15),
+            reraise=True,
+        ):
+            with attempt:
+                response = await self._client.request(method, url, **kwargs)  # type: ignore[arg-type]
+                response.raise_for_status()
+                return response
+        raise GitHubAPIError("REST retry logic exhausted without result")  # pragma: no cover
+
     async def post_pr_comment(
         self, owner: str, repo: str, pr_number: int, body: str
     ) -> dict[str, object]:
@@ -489,11 +561,11 @@ class GitHubClient:
         Uses the Issues API endpoint:
         ``POST /repos/{owner}/{repo}/issues/{pr_number}/comments``
         """
-        response = await self._client.post(
+        response = await self._rest_request_with_retry(
+            "POST",
             f"/repos/{owner}/{repo}/issues/{pr_number}/comments",
             json={"body": body},
         )
-        response.raise_for_status()
         return response.json()  # type: ignore[no-any-return]
 
     async def update_pr_comment(
@@ -504,11 +576,11 @@ class GitHubClient:
         Uses the Issues API endpoint:
         ``PATCH /repos/{owner}/{repo}/issues/comments/{comment_id}``
         """
-        response = await self._client.patch(
+        response = await self._rest_request_with_retry(
+            "PATCH",
             f"/repos/{owner}/{repo}/issues/comments/{comment_id}",
             json={"body": body},
         )
-        response.raise_for_status()
         return response.json()  # type: ignore[no-any-return]
 
     async def find_existing_comment(
@@ -519,16 +591,16 @@ class GitHubClient:
         Searches for :data:`~good_egg.formatter.COMMENT_MARKER` in the body of
         each comment.  Returns the comment ID if found, ``None`` otherwise.
         """
-        response = await self._client.get(
+        response = await self._rest_request_with_retry(
+            "GET",
             f"/repos/{owner}/{repo}/issues/{pr_number}/comments",
         )
-        response.raise_for_status()
         comments: list[dict[str, object]] = response.json()
 
         for comment in comments:
             body = str(comment.get("body", ""))
             if COMMENT_MARKER in body:
-                return int(comment["id"])  # type: ignore[arg-type]
+                return int(comment["id"])  # type: ignore[arg-type,call-overload]
 
         return None
 
@@ -544,7 +616,8 @@ class GitHubClient:
 
         ``POST /repos/{owner}/{repo}/check-runs``
         """
-        response = await self._client.post(
+        response = await self._rest_request_with_retry(
+            "POST",
             f"/repos/{owner}/{repo}/check-runs",
             json={
                 "name": "Good Egg Trust Score",
@@ -557,5 +630,4 @@ class GitHubClient:
                 },
             },
         )
-        response.raise_for_status()
         return response.json()  # type: ignore[no-any-return]

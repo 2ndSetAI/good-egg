@@ -1,13 +1,15 @@
-name: CI
+name: Release
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
-  test:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,10 +26,12 @@ jobs:
         run: uv sync
 
       - name: Lint
-        run: uv run ruff check src/ tests/ scripts/
-
-      - name: Type check
-        run: uv run mypy src/good_egg/
+        run: uv run ruff check src/ tests/
 
       - name: Test
         run: uv run pytest --cov=good_egg -v
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true

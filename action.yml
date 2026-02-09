@@ -1,6 +1,6 @@
 name: 'Good Egg'
 description: 'Score PR author trustworthiness using contribution graph analysis'
-author: 'Good Egg'
+author: 'Good Egg Contributors'
 
 inputs:
   github-token:

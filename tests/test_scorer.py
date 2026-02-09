@@ -386,3 +386,31 @@ class TestNormalization:
         graph.add_nodes_from(["a", "b", "c"])
         result = scorer._normalize(0.5, graph)
         assert 0.0 <= result <= 1.0
+
+
+class TestDiversityScoring:
+    def test_diverse_cross_ecosystem_user_gets_nonzero_score(self) -> None:
+        """User with many repos across ecosystems should score > 0 against unfamiliar repo."""
+        scorer = TrustScorer(_make_config())
+        prs = [
+            MergedPR(
+                repo_name_with_owner=f"org/repo-{i}",
+                title=f"PR {i}",
+                merged_at=datetime.now(UTC) - timedelta(days=i * 10),
+            )
+            for i in range(20)
+        ]
+        repos = {
+            f"org/repo-{i}": RepoMetadata(
+                name_with_owner=f"org/repo-{i}",
+                stargazer_count=500 + i * 100,
+                primary_language="Python",
+            )
+            for i in range(20)
+        }
+        data = _make_contribution_data(merged_prs=prs, repos=repos)
+        # Score against a Rust repo (no language match)
+        result = scorer.score(data, "rust-org/rust-project")
+        assert result.normalized_score > 0.0
+        assert result.total_merged_prs == 20
+        assert result.unique_repos_contributed == 20

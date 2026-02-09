@@ -7,7 +7,7 @@ from collections import defaultdict
 
 import networkx as nx
 
-from good_egg.config import GoodEggConfig
+from good_egg.config import GoodEggConfig, GraphScoringConfig
 from good_egg.models import RepoMetadata, UserContributionData
 
 
@@ -28,7 +28,7 @@ class TrustGraphBuilder:
         Edges carry a ``weight`` attribute computed from recency decay,
         repository quality, and edge-type multipliers.
         """
-        graph = nx.DiGraph()
+        graph: nx.DiGraph = nx.DiGraph()
         login = user_data.profile.login
         user_node = f"user:{login}"
 
@@ -87,14 +87,19 @@ class TrustGraphBuilder:
         graph: nx.DiGraph,
         context_repo: str,
         context_language: str | None,
+        total_prs: int = 0,
+        unique_repos: int = 0,
     ) -> dict[str, float]:
-        """Build a personalization (restart) vector for PageRank.
+        """Build a personalization (restart) vector for graph scoring.
 
         The context repo gets the highest weight, same-language repos get
         medium weight, everything else gets a low weight, and user nodes
         get zero.
         """
-        pr_config = self.config.pagerank
+        pr_config = self.config.graph_scoring
+        adjusted_other_weight = self._compute_adjusted_other_weight(
+            pr_config, total_prs, unique_repos
+        )
         context_node = f"repo:{context_repo}"
         personalization: dict[str, float] = {}
 
@@ -110,7 +115,7 @@ class TrustGraphBuilder:
             ):
                 personalization[node] = pr_config.same_language_weight
             else:
-                personalization[node] = pr_config.other_weight
+                personalization[node] = adjusted_other_weight
 
         # Normalize to sum=1
         total = sum(personalization.values())
@@ -148,6 +153,26 @@ class TrustGraphBuilder:
     def _get_language_multiplier(self, language: str | None) -> float:
         """Get the ecosystem size normalization multiplier for a language."""
         return self.config.language_normalization.get_multiplier(language)
+
+    @staticmethod
+    def _compute_adjusted_other_weight(
+        pr_config: GraphScoringConfig,
+        total_prs: int,
+        unique_repos: int,
+    ) -> float:
+        """Compute adjusted other_weight based on contribution diversity and volume.
+
+        Prolific cross-ecosystem contributors get a higher other_weight so their
+        contributions outside the context language are not excessively penalized.
+        """
+        base = pr_config.other_weight
+        if total_prs <= 0 or unique_repos <= 0:
+            return base
+        diversity_factor = 1.0 + pr_config.diversity_scale * min(1.0, unique_repos / 20.0)
+        volume_factor = 1.0 + pr_config.volume_scale * min(
+            1.0, math.log(total_prs) / math.log(100)
+        )
+        return base * diversity_factor * volume_factor
 
     @staticmethod
     def _is_self_contribution(login: str, repo_name: str) -> bool:

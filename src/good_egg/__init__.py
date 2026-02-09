@@ -1,5 +1,7 @@
 """Good Egg - GitHub contributor trust scoring."""
 
+from __future__ import annotations
+
 from good_egg.config import GoodEggConfig
 from good_egg.exceptions import GoodEggError
 from good_egg.models import TrustLevel, TrustScore

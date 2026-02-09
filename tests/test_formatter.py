@@ -73,10 +73,23 @@ class TestFormatMarkdownComment:
         assert "Top Contributions" not in md
 
     def test_flags_shown(self) -> None:
-        score = _make_score(flags={"new_account": True, "bot_detected": False})
+        score = _make_score(flags={"is_new_account": True, "is_bot": False})
         md = format_markdown_comment(score)
         assert "New account" in md
         assert "Bot account" not in md
+
+    def test_all_flags_render(self) -> None:
+        score = _make_score(flags={
+            "is_new_account": True,
+            "has_insufficient_data": True,
+            "is_bot": True,
+            "used_cached_data": True,
+        })
+        md = format_markdown_comment(score)
+        assert "New account" in md
+        assert "Insufficient data" in md
+        assert "Bot account detected" in md
+        assert "Using cached data" in md
 
     def test_low_trust_manual_review_note(self) -> None:
         score = _make_score(trust_level=TrustLevel.LOW, normalized_score=0.15)
@@ -115,9 +128,9 @@ class TestFormatCliOutput:
         assert "cool/project" not in out
 
     def test_verbose_shows_flags(self) -> None:
-        score = _make_score(flags={"new_account": True})
+        score = _make_score(flags={"is_new_account": True})
         out = format_cli_output(score, verbose=True)
-        assert "new_account" in out
+        assert "is_new_account" in out
 
     def test_verbose_shows_metadata(self) -> None:
         score = _make_score(scoring_metadata={"graph_nodes": 42})
@@ -167,10 +180,10 @@ class TestFormatCheckRunSummary:
         assert "cool/project" in summary
 
     def test_summary_contains_flags(self) -> None:
-        score = _make_score(flags={"new_account": True, "cached_data": True})
+        score = _make_score(flags={"is_new_account": True, "used_cached_data": True})
         _, summary = format_check_run_summary(score)
-        assert "new_account" in summary
-        assert "cached_data" in summary
+        assert "is_new_account" in summary
+        assert "used_cached_data" in summary
 
     def test_no_flags_section_when_empty(self) -> None:
         score = _make_score(flags={})
