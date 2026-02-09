@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import sys
 
 from good_egg.cache import Cache
 from good_egg.config import load_config
-from good_egg.exceptions import GoodEggError
+from good_egg.exceptions import GoodEggError, RateLimitExhaustedError, UserNotFoundError
 from good_egg.formatter import format_check_run_summary, format_markdown_comment
 from good_egg.github_client import GitHubClient
 from good_egg.models import TrustLevel
@@ -18,6 +19,12 @@ from good_egg.scorer import TrustScorer
 
 async def run_action() -> None:
     """Main action logic."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(levelname)s: %(name)s: %(message)s",
+    )
+    logger = logging.getLogger("good_egg.action")
+
     # Read environment
     token = os.environ.get("GITHUB_TOKEN", "")
     event_path = os.environ.get("GITHUB_EVENT_PATH", "")
@@ -25,6 +32,9 @@ async def run_action() -> None:
 
     # Read action inputs (GitHub Actions sets INPUT_ env vars)
     config_path = os.environ.get("INPUT_CONFIG-PATH") or os.environ.get("INPUT_CONFIG_PATH")
+    if config_path and not os.path.exists(config_path):
+        logger.warning("Config file %s not found, using defaults", config_path)
+        config_path = None
     should_comment = os.environ.get("INPUT_COMMENT", "true").lower() == "true"
     should_check_run = os.environ.get("INPUT_CHECK-RUN", "false").lower() == "true"
     fail_on_low = os.environ.get("INPUT_FAIL-ON-LOW", "false").lower() == "true"
@@ -100,7 +110,7 @@ async def run_action() -> None:
 
     # Summary
     pct = score.normalized_score * 100
-    print(f"Good Egg: {score.trust_level.value} ({pct:.0f}%) for {pr_author}")
+    logger.info("Good Egg: %s (%.0f%%) for %s", score.trust_level.value, pct, pr_author)
 
     # Fail if configured and trust is low
     if fail_on_low and score.trust_level == TrustLevel.LOW:
@@ -120,6 +130,15 @@ def main() -> None:
     """Entry point."""
     try:
         asyncio.run(run_action())
+    except RateLimitExhaustedError as exc:
+        print(f"::error::Rate limit exhausted. Resets at {exc.reset_at.isoformat()}. "
+              "Consider using a GitHub App token for higher limits.")
+        sys.exit(1)
+    except UserNotFoundError as exc:
+        print(f"::warning::User not found: {exc.login}. Setting outputs to UNKNOWN.")
+        _set_output("score", "0.00")
+        _set_output("trust-level", "UNKNOWN")
+        _set_output("user", exc.login)
     except GoodEggError as exc:
         print(f"::error::{exc}")
         sys.exit(1)

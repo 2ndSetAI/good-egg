@@ -1,0 +1,17 @@
+# Basic Good Egg workflow -- posts a trust score comment on every PR.
+name: Good Egg
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: 2ndSetAI/good-egg@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}

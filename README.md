@@ -83,6 +83,51 @@ recency:
   half_life_days: 180
 ```
 
+### Configuration Reference
+
+Full `.good-egg.yml` schema:
+
+```yaml
+pagerank:
+  alpha: 0.85              # Damping factor (0-1)
+  context_repo_weight: 0.5 # Weight for the PR's target repo
+  same_language_weight: 0.3 # Weight for repos in the same language
+  other_weight: 0.03       # Base weight for other repos
+  diversity_scale: 0.5     # How much cross-repo diversity boosts other_weight
+  volume_scale: 0.3        # How much PR volume boosts other_weight
+
+thresholds:
+  high_trust: 0.7
+  medium_trust: 0.3
+  new_account_days: 30
+
+recency:
+  half_life_days: 180      # Exponential decay half-life
+  max_age_days: 730        # PRs older than this are ignored
+
+fetch:
+  max_prs: 500             # Maximum PRs to fetch per user
+  max_repos_to_enrich: 200 # Maximum repos to fetch metadata for
+
+cache_ttl:
+  repo_metadata_hours: 168  # 7 days
+  user_profile_hours: 24    # 1 day
+  user_prs_hours: 336       # 14 days
+```
+
+#### Environment Variable Overrides
+
+| Variable | Config Path | Type |
+|----------|-------------|------|
+| `GOOD_EGG_ALPHA` | `pagerank.alpha` | float |
+| `GOOD_EGG_OTHER_WEIGHT` | `pagerank.other_weight` | float |
+| `GOOD_EGG_DIVERSITY_SCALE` | `pagerank.diversity_scale` | float |
+| `GOOD_EGG_VOLUME_SCALE` | `pagerank.volume_scale` | float |
+| `GOOD_EGG_MAX_PRS` | `fetch.max_prs` | int |
+| `GOOD_EGG_HIGH_TRUST` | `thresholds.high_trust` | float |
+| `GOOD_EGG_MEDIUM_TRUST` | `thresholds.medium_trust` | float |
+| `GOOD_EGG_HALF_LIFE_DAYS` | `recency.half_life_days` | int |
+
 ## Trust Levels
 
 | Level | Description |
@@ -92,6 +137,37 @@ recency:
 | **LOW** | Little to no prior contribution history -- review manually |
 | **UNKNOWN** | Insufficient data to produce a meaningful score |
 | **BOT** | Detected bot account (e.g. dependabot, renovate) |
+
+### Troubleshooting
+
+#### Rate Limits
+
+Good Egg retries automatically on GitHub API rate limits with exponential backoff. If you see persistent failures:
+
+- Use a GitHub App token instead of `GITHUB_TOKEN` for higher rate limits (5000 req/hr vs 1000).
+- Reduce `fetch.max_prs` in your config to lower API usage per scored user.
+
+#### Required Permissions
+
+| Permission | Required For |
+|-----------|-------------|
+| `pull-requests: write` | Posting PR comments |
+| `checks: write` | Creating check runs (when `check-run: true`) |
+
+#### Common Errors
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `Rate limit exhausted` | Too many API calls | Wait for reset or use App token |
+| `User not found` | Deleted/renamed account | Action continues with UNKNOWN score |
+| `Could not extract PR number` | Not a PR event | Ensure workflow triggers on `pull_request` |
+| `Invalid GITHUB_REPOSITORY` | Malformed env var | Check Actions environment |
+
+### Badges
+
+```markdown
+[![Good Egg](https://img.shields.io/badge/trust-Good%20Egg-brightgreen)](https://github.com/2ndSetAI/good-egg)
+```
 
 ## License
 

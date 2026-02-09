@@ -1,0 +1,29 @@
+# Strict Good Egg workflow -- posts a comment, creates a check run,
+# and fails the build if the author has LOW trust.
+name: Good Egg (Strict)
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  pull-requests: write
+  checks: write
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    steps:
+      - id: egg
+        uses: 2ndSetAI/good-egg@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          comment: 'true'
+          check-run: 'true'
+          fail-on-low: 'true'
+
+      - name: Use outputs
+        run: |
+          echo "Score: ${{ steps.egg.outputs.score }}"
+          echo "Trust level: ${{ steps.egg.outputs.trust-level }}"
+          echo "User: ${{ steps.egg.outputs.user }}"
