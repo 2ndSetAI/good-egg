@@ -8,10 +8,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from good_egg.mcp_server import (
+    _error_json,
+    _parse_repo,
     cache_stats,
     check_pr_author,
     clear_cache,
     get_trust_details,
+    main,
     score_user,
 )
 from good_egg.models import ContributionSummary, TrustLevel, TrustScore
@@ -37,6 +40,48 @@ def _make_trust_score() -> TrustScore:
         flags={"is_bot": False, "is_new_account": False},
         scoring_metadata={"graph_nodes": 50, "graph_edges": 120},
     )
+
+
+class TestParseRepo:
+    def test_valid_repo(self) -> None:
+        assert _parse_repo("owner/repo") == ("owner", "repo")
+
+    def test_no_slash(self) -> None:
+        with pytest.raises(ValueError, match="owner/name"):
+            _parse_repo("badformat")
+
+    def test_empty_owner(self) -> None:
+        with pytest.raises(ValueError, match="owner/name"):
+            _parse_repo("/repo")
+
+    def test_empty_name(self) -> None:
+        with pytest.raises(ValueError, match="owner/name"):
+            _parse_repo("owner/")
+
+    def test_too_many_slashes(self) -> None:
+        with pytest.raises(ValueError, match="owner/name"):
+            _parse_repo("a/b/c")
+
+    def test_empty_string(self) -> None:
+        with pytest.raises(ValueError, match="owner/name"):
+            _parse_repo("")
+
+
+class TestErrorJson:
+    def test_returns_json_with_error_key(self) -> None:
+        result = json.loads(_error_json("something broke"))
+        assert result == {"error": "something broke"}
+
+    def test_empty_message(self) -> None:
+        result = json.loads(_error_json(""))
+        assert result == {"error": ""}
+
+
+class TestMain:
+    @patch("good_egg.mcp_server.mcp")
+    def test_main_calls_run(self, mock_mcp: MagicMock) -> None:
+        main()
+        mock_mcp.run.assert_called_once_with(transport="stdio")
 
 
 class TestScoreUser:
