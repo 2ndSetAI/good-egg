@@ -1,6 +1,6 @@
 [project]
 name = "good-egg"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Trust scoring for GitHub contributors using graph-based ranking on contribution graphs"
 readme = "README.md"
 license = {text = "MIT"}
@@ -40,8 +40,11 @@ Repository = "https://github.com/2ndSetAI/good-egg"
 Issues = "https://github.com/2ndSetAI/good-egg/issues"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/good_egg"]
