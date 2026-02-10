@@ -23,7 +23,8 @@ jobs:
   score:
     runs-on: ubuntu-latest
     steps:
-      - uses: good-egg/good-egg@v1
+      - uses: 2ndSetAI/good-egg@main
+        # Use @v1 once a release has been tagged
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -51,6 +52,9 @@ jobs:
 ```bash
 # Install
 pip install good-egg
+
+# Or install directly from GitHub
+pip install git+https://github.com/2ndSetAI/good-egg.git
 
 # Score a PR author
 good-egg score <username> --repo <owner/repo>
