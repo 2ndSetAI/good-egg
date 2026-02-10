@@ -1,0 +1,78 @@
+# Good Egg configuration
+# Copy this file to your repository root as .good-egg.yml
+
+# Graph-based scoring algorithm parameters
+graph_scoring:
+  alpha: 0.85                  # Damping factor (0-1)
+  max_iterations: 100          # Maximum iterations for convergence
+  tolerance: 0.000001          # Convergence tolerance
+  context_repo_weight: 0.5     # Weight for contributions to the target repo
+  same_language_weight: 0.3    # Weight for repos using the same primary language
+  other_weight: 0.03           # Weight for contributions to unrelated repos
+  diversity_scale: 0.5         # How much repo diversity affects the score
+  volume_scale: 0.3            # How much PR volume affects the score
+
+# Trust level thresholds
+thresholds:
+  high_trust: 0.7              # Score >= this is HIGH trust
+  medium_trust: 0.3            # Score >= this is MEDIUM trust (below = LOW)
+  new_account_days: 30         # Accounts younger than this are flagged
+
+# Recency decay parameters
+recency:
+  half_life_days: 180          # Contributions lose half their weight after this many days
+  max_age_days: 730            # Contributions older than this are ignored
+
+# Edge weight multipliers for different contribution types
+edge_weights:
+  merged_pr: 1.0               # Weight for a merged pull request
+  maintainer: 2.0              # Weight for maintainer/owner relationship
+  star: 0.1                    # Weight for starring a repository
+  review: 0.5                  # Weight for reviewing a pull request
+
+# GitHub API fetch parameters
+fetch:
+  max_prs: 500                 # Maximum merged PRs to fetch per user
+  max_repos_to_enrich: 200     # Maximum repos to fetch metadata for
+  rate_limit_safety_margin: 100  # Stop fetching when this many API calls remain
+
+# Cache time-to-live settings (in hours)
+cache_ttl:
+  repo_metadata_hours: 168     # 7 days
+  user_profile_hours: 24       # 1 day
+  user_prs_hours: 336          # 14 days
+
+# Language ecosystem size normalization
+# Smaller ecosystems get higher multipliers so contributions to niche
+# but high-quality projects are valued appropriately.
+language_normalization:
+  default: 3.0                 # Multiplier for unlisted languages
+  multipliers:
+    JavaScript: 1.0
+    Python: 1.13
+    TypeScript: 1.30
+    Java: 1.55
+    "C++": 1.66
+    C: 1.67
+    PHP: 1.97
+    "C#": 2.03
+    Ruby: 2.17
+    Kotlin: 2.24
+    Go: 2.30
+    Swift: 2.40
+    Objective-C: 2.53
+    Lua: 2.61
+    Rust: 2.63
+    Dart: 2.82
+    Perl: 3.07
+    R: 3.18
+    Scala: 3.50
+    Julia: 3.52
+    Haskell: 3.63
+    Elixir: 4.04
+    Clojure: 4.28
+    OCaml: 4.63
+    Erlang: 5.18
+    Zig: 5.44
+    "F#": 5.57
+    Nim: 5.96

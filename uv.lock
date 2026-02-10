@@ -264,7 +264,6 @@ source = { editable = "." }
 dependencies = [
     { name = "click" },
     { name = "httpx" },
-    { name = "mcp" },
     { name = "networkx" },
     { name = "numpy" },
     { name = "pydantic" },
@@ -273,8 +272,14 @@ dependencies = [
     { name = "tenacity" },
 ]
 
+[package.optional-dependencies]
+mcp = [
+    { name = "mcp" },
+]
+
 [package.dev-dependencies]
 dev = [
+    { name = "mcp" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -289,7 +294,7 @@ dev = [
 requires-dist = [
     { name = "click", specifier = ">=8.1" },
     { name = "httpx", specifier = ">=0.27" },
-    { name = "mcp", specifier = ">=1.0" },
+    { name = "mcp", marker = "extra == 'mcp'", specifier = ">=1.0" },
     { name = "networkx", specifier = ">=3.2" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "pydantic", specifier = ">=2.5" },
@@ -297,9 +302,11 @@ requires-dist = [
     { name = "scipy", specifier = ">=1.12" },
     { name = "tenacity", specifier = ">=8.2" },
 ]
+provides-extras = ["mcp"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "mcp", specifier = ">=1.0" },
     { name = "mypy", specifier = ">=1.8" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-asyncio", specifier = ">=0.23" },

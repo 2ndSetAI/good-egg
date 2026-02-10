@@ -78,10 +78,22 @@ class TestErrorJson:
 
 
 class TestMain:
-    @patch("good_egg.mcp_server.mcp")
-    def test_main_calls_run(self, mock_mcp: MagicMock) -> None:
+    @patch("good_egg.mcp_server.FastMCP")
+    def test_main_calls_run(self, mock_fastmcp_cls: MagicMock) -> None:
+        mock_server = MagicMock()
+        mock_fastmcp_cls.return_value = mock_server
         main()
-        mock_mcp.run.assert_called_once_with(transport="stdio")
+        mock_fastmcp_cls.assert_called_once_with("good-egg")
+        assert mock_server.tool.call_count == 5
+        mock_server.run.assert_called_once_with(transport="stdio")
+
+
+class TestMcpNotInstalled:
+    @patch("good_egg.mcp_server.FastMCP", None)
+    def test_exits_when_mcp_missing(self) -> None:
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+        assert exc_info.value.code == 1
 
 
 class TestScoreUser:

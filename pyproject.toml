@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Trust scoring for GitHub contributors using graph-based ranking on contribution graphs"
 readme = "README.md"
 license = {text = "MIT"}
+authors = [{name = "Jeff Smith", email = "jeff@2ndset.ai"}]
 requires-python = ">=3.12"
 keywords = ["github", "trust", "security", "pull-request", "code-review"]
 classifiers = [
@@ -24,8 +25,10 @@ dependencies = [
     "pydantic>=2.5",
     "pyyaml>=6.0",
     "tenacity>=8.2",
-    "mcp>=1.0",
 ]
+
+[project.optional-dependencies]
+mcp = ["mcp>=1.0"]
 
 [project.scripts]
 good-egg = "good_egg.cli:main"
@@ -74,4 +77,5 @@ dev = [
     "pytest-cov>=4.1",
     "types-PyYAML>=6.0",
     "types-networkx>=3.2",
+    "mcp>=1.0",
 ]
