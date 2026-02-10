@@ -12,7 +12,7 @@ AI has made mass pull requests trivial to generate, eroding the signal that
 a PR represents genuine investment. Good Egg is a data-driven answer: it
 mines a contributor's existing track record across the GitHub ecosystem
 instead of requiring manual vouching. See
-[Methodology](docs/methodology.md) for the full approach.
+[Methodology](https://github.com/2ndSetAI/good-egg/blob/main/docs/methodology.md) for the full approach.
 
 ## Installation
 
@@ -46,10 +46,10 @@ Add `checks: write` to permissions if you enable `check-run: true`.
 <details>
 <summary>Example PR comment</summary>
 <br>
-<img src="assets/pr-comment-screenshot.png" alt="Good Egg PR comment" width="600">
+<img src="https://raw.githubusercontent.com/2ndSetAI/good-egg/main/assets/pr-comment-screenshot.png" alt="Good Egg PR comment" width="600">
 </details>
 
-See [docs/github-action.md](docs/github-action.md) for inputs, outputs,
+See [docs/github-action.md](https://github.com/2ndSetAI/good-egg/blob/main/docs/github-action.md) for inputs, outputs,
 and advanced configuration.
 
 ## CLI
@@ -84,7 +84,7 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-See [docs/library.md](docs/library.md) for full API documentation.
+See [docs/library.md](https://github.com/2ndSetAI/good-egg/blob/main/docs/library.md) for full API documentation.
 
 ## MCP Server
 
@@ -106,13 +106,13 @@ Add to Claude Desktop (`claude_desktop_config.json`):
 }
 ```
 
-See [docs/mcp-server.md](docs/mcp-server.md) for tool reference.
+See [docs/mcp-server.md](https://github.com/2ndSetAI/good-egg/blob/main/docs/mcp-server.md) for tool reference.
 
 ## How It Works
 
 Good Egg builds a weighted contribution graph from a user's merged PRs and
 runs personalized graph scoring to produce a trust score relative to your
-project. See [Methodology](docs/methodology.md) for details.
+project. See [Methodology](https://github.com/2ndSetAI/good-egg/blob/main/docs/methodology.md) for details.
 
 ## Trust Levels
 
@@ -135,13 +135,13 @@ graph_scoring:
 ```
 
 Environment variables with the `GOOD_EGG_` prefix can override individual
-settings. See [docs/configuration.md](docs/configuration.md) for the full
-reference and [examples/.good-egg.yml](examples/.good-egg.yml) for a
+settings. See [docs/configuration.md](https://github.com/2ndSetAI/good-egg/blob/main/docs/configuration.md) for the full
+reference and [examples/.good-egg.yml](https://github.com/2ndSetAI/good-egg/blob/main/examples/.good-egg.yml) for a
 complete example.
 
 ## Troubleshooting
 
-See [docs/troubleshooting.md](docs/troubleshooting.md) for rate limits,
+See [docs/troubleshooting.md](https://github.com/2ndSetAI/good-egg/blob/main/docs/troubleshooting.md) for rate limits,
 required permissions, and common errors.
 
 ## License
