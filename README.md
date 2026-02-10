@@ -1,10 +1,12 @@
-# Good Egg
+<h1>
+  <img src="https://raw.githubusercontent.com/2ndSetAI/good-egg/main/assets/egg.jpg" alt="" width="48" valign="middle">
+  Good Egg
+</h1>
 
-<img src="https://raw.githubusercontent.com/2ndSetAI/good-egg/main/assets/egg.jpg" alt="Good Egg" width="200">
+Trust scoring for GitHub PR authors using graph-based analysis of
+contribution history.
 
-Trust scoring for GitHub PR authors using graph-based analysis of contribution history.
-
-![Good Egg PR comment](assets/pr-comment-screenshot.png)
+<img src="assets/pr-comment-screenshot.png" alt="Good Egg PR comment" width="420">
 
 ## Why
 
