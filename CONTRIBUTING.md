@@ -27,12 +27,15 @@ good-egg/
 │   ├── formatter.py      # Markdown, CLI, JSON, check-run formatters
 │   ├── github_client.py  # Async GitHub GraphQL/REST client with retry
 │   ├── graph_builder.py  # Bipartite trust graph construction
+│   ├── mcp_server.py     # MCP server for AI assistant integration
 │   ├── models.py         # Pydantic data models
 │   └── scorer.py         # Graph-based trust scoring engine
 ├── tests/                # pytest test suite
 ├── scripts/
 │   └── validate_scoring.py  # Validation against real repos
-└── examples/             # Example GitHub Actions workflows
+├── docs/                 # Documentation (library, action, MCP, config)
+├── examples/             # Example workflows and config files
+└── CHANGELOG.md          # Release history
 ```
 
 ## Development Workflow
@@ -49,6 +52,9 @@ uv run mypy src/good_egg/
 
 # Format (auto-fix)
 uv run ruff check --fix src/ tests/ scripts/
+
+# Verify packaging
+uv build
 ```
 
 ## Code Style
