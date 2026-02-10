@@ -36,7 +36,6 @@ on:
 
 permissions:
   pull-requests: write
-  checks: write
 
 jobs:
   score:
@@ -46,6 +45,8 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
+
+Add `checks: write` to permissions if you enable `check-run: true`.
 
 ### Action Inputs
 
@@ -108,7 +109,7 @@ import asyncio
 import os
 from good_egg import score_pr_author
 
-async def main():
+async def main() -> None:
     result = await score_pr_author(
         login="octocat",
         repo_owner="octocat",

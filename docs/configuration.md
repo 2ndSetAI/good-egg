@@ -6,7 +6,12 @@ programmatically through the `GoodEggConfig` class.
 ## Configuration File
 
 Place a `.good-egg.yml` file in your repository root. The GitHub Action
-auto-detects this file; for the CLI, pass `--config .good-egg.yml`.
+auto-detects this file; for the CLI, pass `--config` to the `score`
+subcommand:
+
+```bash
+good-egg score <username> --repo owner/name --config .good-egg.yml
+```
 
 See [examples/.good-egg.yml](../examples/.good-egg.yml) for a complete
 example with all defaults.

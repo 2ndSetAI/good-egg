@@ -25,7 +25,7 @@ import os
 
 from good_egg import score_pr_author
 
-async def main():
+async def main() -> None:
     result = await score_pr_author(
         login="octocat",
         repo_owner="octocat",
@@ -63,7 +63,7 @@ async def score_pr_author(
 | `repo_name` | `str` | Name of the context repository |
 | `config` | `GoodEggConfig \| None` | Custom configuration; defaults are used when `None` |
 | `token` | `str \| None` | GitHub API token; falls back to `GITHUB_TOKEN` env var |
-| `cache` | `object \| None` | Cache instance for response caching |
+| `cache` | `object \| None` | `Cache` instance for response caching (see [Cache Usage](#cache-usage)) |
 
 ## Custom Configuration
 

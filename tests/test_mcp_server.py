@@ -85,6 +85,17 @@ class TestMain:
         main()
         mock_fastmcp_cls.assert_called_once_with("good-egg")
         assert mock_server.tool.call_count == 5
+        registered = [
+            call.args[0]
+            for call in mock_server.tool.return_value.call_args_list
+        ]
+        assert registered == [
+            score_user,
+            check_pr_author,
+            get_trust_details,
+            cache_stats,
+            clear_cache,
+        ]
         mock_server.run.assert_called_once_with(transport="stdio")
 
 
