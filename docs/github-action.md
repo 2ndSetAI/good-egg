@@ -24,6 +24,10 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
+This posts a trust score comment on each pull request:
+
+<img src="../assets/pr-comment-screenshot.png" alt="Good Egg PR comment" width="600">
+
 ## Inputs
 
 | Input | Required | Default | Description |
