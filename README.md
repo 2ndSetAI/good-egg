@@ -4,8 +4,6 @@
 
 Trust scoring for GitHub PR authors using graph-based analysis of contribution history.
 
-![Good Egg PR comment](assets/pr-comment-screenshot.png)
-
 ## Why
 
 AI has made mass pull requests trivial to generate, eroding the signal that
@@ -41,6 +39,8 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
+Add `checks: write` to permissions if you enable `check-run: true`.
+
 See [docs/github-action.md](docs/github-action.md) for inputs, outputs,
 and advanced configuration.
 
@@ -50,6 +50,8 @@ and advanced configuration.
 good-egg score <username> --repo <owner/repo>
 good-egg score octocat --repo octocat/Hello-World --json
 good-egg score octocat --repo octocat/Hello-World --verbose
+good-egg cache-stats
+good-egg cache-clear
 good-egg --version
 good-egg --help
 ```
@@ -57,7 +59,9 @@ good-egg --help
 ## Python Library
 
 ```python
-import asyncio, os
+import asyncio
+import os
+
 from good_egg import score_pr_author
 
 async def main() -> None:
@@ -122,7 +126,10 @@ graph_scoring:
   alpha: 0.85
 ```
 
-See [docs/configuration.md](docs/configuration.md) for the full reference.
+Environment variables with the `GOOD_EGG_` prefix can override individual
+settings. See [docs/configuration.md](docs/configuration.md) for the full
+reference and [examples/.good-egg.yml](examples/.good-egg.yml) for a
+complete example.
 
 ## Troubleshooting
 

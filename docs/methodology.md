@@ -8,7 +8,7 @@ AI has eliminated the natural barrier to entry for open-source contributions. Ge
 
 ### Explicit Vouching
 
-Mitchell Hashimoto's [Vouch](https://github.com/nicholasgasior/gvouch) system takes the direct approach: maintainers manually vouch for contributors they trust. This creates a web-of-trust where established participants validate newcomers.
+Mitchell Hashimoto's [Vouch](https://github.com/mitchellh/vouch) system takes the direct approach: maintainers manually vouch for contributors they trust. This creates a web-of-trust where established participants validate newcomers.
 
 **Strengths**: High-signal, rooted in human judgment, works well for tight-knit communities.
 
@@ -35,11 +35,13 @@ The scoring engine builds a **bipartite directed graph** with two node types:
 - **User nodes** (`user:{login}`) -- the contributor being scored
 - **Repository nodes** (`repo:{owner/name}`) -- repositories they've contributed to
 
-Each merged PR creates a weighted edge from the user node to the repository node. Edge weights combine three factors:
+Each merged PR creates a weighted edge from the user node to the repository node. Edge weights combine recency and quality:
 
 ```
-edge_weight = recency_decay x repo_quality x type_multiplier
+edge_weight = recency_decay x repo_quality x edge_type_weight
 ```
+
+The `edge_type_weight` for merged PRs is 1.0 (configurable via `edge_weights.merged_pr`).
 
 **Anti-gaming measures**:
 - Self-contributions (PRs to your own repos) are penalized at 0.3x weight
@@ -80,20 +82,20 @@ Star counts vary enormously across ecosystems -- a 1,000-star Rust library repre
 | Rust | 2.63 | |
 | Zig | 5.44 | Niche; fewer repos, lower star counts |
 
-The full multiplier table is derived from relative ecosystem sizes on GitHub. Contributions to niche ecosystems are weighted higher because they represent rarer, harder work.
+These are selected examples from the full 26-language multiplier table (see `LanguageNormalization` in `config.py`). Multipliers are derived from relative ecosystem sizes on GitHub. Contributions to niche ecosystems are weighted higher because they represent rarer, harder work.
 
 ### Personalization Vector
 
-Graph scoring uses a personalization (restart) vector to bias the random walk toward the context repository. The weights:
+Graph scoring uses a personalization (restart) vector to bias the random walk toward the context repository. The raw weights before normalization:
 
-| Node type | Weight | Purpose |
-|-----------|--------|---------|
+| Node type | Raw weight | Purpose |
+|-----------|------------|---------|
 | Context repository | 0.50 | Strongest signal: contributions to *this* project |
 | Same-language repos | 0.30 | Ecosystem relevance |
 | Other repos | 0.03 | Baseline (adjusted for contributor diversity and volume) |
 | User nodes | 0.00 | Users don't seed the walk |
 
-The "other repos" weight is dynamically adjusted based on contributor diversity (number of unique repos) and volume (total PRs), so prolific cross-ecosystem contributors aren't unfairly penalized.
+These raw weights are normalized to sum to 1.0, so actual values in the random walk depend on graph composition. The "other repos" weight is dynamically adjusted based on contributor diversity (number of unique repos) and volume (total PRs), so prolific cross-ecosystem contributors aren't unfairly penalized.
 
 ### Scoring and Normalization
 
