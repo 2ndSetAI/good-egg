@@ -25,6 +25,7 @@ src/good_egg/       # Main package
   formatter.py      # Output formatters (Markdown, CLI, JSON, check-run)
   action.py         # GitHub Action entry point
   cli.py            # Click CLI
+  mcp_server.py     # MCP server for AI assistant integration
   cache.py          # SQLite-backed response cache
   exceptions.py     # Custom exception hierarchy
 tests/              # pytest test suite (mirrors src/ structure)
@@ -49,6 +50,7 @@ uv run ruff check --fix src/ tests/ scripts/  # Auto-fix lint issues
 good-egg score <username> --repo <owner/repo>   # Score a user
 good-egg cache-stats                             # Cache statistics
 good-egg cache-clear                             # Clear cache
+good-egg-mcp                                    # Start MCP server
 ```
 
 ## Code Conventions

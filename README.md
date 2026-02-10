@@ -63,6 +63,43 @@ good-egg score <username> --repo <owner/repo>
 GITHUB_TOKEN=ghp_... good-egg score <username> --repo <owner/repo>
 ```
 
+## MCP Server
+
+Good Egg includes an MCP (Model Context Protocol) server for integration with AI assistants like Claude Desktop.
+
+### Running
+
+```bash
+GITHUB_TOKEN=ghp_... good-egg-mcp
+```
+
+### Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `score_user` | Full trust score with all metadata |
+| `check_pr_author` | Compact summary: trust level, score, PR count |
+| `get_trust_details` | Expanded breakdown with contributions and flags |
+| `cache_stats` | Show cache statistics |
+| `clear_cache` | Clear cache (optionally by category) |
+
+### Claude Desktop Configuration
+
+Add to your Claude Desktop config (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "good-egg": {
+      "command": "good-egg-mcp",
+      "env": {
+        "GITHUB_TOKEN": "ghp_your_token_here"
+      }
+    }
+  }
+}
+```
+
 ## How It Works
 
 1. **Fetch** -- Retrieves the user's merged pull requests and the metadata of repositories they have contributed to via the GitHub API.
