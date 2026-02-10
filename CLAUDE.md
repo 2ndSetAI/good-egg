@@ -2,7 +2,7 @@
 
 ## Overview
 
-Good Egg is a trust scoring tool for GitHub PR authors. It builds a weighted contribution graph from a user's merged PRs and computes a personalised trust score to assess how established a contributor is relative to a given project. It runs as a GitHub Action and as a CLI.
+Good Egg is a trust scoring tool for GitHub PR authors. It builds a weighted contribution graph from a user's merged PRs and computes a personalised trust score to assess how established a contributor is relative to a given project. It runs as a GitHub Action, a CLI, a Python library, and an MCP server.
 
 ## Tech Stack
 
@@ -30,7 +30,8 @@ src/good_egg/       # Main package
   exceptions.py     # Custom exception hierarchy
 tests/              # pytest test suite (mirrors src/ structure)
 scripts/            # Utility scripts (validation, language multiplier generation)
-examples/           # Example GitHub Actions workflows
+docs/               # Documentation (library, action, MCP, config reference)
+examples/           # Example workflows, config files, library usage
 ```
 
 ## Commands
@@ -53,6 +54,13 @@ good-egg cache-clear                             # Clear cache
 good-egg-mcp                                    # Start MCP server
 ```
 
+### Installation
+
+```bash
+pip install good-egg          # Core package
+pip install good-egg[mcp]     # With MCP server support
+```
+
 ## Code Conventions
 
 - Use `from __future__ import annotations` in every module.
@@ -68,6 +76,7 @@ good-egg-mcp                                    # Start MCP server
 - Config class is `GoodEggConfig` in `config.py`, composed of sub-configs: `GraphScoringConfig`, `EdgeWeightConfig`, `RecencyConfig`, `ThresholdConfig`, `CacheTTLConfig`, `LanguageNormalization`, `FetchConfig`.
 - YAML config key for scoring parameters is `graph_scoring` (not "pagerank").
 - Environment variable overrides use `GOOD_EGG_` prefix.
+- The `[mcp]` optional extra adds the `mcp` dependency for the MCP server.
 
 ## Important Rules
 

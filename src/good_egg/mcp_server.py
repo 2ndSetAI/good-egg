@@ -3,17 +3,19 @@
 from __future__ import annotations
 
 import json
+import sys
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
+try:
+    from mcp.server.fastmcp import FastMCP
+except ImportError:
+    FastMCP = None  # type: ignore[assignment,misc]
 
 from good_egg.cache import Cache
 from good_egg.config import GoodEggConfig, load_config
 from good_egg.scorer import score_pr_author
-
-mcp = FastMCP("good-egg")
 
 
 def _get_config() -> GoodEggConfig:
@@ -75,7 +77,6 @@ async def _cache_resource() -> AsyncGenerator[Cache]:
         cache.close()
 
 
-@mcp.tool()
 async def score_user(username: str, repo: str) -> str:
     """Score a GitHub user's trustworthiness relative to a repository.
 
@@ -101,7 +102,6 @@ async def score_user(username: str, repo: str) -> str:
         return _error_json(str(exc))
 
 
-@mcp.tool()
 async def check_pr_author(username: str, repo: str) -> str:
     """Quick check of a PR author's trust level.
 
@@ -133,7 +133,6 @@ async def check_pr_author(username: str, repo: str) -> str:
         return _error_json(str(exc))
 
 
-@mcp.tool()
 async def get_trust_details(username: str, repo: str) -> str:
     """Get an expanded trust breakdown for a GitHub user.
 
@@ -175,7 +174,6 @@ async def get_trust_details(username: str, repo: str) -> str:
         return _error_json(str(exc))
 
 
-@mcp.tool()
 async def cache_stats() -> str:
     """Show cache statistics.
 
@@ -189,7 +187,6 @@ async def cache_stats() -> str:
         return _error_json(str(exc))
 
 
-@mcp.tool()
 async def clear_cache(category: str | None = None) -> str:
     """Clear the cache.
 
@@ -212,7 +209,20 @@ async def clear_cache(category: str | None = None) -> str:
 
 def main() -> None:
     """Run the Good Egg MCP server."""
-    mcp.run(transport="stdio")
+    if FastMCP is None:
+        print(
+            "The MCP server requires the 'mcp' extra.\n"
+            "Install it with: pip install good-egg[mcp]",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    server = FastMCP("good-egg")
+    server.tool()(score_user)
+    server.tool()(check_pr_author)
+    server.tool()(get_trust_details)
+    server.tool()(cache_stats)
+    server.tool()(clear_cache)
+    server.run(transport="stdio")
 
 
 if __name__ == "__main__":

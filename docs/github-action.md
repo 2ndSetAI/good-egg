@@ -1,0 +1,157 @@
+# GitHub Action Usage
+
+Good Egg runs as a composite GitHub Action that scores the author of a pull
+request and reports the trust level via PR comments, check runs, or both.
+
+## Basic Setup
+
+```yaml
+name: Good Egg
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: 2ndSetAI/good-egg@v0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+## Inputs
+
+| Input | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `github-token` | Yes | `${{ github.token }}` | GitHub token for API access |
+| `config-path` | No | _(auto-detected)_ | Path to `.good-egg.yml` config file |
+| `comment` | No | `true` | Post a PR comment with the trust score |
+| `check-run` | No | `false` | Create a check run with the trust score |
+| `fail-on-low` | No | `false` | Fail the action if trust level is LOW |
+
+## Outputs
+
+| Output | Description |
+|--------|-------------|
+| `score` | Normalized trust score (0.0 - 1.0) |
+| `trust-level` | Trust level: HIGH, MEDIUM, LOW, UNKNOWN, or BOT |
+| `user` | GitHub username that was scored |
+
+## Custom Configuration
+
+To use a custom `.good-egg.yml`, check out the repository first so the
+config file is available:
+
+```yaml
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: 2ndSetAI/good-egg@v0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          config-path: .good-egg.yml
+```
+
+## Using Outputs in Downstream Steps
+
+Give the step an `id` and reference its outputs:
+
+```yaml
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    steps:
+      - id: egg
+        uses: 2ndSetAI/good-egg@v0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Print results
+        run: |
+          echo "Score: ${{ steps.egg.outputs.score }}"
+          echo "Trust level: ${{ steps.egg.outputs.trust-level }}"
+          echo "User: ${{ steps.egg.outputs.user }}"
+```
+
+## Acting on Trust Level
+
+Use conditional steps to take different actions based on the trust level:
+
+```yaml
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    steps:
+      - id: egg
+        uses: 2ndSetAI/good-egg@v0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Require extra review for low trust
+        if: steps.egg.outputs.trust-level == 'LOW'
+        run: |
+          echo "::warning::Low trust PR author -- manual review required"
+
+      - name: Auto-approve high trust
+        if: steps.egg.outputs.trust-level == 'HIGH'
+        run: |
+          echo "High trust author -- consider fast-tracking review"
+```
+
+## Strict Mode
+
+Enable check runs and fail the build on low-trust authors:
+
+```yaml
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: 2ndSetAI/good-egg@v0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          comment: 'true'
+          check-run: 'true'
+          fail-on-low: 'true'
+```
+
+## Required Permissions
+
+| Permission | Required For |
+|-----------|-------------|
+| `pull-requests: write` | Posting PR comments (when `comment: true`) |
+| `checks: write` | Creating check runs (when `check-run: true`) |
+
+If you only use check runs and not comments, you can omit
+`pull-requests: write` and vice versa. At least one write permission is
+needed for the action to report results.
+
+## Rate Limit Considerations
+
+Good Egg makes multiple GitHub API calls per scored user to fetch merged
+PRs and repository metadata. To stay within rate limits:
+
+- The default `GITHUB_TOKEN` provides 1000 requests per hour for Actions.
+- A GitHub App installation token or personal access token provides 5000
+  requests per hour.
+- Reduce `fetch.max_prs` in your config to lower the number of API calls
+  per user.
+- The built-in cache (SQLite-backed) avoids refetching data that has not
+  changed. Cache TTLs are configurable.
+
+## Example Workflows
+
+See the [examples/](../examples/) directory for complete workflow files:
+
+- [basic-workflow.yml](../examples/basic-workflow.yml) -- minimal setup
+  that posts a PR comment
+- [strict-workflow.yml](../examples/strict-workflow.yml) -- comment, check
+  run, and fail-on-low

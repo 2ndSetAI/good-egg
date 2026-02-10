@@ -15,8 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - id: egg
-        uses: 2ndSetAI/good-egg@main
-        # Use @v1 once a release has been tagged
+        uses: 2ndSetAI/good-egg@v0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment: 'true'
