@@ -79,6 +79,11 @@ class TestLoadConfig:
         config = load_config(tmp_path / "nonexistent.yml")
         assert config.graph_scoring.alpha == 0.85
 
+    def test_load_directory_path_falls_back_to_defaults(self, tmp_path: Path) -> None:
+        config = load_config(tmp_path)
+        assert isinstance(config, GoodEggConfig)
+        assert config.graph_scoring.alpha == 0.85
+
     def test_env_var_override(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("GOOD_EGG_ALPHA", "0.9")
         config = load_config()

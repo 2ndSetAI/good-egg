@@ -145,7 +145,7 @@ def load_config(path: str | Path | None = None) -> GoodEggConfig:
         # Try default locations
         for default_path in [".good-egg.yml", ".good-egg.yaml"]:
             p = Path(default_path)
-            if p.exists():
+            if p.is_file():
                 with open(p) as f:
                     yaml_data = yaml.safe_load(f)
                     if yaml_data:
