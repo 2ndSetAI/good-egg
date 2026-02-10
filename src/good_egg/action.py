@@ -32,8 +32,11 @@ async def run_action() -> None:
 
     # Read action inputs (GitHub Actions sets INPUT_ env vars)
     config_path = os.environ.get("INPUT_CONFIG-PATH") or os.environ.get("INPUT_CONFIG_PATH")
-    if config_path and not os.path.exists(config_path):
-        logger.warning("Config file %s not found, using defaults", config_path)
+    if config_path and not os.path.isfile(config_path):
+        if os.path.exists(config_path):
+            logger.warning("Config path %s is not a file, using defaults", config_path)
+        else:
+            logger.warning("Config file %s not found, using defaults", config_path)
         config_path = None
     should_comment = os.environ.get("INPUT_COMMENT", "true").lower() == "true"
     should_check_run = os.environ.get("INPUT_CHECK-RUN", "false").lower() == "true"
