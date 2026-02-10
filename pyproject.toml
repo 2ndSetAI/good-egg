@@ -8,8 +8,11 @@ requires-python = ">=3.12"
 keywords = ["github", "trust", "security", "pull-request", "code-review"]
 classifiers = [
     "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
     "Topic :: Software Development :: Quality Assurance",
 ]
 dependencies = [
