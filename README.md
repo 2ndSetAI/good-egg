@@ -1,8 +1,10 @@
-# Good Egg
+<h1>
+  <img src="https://raw.githubusercontent.com/2ndSetAI/good-egg/main/assets/egg.jpg" alt="" width="48" valign="middle">
+  Good Egg
+</h1>
 
-<img src="https://raw.githubusercontent.com/2ndSetAI/good-egg/main/assets/egg.jpg" alt="Good Egg" width="200">
-
-Trust scoring for GitHub PR authors using graph-based analysis of contribution history.
+Trust scoring for GitHub PR authors using graph-based analysis of
+contribution history.
 
 ## Why
 
@@ -40,6 +42,12 @@ jobs:
 ```
 
 Add `checks: write` to permissions if you enable `check-run: true`.
+
+<details>
+<summary>Example PR comment</summary>
+<br>
+<img src="assets/pr-comment-screenshot.png" alt="Good Egg PR comment" width="600">
+</details>
 
 See [docs/github-action.md](docs/github-action.md) for inputs, outputs,
 and advanced configuration.
