@@ -16,3 +16,4 @@ venv/
 .ruff_cache/
 htmlcov/
 .coverage
+src/good_egg/_version.py
