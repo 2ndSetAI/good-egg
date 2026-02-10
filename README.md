@@ -6,8 +6,6 @@
 Trust scoring for GitHub PR authors using graph-based analysis of
 contribution history.
 
-<img src="assets/pr-comment-screenshot.png" alt="Good Egg PR comment" width="420">
-
 ## Why
 
 AI has made mass pull requests trivial to generate, eroding the signal that
@@ -44,6 +42,12 @@ jobs:
 ```
 
 Add `checks: write` to permissions if you enable `check-run: true`.
+
+<details>
+<summary>Example PR comment</summary>
+<br>
+<img src="assets/pr-comment-screenshot.png" alt="Good Egg PR comment" width="600">
+</details>
 
 See [docs/github-action.md](docs/github-action.md) for inputs, outputs,
 and advanced configuration.
