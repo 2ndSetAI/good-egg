@@ -4,6 +4,8 @@
 
 Trust scoring for GitHub PR authors using graph-based analysis of contribution history.
 
+![Good Egg PR comment](assets/pr-comment-screenshot.png)
+
 ## Why
 
 AI has made mass pull requests trivial to generate, eroding the signal that
