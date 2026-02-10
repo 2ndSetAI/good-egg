@@ -136,7 +136,7 @@ def load_config(path: str | Path | None = None) -> GoodEggConfig:
     # Load from YAML file
     if path is not None:
         config_path = Path(path)
-        if config_path.exists():
+        if config_path.is_file():
             with open(config_path) as f:
                 yaml_data = yaml.safe_load(f)
                 if yaml_data:
