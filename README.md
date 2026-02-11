@@ -32,12 +32,6 @@ pip install good-egg          # Core package
 pip install good-egg[mcp]     # With MCP server support
 ```
 
-Or run without installing via [uvx](https://docs.astral.sh/uv/):
-
-```bash
-uvx good-egg score <username> --repo <owner/repo>
-```
-
 ## GitHub Action
 
 Add Good Egg to any pull request workflow:
