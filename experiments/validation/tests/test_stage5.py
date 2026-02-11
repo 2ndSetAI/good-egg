@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from experiments.validation.embedding import (
@@ -8,6 +9,54 @@ from experiments.validation.embedding import (
     compute_centroid,
     cosine_similarity,
 )
+
+# === Newcomer cohort feature tests (Rec 3) ===
+
+
+def test_is_newcomer_zero_prs() -> None:
+    """A user with 0 prior PRs is a newcomer."""
+    df = pd.DataFrame({
+        "total_prs_at_time": [0, 0, 5, 10],
+        "unique_repos_at_time": [0, 1, 3, 5],
+    })
+    df["is_newcomer"] = (df["total_prs_at_time"] == 0).astype(int)
+    assert df["is_newcomer"].tolist() == [1, 1, 0, 0]
+
+
+def test_is_newcomer_nonzero_prs() -> None:
+    """A user with any prior PRs is not a newcomer."""
+    df = pd.DataFrame({"total_prs_at_time": [1, 2, 100]})
+    df["is_newcomer"] = (df["total_prs_at_time"] == 0).astype(int)
+    assert df["is_newcomer"].tolist() == [0, 0, 0]
+
+
+def test_is_first_repo_ecosystem_zero_repos() -> None:
+    """A user contributing to 0 or 1 repos is first-time ecosystem."""
+    df = pd.DataFrame({"unique_repos_at_time": [0, 1, 2, 5]})
+    df["is_first_repo_ecosystem"] = (
+        df["unique_repos_at_time"] <= 1
+    ).astype(int)
+    assert df["is_first_repo_ecosystem"].tolist() == [1, 1, 0, 0]
+
+
+def test_newcomer_and_ecosystem_independent() -> None:
+    """is_newcomer and is_first_repo_ecosystem are independent."""
+    df = pd.DataFrame({
+        "total_prs_at_time": [0, 0, 3],
+        "unique_repos_at_time": [0, 2, 1],
+    })
+    df["is_newcomer"] = (df["total_prs_at_time"] == 0).astype(int)
+    df["is_first_repo_ecosystem"] = (
+        df["unique_repos_at_time"] <= 1
+    ).astype(int)
+    # Row 0: newcomer=1, first_ecosystem=1
+    # Row 1: newcomer=1, first_ecosystem=0 (has 2 repos but 0 PRs)
+    # Row 2: newcomer=0, first_ecosystem=1 (has 3 PRs but only 1 repo)
+    assert df["is_newcomer"].tolist() == [1, 1, 0]
+    assert df["is_first_repo_ecosystem"].tolist() == [1, 0, 1]
+
+
+# === Embedding tests ===
 
 
 def test_cosine_similarity_identical() -> None:

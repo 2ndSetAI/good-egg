@@ -111,3 +111,35 @@ def test_run_stage1_skips_collected(tmp_path: Path) -> None:
     ) as mock_collect:
         run_stage1(tmp_path, config, repos)
         mock_collect.assert_not_called()
+
+
+def test_parse_pr_labels_dict_format() -> None:
+    """Labels from gh come as [{"name": "bug"}, ...] dicts."""
+    raw = _make_gh_result()
+    raw["labels"] = [{"name": "bug"}, {"name": "auto-merge"}]
+    pr = _parse_pr(raw, "owner/repo", "2024H1")
+    assert pr.labels == ["bug", "auto-merge"]
+
+
+def test_parse_pr_labels_string_format() -> None:
+    """Labels might come as plain strings in some edge cases."""
+    raw = _make_gh_result()
+    raw["labels"] = ["bug", "enhancement"]
+    pr = _parse_pr(raw, "owner/repo", "2024H1")
+    assert pr.labels == ["bug", "enhancement"]
+
+
+def test_parse_pr_labels_missing() -> None:
+    """Missing labels field defaults to empty list."""
+    raw = _make_gh_result()
+    # labels not present in raw
+    pr = _parse_pr(raw, "owner/repo", "2024H1")
+    assert pr.labels == []
+
+
+def test_parse_pr_labels_empty() -> None:
+    """Empty labels list stays empty."""
+    raw = _make_gh_result()
+    raw["labels"] = []
+    pr = _parse_pr(raw, "owner/repo", "2024H1")
+    assert pr.labels == []

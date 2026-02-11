@@ -116,3 +116,72 @@ def test_temporal_bin_round_trip() -> None:
     data = tb.model_dump(mode="json")
     restored = TemporalBin(**data)
     assert restored.label == "2024H1"
+
+
+def test_collected_pr_labels_default() -> None:
+    """Labels field defaults to empty list."""
+    pr = CollectedPR(
+        repo="owner/repo",
+        number=1,
+        author_login="alice",
+        title="Test",
+        state="OPEN",
+        created_at=datetime(2024, 6, 1, tzinfo=UTC),
+        temporal_bin="2024H1",
+    )
+    assert pr.labels == []
+
+
+def test_collected_pr_labels_round_trip() -> None:
+    """Labels survive serialization round trip."""
+    pr = CollectedPR(
+        repo="owner/repo",
+        number=1,
+        author_login="alice",
+        title="Test",
+        state="CLOSED",
+        created_at=datetime(2024, 6, 1, tzinfo=UTC),
+        closed_at=datetime(2024, 6, 2, tzinfo=UTC),
+        labels=["auto-merge", "bug"],
+        temporal_bin="2024H1",
+    )
+    data = pr.model_dump(mode="json")
+    restored = CollectedPR(**data)
+    assert restored.labels == ["auto-merge", "bug"]
+
+
+def test_classified_pr_labels_default() -> None:
+    """ClassifiedPR labels field defaults to empty list."""
+    pr = ClassifiedPR(
+        repo="owner/repo",
+        number=1,
+        author_login="alice",
+        title="Test",
+        state="CLOSED",
+        created_at=datetime(2024, 6, 1, tzinfo=UTC),
+        temporal_bin="2024H1",
+        outcome=PROutcome.REJECTED,
+        stale_threshold_days=60.0,
+    )
+    assert pr.labels == []
+
+
+def test_classified_pr_labels_from_collected() -> None:
+    """ClassifiedPR preserves labels when built from CollectedPR dump."""
+    collected = CollectedPR(
+        repo="owner/repo",
+        number=1,
+        author_login="alice",
+        title="Test",
+        state="CLOSED",
+        created_at=datetime(2024, 6, 1, tzinfo=UTC),
+        closed_at=datetime(2024, 6, 2, tzinfo=UTC),
+        labels=["merged", "bors"],
+        temporal_bin="2024H1",
+    )
+    classified = ClassifiedPR(
+        **collected.model_dump(),
+        outcome=PROutcome.MERGED,
+        stale_threshold_days=60.0,
+    )
+    assert classified.labels == ["merged", "bors"]
