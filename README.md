@@ -14,11 +14,28 @@ mines a contributor's existing track record across the GitHub ecosystem
 instead of requiring manual vouching. See
 [Methodology](https://github.com/2ndSetAI/good-egg/blob/main/docs/methodology.md) for the full approach.
 
+## Quick Start
+
+Try Good Egg without installing anything (requires [uv](https://docs.astral.sh/uv/)):
+
+```bash
+export GITHUB_TOKEN=ghp_...
+uvx good-egg score jeffreyksmithjr --repo=jeffreyksmithjr/good-egg
+```
+
+This runs Good Egg in a temporary environment — no install needed.
+
 ## Installation
 
 ```bash
 pip install good-egg          # Core package
 pip install good-egg[mcp]     # With MCP server support
+```
+
+Or run without installing via [uvx](https://docs.astral.sh/uv/):
+
+```bash
+uvx good-egg score <username> --repo <owner/repo>
 ```
 
 ## GitHub Action
