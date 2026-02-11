@@ -1,60 +1,337 @@
-# Target repositories for the GE validation study (Phase 1 pilot).
-# Stratified by language (Python, Rust, Go, JS/TS, Java), size, and domain.
+# Full-scale target repositories for GE validation study (Phase 2).
+# 50 repos stratified by language, size, domain, and acceptance profile.
+#
+# Acceptance-rate estimates from user research (Jan 2026) where available.
+# Star counts approximate (verified via gh api, Feb 2026).
+#
+# Includes all 12 Phase-1 pilot repos (marked with [pilot]).
+#
+# Language breakdown (50 total):
+#   Python 17 | JS/TS 8 | Go 7 | Rust 6 | Java 5 | C/C++ 3
+#   Ruby 1 | PHP 1 | Scala 1 | MDX 1
+#
+# Star tiers:
+#   Small  (<5K):     3 repos
+#   Medium (5K-50K):  28 repos
+#   Large  (50K+):    19 repos
+#
+# Domains:
+#   web 12 | infra 6 | ml 5 | library 4 | database 4 | ai-agents 3 |
+#   ai-coding 3 | data 2 | ml-infra 2 | observability 2 | tooling 2 |
+#   cli 2 | security 2 | fine-tuning 1
+
 repos:
-  # Python (3)
-  - name: "fastapi/fastapi"
+
+  # =========================================================================
+  # Python (17 repos)
+  # =========================================================================
+
+  # -- Web frameworks --
+  - name: "fastapi/fastapi"              # [pilot]
     language: "Python"
     stars: 95000
     domain: "web"
-  - name: "pallets/flask"
+    # accept_rate: ~0.82
+
+  - name: "pallets/flask"                # [pilot]
     language: "Python"
     stars: 71000
     domain: "web"
-  - name: "scikit-learn/scikit-learn"
+
+  - name: "litestar-org/litestar"
+    language: "Python"
+    stars: 8000
+    domain: "web"
+
+  # -- ML / AI frameworks --
+  - name: "scikit-learn/scikit-learn"     # [pilot]
     language: "Python"
     stars: 65000
     domain: "ml"
+    # accept_rate: 0.746
 
-  # Rust (2)
-  - name: "BurntSushi/ripgrep"
-    language: "Rust"
-    stars: 60000
-    domain: "cli"
-  - name: "tokio-rs/tokio"
-    language: "Rust"
+  - name: "numpy/numpy"
+    language: "Python"
     stars: 31000
-    domain: "infra"
+    domain: "library"
+    # accept_rate: 0.842
 
-  # Go (3)
-  - name: "gohugoio/hugo"
-    language: "Go"
-    stars: 87000
-    domain: "web"
-  - name: "cli/cli"
-    language: "Go"
-    stars: 42000
-    domain: "cli"
-  - name: "prometheus/prometheus"
-    language: "Go"
-    stars: 63000
-    domain: "infra"
+  - name: "pandas-dev/pandas"
+    language: "Python"
+    stars: 48000
+    domain: "data"
+    # accept_rate: 0.816
 
-  # JavaScript/TypeScript (2)
-  - name: "expressjs/express"
+  - name: "keras-team/keras"
+    language: "Python"
+    stars: 64000
+    domain: "ml"
+    # accept_rate: 0.511
+
+  - name: "huggingface/transformers"
+    language: "Python"
+    stars: 156000
+    domain: "ml"
+    # accept_rate: 0.641
+
+  - name: "vllm-project/vllm"
+    language: "Python"
+    stars: 70000
+    domain: "ml-infra"
+    # accept_rate: 0.661  ai_pr_rate: 0.522
+
+  - name: "axolotl-ai-cloud/axolotl"
+    language: "Python"
+    stars: 11000
+    domain: "fine-tuning"
+    # accept_rate: 0.868
+
+  # -- AI agents / coding --
+  - name: "langchain-ai/langchain"
+    language: "Python"
+    stars: 126000
+    domain: "ai-agents"
+    # accept_rate: 0.726  ai_pr_rate: 0.245
+
+  - name: "crewAIInc/crewAI"
+    language: "Python"
+    stars: 44000
+    domain: "ai-agents"
+    # accept_rate: 0.593  ai_pr_rate: 0.214
+
+  - name: "All-Hands-AI/OpenHands"
+    language: "Python"
+    stars: 68000
+    domain: "ai-coding"
+    # accept_rate: 0.649  ai_pr_rate: 0.201
+
+  - name: "pydantic/pydantic-ai"
+    language: "Python"
+    stars: 15000
+    domain: "ai-agents"
+    # accept_rate: 0.778  ai_pr_rate: 0.292
+
+  # -- ML serving --
+  - name: "bentoml/BentoML"
+    language: "Python"
+    stars: 8400
+    domain: "ml-infra"
+
+  # -- Observability --
+  - name: "open-telemetry/opentelemetry-python"
+    language: "Python"
+    stars: 2300
+    domain: "observability"
+
+  - name: "pydantic/logfire"
+    language: "Python"
+    stars: 4000
+    domain: "observability"
+
+  # =========================================================================
+  # JavaScript / TypeScript (8 repos)
+  # =========================================================================
+
+  # -- Web frameworks --
+  - name: "expressjs/express"             # [pilot]
     language: "JavaScript"
     stars: 69000
     domain: "web"
-  - name: "vercel/next.js"
+
+  - name: "vercel/next.js"               # [pilot]
     language: "JavaScript"
     stars: 138000
     domain: "web"
 
-  # Java (2)
-  - name: "apache/kafka"
+  - name: "nestjs/nest"
+    language: "TypeScript"
+    stars: 75000
+    domain: "web"
+
+  - name: "honojs/hono"
+    language: "TypeScript"
+    stars: 29000
+    domain: "web"
+
+  # -- Tooling --
+  - name: "vitejs/vite"
+    language: "TypeScript"
+    stars: 78000
+    domain: "tooling"
+
+  # -- Database --
+  - name: "prisma/prisma"
+    language: "TypeScript"
+    stars: 45000
+    domain: "database"
+
+  # -- Library --
+  - name: "colinhacks/zod"
+    language: "TypeScript"
+    stars: 42000
+    domain: "library"
+
+  # -- AI coding --
+  - name: "continuedev/continue"
+    language: "TypeScript"
+    stars: 31000
+    domain: "ai-coding"
+    # accept_rate: 0.827  ai_pr_rate: 0.079
+
+  # =========================================================================
+  # Go (7 repos)
+  # =========================================================================
+
+  # -- Web / CLI --
+  - name: "gohugoio/hugo"                # [pilot]
+    language: "Go"
+    stars: 87000
+    domain: "web"
+
+  - name: "cli/cli"                      # [pilot]
+    language: "Go"
+    stars: 42000
+    domain: "cli"
+
+  # -- Infrastructure --
+  - name: "prometheus/prometheus"         # [pilot]
+    language: "Go"
+    stars: 63000
+    domain: "infra"
+
+  - name: "opentofu/opentofu"
+    language: "Go"
+    stars: 28000
+    domain: "infra"
+
+  - name: "aws/aws-sdk-go-v2"
+    language: "Go"
+    stars: 3400
+    domain: "library"
+
+  # -- Security --
+  - name: "trufflesecurity/trufflehog"
+    language: "Go"
+    stars: 25000
+    domain: "security"
+
+  - name: "gitleaks/gitleaks"
+    language: "Go"
+    stars: 25000
+    domain: "security"
+
+  # =========================================================================
+  # Rust (6 repos)
+  # =========================================================================
+
+  # -- CLI --
+  - name: "BurntSushi/ripgrep"           # [pilot]
+    language: "Rust"
+    stars: 60000
+    domain: "cli"
+
+  # -- Infrastructure --
+  - name: "tokio-rs/tokio"              # [pilot]
+    language: "Rust"
+    stars: 31000
+    domain: "infra"
+
+  # -- AI coding --
+  - name: "block/goose"
+    language: "Rust"
+    stars: 30000
+    domain: "ai-coding"
+    # accept_rate: 0.741  ai_pr_rate: 0.129
+
+  # -- Database --
+  - name: "qdrant/qdrant"
+    language: "Rust"
+    stars: 29000
+    domain: "database"
+    # accept_rate: 0.850
+
+  # -- Tooling --
+  - name: "astral-sh/ruff"
+    language: "Rust"
+    stars: 46000
+    domain: "tooling"
+
+  # -- Build tools --
+  - name: "cross-rs/cross"
+    language: "Rust"
+    stars: 8000
+    domain: "infra"
+
+  # =========================================================================
+  # Java (5 repos)
+  # =========================================================================
+
+  - name: "apache/kafka"                # [pilot]
     language: "Java"
     stars: 32000
     domain: "infra"
-  - name: "spring-projects/spring-boot"
+
+  - name: "spring-projects/spring-boot"  # [pilot]
     language: "Java"
     stars: 80000
     domain: "web"
+
+  - name: "elastic/elasticsearch"
+    language: "Java"
+    stars: 76000
+    domain: "database"
+
+  - name: "quarkusio/quarkus"
+    language: "Java"
+    stars: 15000
+    domain: "web"
+
+  - name: "testcontainers/testcontainers-java"
+    language: "Java"
+    stars: 8600
+    domain: "infra"
+
+  # =========================================================================
+  # C / C++ (3 repos)
+  # =========================================================================
+
+  - name: "opencv/opencv"
+    language: "C++"
+    stars: 86000
+    domain: "ml"
+    # accept_rate: 0.808
+
+  - name: "curl/curl"
+    language: "C"
+    stars: 41000
+    domain: "library"
+
+  - name: "duckdb/duckdb"
+    language: "C++"
+    stars: 36000
+    domain: "database"
+
+  # =========================================================================
+  # Other languages (4 repos)
+  # =========================================================================
+
+  - name: "rails/rails"
+    language: "Ruby"
+    stars: 58000
+    domain: "web"
+
+  - name: "laravel/framework"
+    language: "PHP"
+    stars: 35000
+    domain: "web"
+
+  - name: "apache/spark"
+    language: "Scala"
+    stars: 43000
+    domain: "data"
+
+  - name: "deepset-ai/haystack"
+    language: "MDX"
+    stars: 24000
+    domain: "ml"
+    # accept_rate: 0.880  ai_pr_rate: 0.016

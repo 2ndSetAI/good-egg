@@ -133,7 +133,6 @@ def run_stage6(base_dir: Path, config: StudyConfig) -> None:
 
     try:
         multi_lr = LogisticRegression(
-            multi_class="multinomial",
             solver="lbfgs",
             max_iter=1000,
             random_state=seed,
