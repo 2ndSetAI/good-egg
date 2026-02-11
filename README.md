@@ -23,7 +23,7 @@ export GITHUB_TOKEN=ghp_...
 uvx good-egg score jeffreyksmithjr --repo=jeffreyksmithjr/good-egg
 ```
 
-This runs Good Egg in a temporary environment — no install needed.
+This runs Good Egg in a temporary environment with no install needed.
 
 ## Installation
 
