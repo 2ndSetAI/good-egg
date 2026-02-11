@@ -81,7 +81,7 @@ def run_stage6(base_dir: Path, config: StudyConfig) -> None:
 
     # === H1: Binary discrimination (merged vs. not merged) ===
     y_binary = df["outcome"].apply(_binary_target).values
-    y_scores = df["ge_normalized_score"].values
+    y_scores = df["normalized_score"].values
 
     h1_metrics = compute_binary_metrics(y_binary, y_scores)
     h1_auc_ci = auc_roc_with_ci(y_binary, y_scores, alpha=alpha)
@@ -107,7 +107,7 @@ def run_stage6(base_dir: Path, config: StudyConfig) -> None:
         mask = df["outcome"] == outcome.value
         if mask.any():
             outcome_groups[outcome.value] = (
-                df.loc[mask, "ge_normalized_score"].values
+                df.loc[mask, "normalized_score"].values
             )
 
     # Score distributions plot
@@ -151,7 +151,7 @@ def run_stage6(base_dir: Path, config: StudyConfig) -> None:
     non_merged = df[df["outcome"] != PROutcome.MERGED.value].copy()
     if len(non_merged) > 0:
         non_merged["trust_bin"] = non_merged[
-            "ge_normalized_score"
+            "normalized_score"
         ].apply(lambda s: _trust_level_bin(s, trust_thresholds))
 
         # Chi-squared: trust level x outcome (rejected vs pocket veto)
@@ -374,7 +374,7 @@ def run_stage6(base_dir: Path, config: StudyConfig) -> None:
 
     # === Feature importance ===
     feature_cols = [
-        "ge_normalized_score",
+        "normalized_score",
         "log_account_age_days",
         "log_followers",
         "log_public_repos",
