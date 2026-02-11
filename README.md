@@ -19,8 +19,8 @@ instead of requiring manual vouching. See
 Try Good Egg without installing anything (requires [uv](https://docs.astral.sh/uv/)):
 
 ```bash
-export GITHUB_TOKEN=ghp_...
-uvx good-egg score jeffreyksmithjr --repo=jeffreyksmithjr/good-egg
+# Requires a GitHub personal access token
+GITHUB_TOKEN=<token> uvx good-egg score <username> --repo <owner/repo>
 ```
 
 This runs Good Egg in a temporary environment with no install needed.
