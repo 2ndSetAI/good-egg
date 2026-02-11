@@ -69,7 +69,7 @@ def test_gh_search_prs_success(mock_run: object) -> None:
         [_make_gh_result()],
     )
     results = _gh_search_prs(
-        "owner/repo", "--merged", "2024-01-01..2024-06-30", 25,
+        "owner/repo", "merged", "2024-01-01..2024-06-30", 25,
     )
     assert len(results) == 1
 
@@ -82,7 +82,7 @@ def test_gh_search_prs_failure(mock_run: object) -> None:
     mock_run.return_value.returncode = 1  # type: ignore[attr-defined]
     mock_run.return_value.stderr = "error"  # type: ignore[attr-defined]
     results = _gh_search_prs(
-        "owner/repo", "--merged", "2024-01-01..2024-06-30", 25,
+        "owner/repo", "merged", "2024-01-01..2024-06-30", 25,
     )
     assert results == []
 

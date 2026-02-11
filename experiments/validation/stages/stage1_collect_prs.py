@@ -32,19 +32,20 @@ def _gh_search_prs(
     date_range: str,
     limit: int,
 ) -> list[dict]:
-    """Run gh search prs and return parsed JSON results.
+    """Run gh pr list and return parsed JSON results.
 
-    state_flag should be one of: '--merged', '--state closed', '--state open'
+    state_flag should be one of: 'merged', 'closed', 'open'
+    date_range is a GitHub search date qualifier (e.g. '2024-01-01..2024-07-01'
+    or '<2024-01-01').
     """
     cmd = [
-        "gh", "search", "prs",
+        "gh", "pr", "list",
         "--repo", repo,
-        "--created", date_range,
+        "--state", state_flag,
+        "--search", f"created:{date_range}",
         "--limit", str(limit),
         "--json", _GH_JSON_FIELDS,
     ]
-    # Add state flags (may be multiple tokens)
-    cmd.extend(state_flag.split())
 
     try:
         result = subprocess.run(
@@ -56,13 +57,13 @@ def _gh_search_prs(
         )
         if result.returncode != 0:
             logger.warning(
-                "gh search failed for %s: %s",
+                "gh pr list failed for %s: %s",
                 repo, result.stderr.strip(),
             )
             return []
         return json.loads(result.stdout) if result.stdout.strip() else []
     except (subprocess.TimeoutExpired, json.JSONDecodeError) as exc:
-        logger.warning("gh search error for %s: %s", repo, exc)
+        logger.warning("gh pr list error for %s: %s", repo, exc)
         return []
 
 
@@ -121,7 +122,7 @@ def _collect_repo_prs(
 
         # Fetch merged PRs
         merged_raw = _gh_search_prs(
-            repo, "--merged", date_range, per_bin_merged,
+            repo, "merged", date_range, per_bin_merged,
         )
         time.sleep(delay)
 
@@ -133,7 +134,7 @@ def _collect_repo_prs(
 
         # Fetch closed (non-merged) PRs
         closed_raw = _gh_search_prs(
-            repo, "--state closed", date_range, per_bin_closed,
+            repo, "closed", date_range, per_bin_closed,
         )
         time.sleep(delay)
 
@@ -146,7 +147,7 @@ def _collect_repo_prs(
     # Fetch long-open PRs (created > 210 days ago = max stale + buffer)
     open_raw = _gh_search_prs(
         repo,
-        "--state open",
+        "open",
         f"<{bins[0].start}",
         per_bin_closed,
     )
