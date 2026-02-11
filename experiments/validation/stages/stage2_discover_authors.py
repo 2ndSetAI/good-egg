@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
+from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from statistics import median
@@ -37,6 +38,60 @@ def _is_bot(login: str, extra_patterns: list[str]) -> bool:
         re.search(pattern, login, re.IGNORECASE)
         for pattern in extra_patterns
     )
+
+
+# Known merge bot usernames and label patterns
+_MERGE_BOT_CLOSERS = frozenset({
+    "bors", "bors[bot]", "mergify[bot]", "mergify",
+    "homu", "kodiak[bot]", "kodiak",
+    "dependabot-preview[bot]",
+})
+
+_MERGE_BOT_LABELS = re.compile(
+    r"(merged|auto-merge|automerge|bors|mergify)",
+    re.IGNORECASE,
+)
+
+
+def _is_merge_bot_close(pr: CollectedPR) -> bool:
+    """Detect if a closed (non-merged) PR was actually merged by a bot.
+
+    Checks PR labels for merge bot indicators (e.g. "merged", "auto-merge").
+    """
+    return any(_MERGE_BOT_LABELS.search(label) for label in pr.labels)
+
+
+def _is_bursty(
+    author_prs: list[CollectedPR],
+    window_hours: float = 1.0,
+    min_repos: int = 3,
+    min_prs: int = 5,
+) -> bool:
+    """Detect agentic spam via burst detection.
+
+    Returns True if the author opened >= min_prs PRs across >= min_repos
+    distinct repos within any sliding window of window_hours hours.
+    """
+    if len(author_prs) < min_prs:
+        return False
+
+    # Sort by creation time
+    sorted_prs = sorted(author_prs, key=lambda p: p.created_at)
+    window = timedelta(hours=window_hours)
+
+    # Sliding window approach
+    for i in range(len(sorted_prs)):
+        window_end = sorted_prs[i].created_at + window
+        # Collect PRs within the window
+        window_prs = [
+            p for p in sorted_prs[i:]
+            if p.created_at <= window_end
+        ]
+        if len(window_prs) >= min_prs:
+            repos_in_window = {p.repo for p in window_prs}
+            if len(repos_in_window) >= min_repos:
+                return True
+    return False
 
 
 def _compute_stale_threshold(
@@ -136,11 +191,52 @@ def run_stage2(base_dir: Path, config: StudyConfig) -> None:
     extra_bot_patterns = config.author_filtering.get(
         "extra_bot_patterns", [],
     )
+
+    # Burstiness detection config
+    burst_window_hours = config.author_filtering.get(
+        "burst_window_hours", 1.0,
+    )
+    burst_min_repos = config.author_filtering.get(
+        "burst_min_repos", 3,
+    )
+    burst_min_prs = config.author_filtering.get(
+        "burst_min_prs", 5,
+    )
+
     stale_bin = config.stale_threshold_bin
+
+    # Pre-compute bursty authors across all repos
+    all_collected_prs: list[CollectedPR] = []
+    for jsonl_file in sorted(raw_dir.glob("*.jsonl")):
+        records = read_jsonl(jsonl_file)
+        all_collected_prs.extend(CollectedPR(**r) for r in records)
+
+    # Group by author for burstiness check
+    prs_by_author: dict[str, list[CollectedPR]] = defaultdict(list)
+    for pr in all_collected_prs:
+        if pr.author_login:
+            prs_by_author[pr.author_login].append(pr)
+
+    bursty_authors: set[str] = set()
+    for login, author_prs in prs_by_author.items():
+        if _is_bursty(
+            author_prs,
+            window_hours=burst_window_hours,
+            min_repos=burst_min_repos,
+            min_prs=burst_min_prs,
+        ):
+            bursty_authors.add(login)
+            logger.info("Bursty author detected: %s", login)
+
+    if bursty_authors:
+        logger.info(
+            "Excluded %d bursty authors", len(bursty_authors),
+        )
 
     all_authors: set[str] = set()
     total_classified = 0
     total_excluded = 0
+    total_reclassified = 0
 
     for jsonl_file in sorted(raw_dir.glob("*.jsonl")):
         repo_key = jsonl_file.stem  # owner__repo
@@ -181,8 +277,25 @@ def run_stage2(base_dir: Path, config: StudyConfig) -> None:
                 total_excluded += 1
                 continue
 
-            # Skip bots
+            # Rec 4: Detect merge-bot false negatives
+            if (
+                result.outcome != PROutcome.MERGED
+                and _is_merge_bot_close(pr)
+            ):
+                result = ClassifiedPR(
+                    **{
+                        **pr.model_dump(),
+                        "outcome": PROutcome.MERGED,
+                        "stale_threshold_days": stale_threshold,
+                    },
+                )
+                total_reclassified += 1
+
+            # Skip bots and bursty authors
             if _is_bot(result.author_login, extra_bot_patterns):
+                continue
+            if result.author_login in bursty_authors:
+                total_excluded += 1
                 continue
 
             # Skip empty author logins
@@ -209,6 +322,7 @@ def run_stage2(base_dir: Path, config: StudyConfig) -> None:
 
     logger.info(
         "Stage 2 complete: %d classified PRs, %d excluded, "
-        "%d unique authors",
-        total_classified, total_excluded, len(authors_list),
+        "%d reclassified (merge-bot), %d unique authors",
+        total_classified, total_excluded, total_reclassified,
+        len(authors_list),
     )

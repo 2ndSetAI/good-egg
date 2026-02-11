@@ -27,6 +27,7 @@ class CollectedPR(BaseModel):
     additions: int = 0
     deletions: int = 0
     changed_files: int = 0
+    labels: list[str] = []
     temporal_bin: str                  # e.g. "2024H1"
 
 
@@ -43,6 +44,7 @@ class ClassifiedPR(BaseModel):
     additions: int = 0
     deletions: int = 0
     changed_files: int = 0
+    labels: list[str] = []
     temporal_bin: str
     outcome: PROutcome
     stale_threshold_days: float

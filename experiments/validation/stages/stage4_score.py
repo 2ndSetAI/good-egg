@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import logging
+import math
 from datetime import datetime
 from pathlib import Path
 
@@ -8,6 +10,7 @@ import pandas as pd
 
 from experiments.validation.ablations import (
     get_ablation_variants,
+    make_recursive_quality_scorer,
     make_scorer,
 )
 from experiments.validation.checkpoint import (
@@ -202,5 +205,74 @@ def run_stage4(base_dir: Path, config: StudyConfig) -> None:
     # Final batch
     if scored_rows:
         _append_parquet(scored_dir, scored_rows)
+
+    # --- Recursive quality ablation (two-pass) ---
+    # Compute repo quality from first-pass scores
+    output_path = scored_dir / "full_model.parquet"
+    if output_path.exists():
+        scored_df = pd.read_parquet(output_path)
+        merged_mask = scored_df["outcome"] == "merged"
+        if merged_mask.any():
+            repo_quality_map: dict[str, float] = (
+                scored_df[merged_mask]
+                .groupby("repo")["normalized_score"]
+                .mean()
+                .to_dict()
+            )
+            # Normalize to [0.1, max_quality] range using log scale
+            max_q = max(repo_quality_map.values()) if repo_quality_map else 1.0
+            if max_q > 0:
+                repo_quality_map = {
+                    k: math.log1p(v / max_q * 10)
+                    for k, v in repo_quality_map.items()
+                }
+
+            recursive_variant = ablation_variants.get("recursive_quality")
+            if recursive_variant:
+                recursive_scorer = make_recursive_quality_scorer(
+                    recursive_variant, repo_quality_map,
+                )
+
+                # Re-score all PRs for this ablation
+                all_rows = scored_df.to_dict("records")
+                for row_dict in all_rows:
+                    abl_scores = row_dict.get("ablation_scores", {})
+                    if isinstance(abl_scores, str):
+                        abl_scores = json.loads(abl_scores)
+
+                    login = row_dict["author_login"]
+                    user_data = author_cache.get(login)
+                    if user_data is None:
+                        user_data = _load_author_data(
+                            authors_dir, login,
+                        )
+
+                    if user_data is not None:
+                        pr_created = row_dict["created_at"]
+                        if isinstance(pr_created, str):
+                            pr_created = datetime.fromisoformat(
+                                pr_created,
+                            )
+                        filtered = _apply_anti_lookahead(
+                            user_data, pr_created,
+                        )
+                        try:
+                            rq_score = recursive_scorer.score(
+                                filtered, row_dict["repo"],
+                            )
+                            abl_scores["recursive_quality"] = (
+                                rq_score.normalized_score
+                            )
+                        except Exception:
+                            abl_scores["recursive_quality"] = 0.0
+                    else:
+                        abl_scores["recursive_quality"] = 0.0
+
+                    row_dict["ablation_scores"] = abl_scores
+
+                # Rewrite parquet
+                scored_df = pd.DataFrame(all_rows)
+                scored_df.to_parquet(output_path, index=False)
+                logger.info("Added recursive_quality ablation scores")
 
     logger.info("Stage 4 complete")

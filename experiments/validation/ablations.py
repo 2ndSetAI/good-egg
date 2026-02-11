@@ -20,6 +20,32 @@ class NoQualityGraphBuilder(TrustGraphBuilder):
         return 1.0
 
 
+class RecursiveQualityGraphBuilder(TrustGraphBuilder):
+    """Graph builder using recursive repo quality instead of stars.
+
+    Repo quality = mean GE normalized score of authors who contributed to it.
+    """
+
+    def __init__(
+        self, config: GoodEggConfig,
+        repo_quality_map: dict[str, float] | None = None,
+    ) -> None:
+        super().__init__(config)
+        self._repo_quality_map = repo_quality_map or {}
+
+    def _repo_quality(self, meta: RepoMetadata | None) -> float:
+        if meta is None:
+            return 1.0
+        repo_name = meta.name_with_owner
+        quality = self._repo_quality_map.get(repo_name, 1.0)
+        # Apply same archived/fork penalties
+        if meta.is_archived:
+            quality *= 0.5
+        if meta.is_fork:
+            quality *= 0.7
+        return max(quality, 0.1)  # floor to avoid zeroing out
+
+
 class NoSelfPenaltyGraphBuilder(TrustGraphBuilder):
     """Graph builder that disables self-contribution penalty."""
 
@@ -57,7 +83,7 @@ def _deep_copy_config(config: GoodEggConfig) -> GoodEggConfig:
 def get_ablation_variants(
     base_config: GoodEggConfig,
 ) -> dict[str, AblationVariant]:
-    """Generate all 9 ablation variant configurations."""
+    """Generate all 10 ablation variant configurations."""
     variants: dict[str, AblationVariant] = {}
 
     # 1. No recency
@@ -141,6 +167,13 @@ def get_ablation_variants(
         builder_class=NoDiversityNoSelfPenaltyBuilder,
     )
 
+    # 10. Recursive quality (quality based on author scores, not stars)
+    cfg = _deep_copy_config(base_config)
+    variants["recursive_quality"] = AblationVariant(
+        name="recursive_quality", config=cfg,
+        builder_class=RecursiveQualityGraphBuilder,
+    )
+
     return variants
 
 
@@ -153,4 +186,16 @@ def make_scorer(variant: AblationVariant) -> TrustScorer:
     scorer = TrustScorer(variant.config)
     if variant.builder_class is not None:
         scorer._graph_builder = variant.builder_class(variant.config)
+    return scorer
+
+
+def make_recursive_quality_scorer(
+    variant: AblationVariant,
+    repo_quality_map: dict[str, float],
+) -> TrustScorer:
+    """Create a scorer with recursive repo quality."""
+    scorer = TrustScorer(variant.config)
+    scorer._graph_builder = RecursiveQualityGraphBuilder(
+        variant.config, repo_quality_map=repo_quality_map,
+    )
     return scorer

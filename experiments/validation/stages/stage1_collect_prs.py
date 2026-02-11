@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 _GH_JSON_FIELDS = (
     "number,title,author,state,createdAt,closedAt,"
-    "mergedAt,additions,deletions,changedFiles"
+    "mergedAt,additions,deletions,changedFiles,labels"
 )
 
 
@@ -81,6 +81,12 @@ def _parse_pr(
     merged_at = raw.get("mergedAt")
     closed_at = raw.get("closedAt")
 
+    labels = raw.get("labels", [])
+    label_names = [
+        lb.get("name", "") if isinstance(lb, dict) else str(lb)
+        for lb in labels
+    ]
+
     return CollectedPR(
         repo=repo,
         number=raw["number"],
@@ -97,6 +103,7 @@ def _parse_pr(
         additions=raw.get("additions", 0),
         deletions=raw.get("deletions", 0),
         changed_files=raw.get("changedFiles", 0),
+        labels=label_names,
         temporal_bin=temporal_bin,
     )
 

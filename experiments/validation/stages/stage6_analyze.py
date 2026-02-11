@@ -346,6 +346,71 @@ def run_stage6(base_dir: Path, config: StudyConfig) -> None:
             except Exception:
                 logger.exception("H5 analysis failed")
 
+    # === Newcomer Cohort Analysis (Rec 3) ===
+    if "is_newcomer" in df.columns:
+        newcomer_mask = df["is_newcomer"] == 1
+        established_mask = df["is_newcomer"] == 0
+
+        cohort_results: dict[str, Any] = {}
+
+        for cohort_name, mask in [
+            ("newcomer", newcomer_mask),
+            ("established", established_mask),
+        ]:
+            cohort_df = df[mask]
+            if len(cohort_df) < 20:
+                cohort_results[cohort_name] = {
+                    "n": len(cohort_df),
+                    "note": "Too few samples for analysis",
+                }
+                continue
+
+            y_cohort = cohort_df["outcome"].apply(
+                _binary_target,
+            ).values
+            s_cohort = cohort_df["normalized_score"].values
+
+            # Only compute if there are both classes
+            if len(set(y_cohort)) < 2:
+                cohort_results[cohort_name] = {
+                    "n": len(cohort_df),
+                    "note": "Only one class present",
+                }
+                continue
+
+            cohort_metrics = compute_binary_metrics(
+                y_cohort, s_cohort,
+            )
+            cohort_auc_ci = auc_roc_with_ci(
+                y_cohort, s_cohort, alpha=alpha,
+            )
+
+            cohort_results[cohort_name] = {
+                "n": len(cohort_df),
+                "n_merged": int(y_cohort.sum()),
+                "n_not_merged": int(
+                    len(y_cohort) - y_cohort.sum(),
+                ),
+                "auc_roc": cohort_metrics["auc_roc"],
+                "auc_ci": cohort_auc_ci,
+                "mean_score": float(s_cohort.mean()),
+                "median_score": float(np.median(s_cohort)),
+                "merge_rate": float(y_cohort.mean()),
+            }
+
+        all_results["newcomer_cohort"] = cohort_results
+
+        # Log summary
+        for name, res in cohort_results.items():
+            if "auc_roc" in res:
+                logger.info(
+                    "Cohort %s: n=%d, AUC=%.3f, merge_rate=%.3f",
+                    name,
+                    res["n"],
+                    res["auc_roc"],
+                    res["merge_rate"],
+                )
+
     # === Cross-validation ===
     groups = df["repo"].values
     try:
@@ -477,6 +542,26 @@ def _generate_report(
             f"- **Mean AUC**: {cv.get('mean_auc', 0):.4f}"
             f" +/- {cv.get('std_auc', 0):.4f}"
         )
+
+    # Newcomer cohort
+    cohort = results.get("newcomer_cohort", {})
+    if cohort:
+        lines.extend(["", "## Newcomer Cohort Analysis", ""])
+        for name, vals in cohort.items():
+            if "auc_roc" in vals:
+                ci = vals.get("auc_ci", {})
+                lines.append(
+                    f"- **{name.title()}** (n={vals['n']}): "
+                    f"AUC = {vals['auc_roc']:.4f} "
+                    f"(CI: [{ci.get('ci_lower', 0):.4f}, "
+                    f"{ci.get('ci_upper', 0):.4f}]), "
+                    f"merge rate = {vals['merge_rate']:.3f}"
+                )
+            else:
+                lines.append(
+                    f"- **{name.title()}** (n={vals['n']}): "
+                    f"{vals.get('note', 'N/A')}"
+                )
 
     lines.append("")
     lines.append("---")

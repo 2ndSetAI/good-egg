@@ -133,6 +133,14 @@ async def run_stage5(base_dir: Path, config: StudyConfig) -> None:
     else:
         df["pr_changed_files"] = df["changed_files"].fillna(0).astype(int)
 
+    # --- Newcomer cohort (Rec 3) ---
+    # A newcomer has 0 merged PRs before this test PR
+    df["is_newcomer"] = (df["total_prs_at_time"] == 0).astype(int)
+    # First-time contributor to THIS repo's ecosystem
+    df["is_first_repo_ecosystem"] = (
+        df["unique_repos_at_time"] <= 1
+    ).astype(int)
+
     # --- Semantic similarity (H4) ---
     embedding_model = config.features.get(
         "embedding_model", "text-embedding-004",

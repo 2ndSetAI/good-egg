@@ -99,7 +99,7 @@ def _make_user_data() -> UserContributionData:
 def test_get_ablation_variants_count() -> None:
     config = GoodEggConfig()
     variants = get_ablation_variants(config)
-    assert len(variants) == 9
+    assert len(variants) == 10
 
 
 def test_ablation_configs_differ() -> None:
@@ -176,5 +176,83 @@ def test_ablation_scores_differ_from_full() -> None:
 
     # At least some ablations should produce different scores
     assert different_count >= 3, (
-        f"Only {different_count}/9 ablations differed"
+        f"Only {different_count}/10 ablations differed"
+    )
+
+
+def test_recursive_quality_builder() -> None:
+    """RecursiveQualityGraphBuilder uses quality map instead of stars."""
+    from experiments.validation.ablations import (
+        RecursiveQualityGraphBuilder,
+    )
+
+    config = GoodEggConfig()
+
+    # Without quality map, falls back to 1.0
+    builder_empty = RecursiveQualityGraphBuilder(config)
+    meta = RepoMetadata(
+        name_with_owner="org/repo", stargazer_count=50000,
+    )
+    assert builder_empty._repo_quality(meta) == 1.0
+
+    # With quality map, uses the mapped value
+    qmap = {"org/repo": 2.5, "other/lib": 0.8}
+    builder = RecursiveQualityGraphBuilder(config, repo_quality_map=qmap)
+    assert builder._repo_quality(meta) == 2.5
+    assert builder._repo_quality(None) == 1.0
+
+    # Archived penalty applied on top
+    archived_meta = RepoMetadata(
+        name_with_owner="org/repo",
+        stargazer_count=50000,
+        is_archived=True,
+    )
+    assert builder._repo_quality(archived_meta) == 2.5 * 0.5
+
+    # Fork penalty applied
+    fork_meta = RepoMetadata(
+        name_with_owner="org/repo",
+        stargazer_count=50000,
+        is_fork=True,
+    )
+    assert builder._repo_quality(fork_meta) == 2.5 * 0.7
+
+    # Floor at 0.1
+    low_qmap = {"org/repo": 0.01}
+    builder_low = RecursiveQualityGraphBuilder(
+        config, repo_quality_map=low_qmap,
+    )
+    assert builder_low._repo_quality(meta) == 0.1
+
+
+def test_make_recursive_quality_scorer() -> None:
+    """make_recursive_quality_scorer creates scorer with quality map."""
+    from experiments.validation.ablations import (
+        RecursiveQualityGraphBuilder,
+        make_recursive_quality_scorer,
+    )
+
+    config = GoodEggConfig()
+    variants = get_ablation_variants(config)
+    rq_variant = variants["recursive_quality"]
+    qmap = {"org/repo": 2.0}
+
+    scorer = make_recursive_quality_scorer(rq_variant, qmap)
+    assert isinstance(
+        scorer._graph_builder, RecursiveQualityGraphBuilder,
+    )
+    assert scorer._graph_builder._repo_quality_map == qmap
+
+
+def test_recursive_quality_variant_in_ablations() -> None:
+    """recursive_quality is included in ablation variants."""
+    config = GoodEggConfig()
+    variants = get_ablation_variants(config)
+    assert "recursive_quality" in variants
+    from experiments.validation.ablations import (
+        RecursiveQualityGraphBuilder,
+    )
+    assert (
+        variants["recursive_quality"].builder_class
+        is RecursiveQualityGraphBuilder
     )
