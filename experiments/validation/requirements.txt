@@ -1,0 +1,12 @@
+good-egg
+scikit-learn
+pandas
+pyarrow
+seaborn
+matplotlib
+scipy
+statsmodels
+google-generativeai
+pydantic
+click
+pyyaml

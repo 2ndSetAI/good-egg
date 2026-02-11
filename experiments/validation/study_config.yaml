@@ -1,0 +1,164 @@
+# ============================================================
+# Good Egg Validation Study Configuration
+# ============================================================
+# All tunable study parameters live here. Pipeline stages read
+# this file via pipeline.py and pass relevant sections down.
+
+# ----------------------------------------------------------
+# Temporal bins for PR collection
+# ----------------------------------------------------------
+temporal_bins:
+  - label: "2024H1"
+    start: "2024-01-01"
+    end: "2024-06-30"
+  - label: "2024H2"
+    start: "2024-07-01"
+    end: "2024-12-31"
+  - label: "2025H1"
+    start: "2025-01-01"
+    end: "2025-06-30"
+  - label: "2025H2"
+    start: "2025-07-01"
+    end: "2025-12-31"
+
+# Bin used for computing stale thresholds (anti-lookahead)
+stale_threshold_bin: "2024H1"
+
+# ----------------------------------------------------------
+# PR collection parameters (Stage 1)
+# ----------------------------------------------------------
+collection:
+  merged_per_bin: 25
+  closed_per_bin: 25
+  gh_search_delay_seconds: 2.5
+  # Extra merged PRs fetched from stale_threshold_bin for
+  # computing per-repo stale thresholds
+  stale_sample_size: 100
+
+# ----------------------------------------------------------
+# PR classification (Stage 2)
+# ----------------------------------------------------------
+classification:
+  # Stale threshold = max(floor, min(multiplier * median_ttm, cap))
+  stale_threshold_floor_days: 30
+  stale_threshold_cap_days: 180
+  stale_threshold_multiplier: 5
+  # PRs still open past threshold + buffer -> pocket veto
+  pocket_veto_buffer_days: 30
+
+# ----------------------------------------------------------
+# Author filtering (Stage 2)
+# ----------------------------------------------------------
+author_filtering:
+  # Additional bot patterns beyond GE's built-in detection
+  extra_bot_patterns:
+    - "^dependabot"
+    - "\\[bot\\]$"
+    - "-bot$"
+    - "^renovate"
+    - "^greenkeeper"
+    - "^snyk-"
+    - "^codecov"
+    - "^mergify"
+    - "^allcontributors"
+    - "^github-actions"
+    - "^pre-commit-ci"
+
+# ----------------------------------------------------------
+# Author data fetch (Stage 3)
+# ----------------------------------------------------------
+fetch:
+  cache_ttl_days: 30
+  # Tier 2 unmerged PR data: fraction of authors to sample
+  tier2_sample_fraction: 0.20
+  tier2_max_closed_prs: 100
+  # Global stale threshold for Tier 2 pocket veto classification
+  tier2_stale_threshold_days: 90
+
+# ----------------------------------------------------------
+# Scoring (Stage 4)
+# ----------------------------------------------------------
+scoring:
+  batch_size: 100
+
+# ----------------------------------------------------------
+# Feature engineering (Stage 5)
+# ----------------------------------------------------------
+features:
+  # Gemini embedding model for H4 semantic similarity
+  embedding_model: "text-embedding-004"
+  embedding_batch_size: 50
+
+# ----------------------------------------------------------
+# Analysis (Stage 6)
+# ----------------------------------------------------------
+analysis:
+  # Cross-validation
+  cv_folds: 5
+  random_seed: 42
+
+  # Significance level
+  alpha: 0.05
+
+  # Primary hypothesis AUC-ROC threshold
+  h1_auc_threshold: 0.60
+
+  # Trust level bins for categorical analysis
+  trust_level_bins:
+    HIGH: 0.7
+    MEDIUM: 0.3
+    # Below MEDIUM threshold -> LOW
+
+# ----------------------------------------------------------
+# Ablation variants (Stage 4)
+# ----------------------------------------------------------
+ablations:
+  no_recency:
+    half_life_days: 999999
+    max_age_days: 999999
+
+  no_repo_quality:
+    # Requires subclass override
+    override: "repo_quality"
+
+  no_self_penalty:
+    # Requires subclass override
+    override: "self_penalty"
+
+  no_language_match:
+    same_language_weight: 0.03  # Set to other_weight value
+
+  no_diversity_volume:
+    diversity_scale: 0.0
+    volume_scale: 0.0
+
+  no_language_norm:
+    # All language multipliers -> 1.0
+    override: "language_norm"
+
+  # Two-way interactions
+  no_recency_no_quality:
+    half_life_days: 999999
+    max_age_days: 999999
+    override: "repo_quality"
+
+  no_lang_match_no_lang_norm:
+    same_language_weight: 0.03
+    override: "language_norm"
+
+  no_diversity_no_self_penalty:
+    diversity_scale: 0.0
+    volume_scale: 0.0
+    override: "self_penalty"
+
+# ----------------------------------------------------------
+# Data paths (relative to experiments/validation/)
+# ----------------------------------------------------------
+paths:
+  raw_prs: "data/raw/prs"
+  raw_authors: "data/raw/authors"
+  classified_prs: "data/raw/prs_classified"
+  scored: "data/scored"
+  features: "data/features"
+  results: "results"
+  figures: "results/figures"

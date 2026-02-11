@@ -1,0 +1,24 @@
+# Target repositories for the GE validation study.
+# Stratified by language, repo size (stars), and domain.
+#
+# Each entry should include:
+#   - owner/repo name
+#   - primary language
+#   - approximate star count (for stratification)
+#   - domain tag (web, cli, library, infra, data, ml, etc.)
+#
+# Selection criteria:
+#   - Active development (commits in last 6 months)
+#   - Accepts external PRs (not single-maintainer)
+#   - Sufficient PR volume (>= 50 merged PRs in 2024-2025)
+#   - Mix of star tiers: small (1K-5K), medium (5K-20K), large (20K+)
+#
+# Format:
+# repos:
+#   - name: "owner/repo"
+#     language: "Python"
+#     stars: 50000
+#     domain: "ml"
+
+# Placeholder -- user will provide final list after pilot repo selection.
+repos: []
