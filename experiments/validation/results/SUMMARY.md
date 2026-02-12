@@ -190,7 +190,27 @@ incremental information beyond what the GE score captures.
 **H4 (Embedding similarity):** Cosine similarity between PR body and repo
 README embeddings significantly improves prediction (LR = 20.82, p = 5.1 x
 10^-6, n = 1,293). Note the reduced sample size (1,293 of 4,977 PRs had valid
-embeddings for both PR body and repo README).
+Gemini embeddings for both PR body and repo README).
+
+*AUC inversion:* The standalone AUC for embedding similarity is 0.416 — below
+0.5, meaning higher PR-README similarity is associated with *lower* merge
+probability. This is consistent across every method tested in the follow-up
+robustness analysis (Gemini, TF-IDF, MiniLM, Jaccard). The LRT detects that
+similarity adds *information* to the prediction model; it does not require the
+relationship to be positive. Possible explanations include boilerplate/template
+PRs closely matching the README text, and merged PRs targeting specific
+subsystems whose vocabulary diverges from the high-level README.
+
+*Robustness analysis:* A [similarity method comparison
+sub-study](similarity_comparison/comparison_report.md) tested whether the H4
+finding depends on the choice of embedding model. On the Gemini subset
+(n=1,293), 2 of 6 methods survive Holm-Bonferroni correction: Gemini (the
+original) and Jaccard (a simple bag-of-words method, adj. p = 0.001). On the
+full dataset (n=4,977) — where all PRs are included using title as fallback
+text — all five non-Gemini methods are highly significant (all adj. p < 10^-8).
+The finding is partially robust on the original subset and strongly robust when
+sample size limitations are removed. See the
+[comparison report](similarity_comparison/comparison_report.md) for details.
 
 **H5 (Author merge rate):** Temporally-scoped merge rate significantly improves
 prediction (LR = 49.8, p = 1.7 x 10^-12, n = 4,736). Merge rate carries
@@ -234,6 +254,10 @@ adds value beyond arithmetic.
 | Author merge rate | 0.546 | 0.528--0.565 | < 10^-22 |
 | Public repos (log) | 0.535 | 0.517--0.554 | < 10^-36 |
 | Embedding similarity | 0.416 | 0.382--0.450 | < 10^-19 |
+
+Embedding similarity has a standalone AUC of 0.416 (below 0.5), meaning it is
+an *inverted* predictor: higher PR-README similarity is associated with lower
+merge probability. See the H4 section above for interpretation.
 
 With proper temporal scoping, no single feature approaches the GE score's
 AUC. Author merge rate (AUC = 0.546) is now clearly inferior to the GE graph
@@ -352,7 +376,10 @@ fast-merged PRs.
 4. **External features add incremental value beyond the GE score.** All three
    augmentation hypotheses are supported:
    - Author merge rate (LR = 49.8, p < 10^-12)
-   - Embedding similarity (LR = 20.8, p = 5 x 10^-6)
+   - Embedding similarity (LR = 20.8, p = 5 x 10^-6) — note: inverted
+     predictor (higher similarity → lower merge probability); a robustness
+     sub-study confirms the signal generalizes across methods and to the full
+     dataset (n=4,977)
    - Account age (LR = 8.6, p = 0.003)
 
    A combined model (GE + externals, AUC = 0.680) shows modest improvement.
@@ -430,6 +457,10 @@ for the full limitations discussion.
 - Statistical test results: [`statistical_tests.json`](statistical_tests.json)
 - Red team audit: [`RED_TEAM_AUDIT.md`](RED_TEAM_AUDIT.md)
 - Better Egg analysis: [`BETTER_EGG.md`](BETTER_EGG.md)
+- Similarity method comparison: [`similarity_comparison/`](similarity_comparison/)
+  ([report](similarity_comparison/comparison_report.md),
+  [audit](similarity_comparison/RED_TEAM_AUDIT.md),
+  [results](similarity_comparison/results.json))
 - Figures directory: [`figures/`](figures/)
 - Study design: [`DOE.md`](../DOE.md)
 - Study configuration: [`study_config.yaml`](../study_config.yaml)

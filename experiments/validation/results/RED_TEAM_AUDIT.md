@@ -398,3 +398,15 @@ distinction, and tempered framing.
 | V2-5 | MINOR | Multinomial LR and CV use L2 | **Fixed** — `penalty=None` |
 | V2-6 | MINOR | DOE embedding model mismatch | **Fixed** — DOE updated |
 | V2-7 | MAJOR | SUMMARY.md framing issues | **Resolved** — rewritten with baselines + honest framing |
+
+---
+
+## Related: Similarity Comparison Sub-Study Audit
+
+A separate red team audit of the `compare_similarity_methods.py` script
+identified 9 additional issues (0 critical, 2 major, 5 minor, 2
+informational). All have been resolved. See
+[`similarity_comparison/RED_TEAM_AUDIT.md`](similarity_comparison/RED_TEAM_AUDIT.md)
+for the full audit and
+[`similarity_comparison/comparison_report.md`](similarity_comparison/comparison_report.md)
+for the results.

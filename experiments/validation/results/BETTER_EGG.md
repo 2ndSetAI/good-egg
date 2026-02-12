@@ -42,15 +42,29 @@ Account age provides a small but statistically significant incremental signal
 reliable contributors. This is useful primarily as a cold-start tiebreaker
 when the graph score is zero.
 
-### Embedding similarity (contextual relevance)
+### Embedding similarity (informative, but inverted)
 
 PR body vs. repo README embedding similarity adds significant signal (LR =
-20.82, p = 5.1e-6). PRs whose content is topically aligned with the
-repository are more likely to be merged. This captures a different dimension
-than the graph---content relevance rather than contributor reputation.
+20.82, p = 5.1e-6), but the direction is inverted: higher similarity is
+associated with *lower* merge probability (standalone AUC = 0.416). This
+inversion is consistent across every method tested in the robustness
+sub-study (Gemini, TF-IDF, MiniLM at three token lengths, Jaccard).
 
-**Limitation:** Only 1,293 of 4,977 PRs (26%) had valid embeddings. The
-feature's value at scale depends on PR body availability.
+Possible explanations: (a) boilerplate/template PRs closely match README text
+but are lower quality, (b) merged PRs tend to target specific subsystems whose
+vocabulary diverges from the high-level README. The feature captures something
+real---possibly PR *novelty* or *specificity* rather than "content relevance"
+in the positive sense originally hypothesized.
+
+A [robustness sub-study](similarity_comparison/comparison_report.md) confirmed
+the signal is not a Gemini artifact: on the Gemini subset (n=1,293), Jaccard
+(a simple bag-of-words method) also survives Holm-Bonferroni correction (adj.
+p = 0.001). On the full dataset (n=4,977, using title as fallback text), all
+five non-Gemini methods are highly significant (all adj. p < 10^-8).
+
+**Limitation:** Gemini embeddings were available for only 1,293 of 4,977 PRs
+(26%). However, simpler methods (TF-IDF, Jaccard) work on the full dataset
+since they only require raw text, not a separate embedding API call.
 
 ---
 
@@ -173,10 +187,16 @@ a 2-day-old account, even without contribution history.
 
 ### Medium priority (promising evidence)
 
-**d. Add embedding similarity for content-relevant scoring.**
-PR body vs. repo README similarity adds real signal (LR = 20.8). This could
-be offered as an optional enrichment when the PR body is available. Requires
-an embedding API call, so should be opt-in.
+**d. Add text similarity as a novelty/specificity signal.**
+PR body vs. repo README similarity adds real predictive signal (LR = 20.8),
+but the relationship is *inverted*: higher similarity predicts lower merge
+probability. This means the useful signal is likely PR *specificity* or
+*novelty* — PRs that diverge from the README tend to target concrete
+subsystems, while generic/template PRs that echo the README text tend to fail.
+Simple methods (TF-IDF, Jaccard) capture this signal without an embedding API
+call and work on all PRs including title-only ones. Consider using
+`1 - similarity` as a specificity feature, or using high similarity as a flag
+for template/boilerplate PRs.
 
 **e. Incorporate rejection/closed PR data.**
 Currently invisible due to survivorship bias. The graph should at minimum
@@ -218,7 +238,7 @@ augmenting it with external features. The minimal effective improvement:
 score = w1 * ge_graph_score(author, cutoff=T)   [keep as-is]
       + w2 * temporal_merge_rate(author, cutoff=T)
       + w3 * log(account_age_days)
-      + w4 * embedding_similarity(pr_body, repo_readme)  [optional]
+      - w4 * text_similarity(pr_body, repo_readme)       [optional]
 ```
 
 Where:
@@ -227,7 +247,10 @@ Where:
 - `temporal_merge_rate` adds rejection signal the graph misses
   (merged/(merged+closed) using only PRs before cutoff)
 - `account_age` handles cold-start
-- `embedding_similarity` adds content relevance when available
+- `text_similarity` enters with a *negative* weight (higher similarity →
+  lower score) — this captures PR specificity/novelty, as generic/template PRs
+  that echo the README text are less likely to merge. Simple methods like
+  TF-IDF or Jaccard suffice; no embedding API call required.
 
 The combined model (GE + all three features) achieves AUC = 0.680 with CV
 mean = 0.671, a modest but real improvement over the graph alone (0.671).
