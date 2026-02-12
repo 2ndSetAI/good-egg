@@ -2,7 +2,7 @@
 
 **Date:** 2026-02-12 (post-audit re-run)
 **Branch:** `experiments/ge-validation`
-**Sample:** 4,977 PRs across 49 repositories, 10 languages
+**Sample:** 4,977 PRs across 49 repositories, 12 languages
 **Temporal scope:** 2024-01-01 to 2025-12-31 (four half-year bins)
 
 ---
