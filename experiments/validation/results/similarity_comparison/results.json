@@ -1,0 +1,132 @@
+{
+  "methods": {
+    "Gemini": {
+      "name": "Gemini",
+      "n": 1293,
+      "lrt_statistic": 20.81763834601611,
+      "lrt_p_value": 5.051558592648202e-06,
+      "standalone_auc": 0.41624940954180445,
+      "standalone_auc_ci_lower": 0.38210246420031024,
+      "standalone_auc_ci_upper": 0.45039635488329866,
+      "standalone_auc_se": 0.017422231026100982,
+      "marginal": {
+        "auc_base": 0.6518717718319511,
+        "auc_full": 0.6795556360016289,
+        "auc_diff": 0.02768386416967783,
+        "delong_z": -2.088708019593351,
+        "delong_p": 0.03673401451592404,
+        "lrt_statistic": 21.44900474823362,
+        "lrt_p": 3.633645753374387e-06
+      }
+    },
+    "TF-IDF": {
+      "name": "TF-IDF",
+      "n": 1293,
+      "lrt_statistic": 3.4346576725774867,
+      "lrt_p_value": 0.06384181444567218,
+      "standalone_auc": 0.44217495276334434,
+      "standalone_auc_ci_lower": 0.40861245823690545,
+      "standalone_auc_ci_upper": 0.47573744728978323,
+      "standalone_auc_se": 0.01712403635534916,
+      "pearson_r_gemini": 0.5859277996583463,
+      "pearson_p_gemini": 4.8245506231703955e-120,
+      "spearman_r_gemini": 0.6977890110256287,
+      "spearman_p_gemini": 2.707218757969197e-189,
+      "marginal": {
+        "auc_base": 0.6518717718319511,
+        "auc_full": 0.6602949066861461,
+        "auc_diff": 0.008423134854194991,
+        "delong_z": -1.1141076278070692,
+        "delong_p": 0.265233016675289,
+        "lrt_statistic": 4.338557690697826,
+        "lrt_p": 0.037258473274137095
+      }
+    },
+    "MiniLM": {
+      "name": "MiniLM",
+      "n": 1293,
+      "lrt_statistic": 0.7681876166864186,
+      "lrt_p_value": 0.38077831219774116,
+      "standalone_auc": 0.46911903637222485,
+      "standalone_auc_ci_lower": 0.43458032906335187,
+      "standalone_auc_ci_upper": 0.5036577436810978,
+      "standalone_auc_se": 0.0176221132537689,
+      "pearson_r_gemini": 0.4382070872696012,
+      "pearson_p_gemini": 8.482313603400947e-62,
+      "spearman_r_gemini": 0.43522643919853654,
+      "spearman_p_gemini": 6.8121599594624e-61,
+      "marginal": {
+        "auc_base": 0.6518717718319511,
+        "auc_full": 0.6518006632491451,
+        "auc_diff": -7.110858280601207e-05,
+        "delong_z": 0.015852979856764544,
+        "delong_p": 0.9873516819212843,
+        "lrt_statistic": 0.9287080520978179,
+        "lrt_p": 0.33519886209639604
+      }
+    },
+    "Jaccard": {
+      "name": "Jaccard",
+      "n": 1293,
+      "lrt_statistic": 13.596154253739087,
+      "lrt_p_value": 0.00022664936468762858,
+      "standalone_auc": 0.44121841048653754,
+      "standalone_auc_ci_lower": 0.4068139222985305,
+      "standalone_auc_ci_upper": 0.4756228986745446,
+      "standalone_auc_se": 0.0175536328521265,
+      "pearson_r_gemini": 0.5009110673764123,
+      "pearson_p_gemini": 4.535464217783298e-83,
+      "spearman_r_gemini": 0.4917058653181858,
+      "spearman_p_gemini": 1.1572848151047895e-79,
+      "marginal": {
+        "auc_base": 0.6518717718319511,
+        "auc_full": 0.6678970606297635,
+        "auc_diff": 0.016025288797812398,
+        "delong_z": -1.2850469779872804,
+        "delong_p": 0.19877586821684268,
+        "lrt_statistic": 14.600841534276924,
+        "lrt_p": 0.0001328552025065278
+      }
+    }
+  },
+  "pairwise_delong": {
+    "Gemini vs TF-IDF": {
+      "auc_a": 0.41624940954180445,
+      "auc_b": 0.44217495276334434,
+      "z_statistic": -1.8736670164443816,
+      "p_value": 0.06097633478351673
+    },
+    "Gemini vs MiniLM": {
+      "auc_a": 0.41624940954180445,
+      "auc_b": 0.46911903637222485,
+      "z_statistic": -2.8408623688097228,
+      "p_value": 0.0044991725063356375
+    },
+    "Gemini vs Jaccard": {
+      "auc_a": 0.41624940954180445,
+      "auc_b": 0.44121841048653754,
+      "z_statistic": -1.3940262487744146,
+      "p_value": 0.163309678302899
+    },
+    "TF-IDF vs MiniLM": {
+      "auc_a": 0.44217495276334434,
+      "auc_b": 0.46911903637222485,
+      "z_statistic": -1.520743469839557,
+      "p_value": 0.1283242254610263
+    },
+    "TF-IDF vs Jaccard": {
+      "auc_a": 0.44217495276334434,
+      "auc_b": 0.44121841048653754,
+      "z_statistic": 0.04895215258286262,
+      "p_value": 0.9609574268975981
+    },
+    "MiniLM vs Jaccard": {
+      "auc_a": 0.46911903637222485,
+      "auc_b": 0.44121841048653754,
+      "z_statistic": 1.2219812983142557,
+      "p_value": 0.22171469932898846
+    }
+  },
+  "n_pairs": 1293,
+  "n_with_extras": 1245
+}
