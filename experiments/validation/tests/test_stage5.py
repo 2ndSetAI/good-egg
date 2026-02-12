@@ -87,7 +87,7 @@ def test_compute_centroid() -> None:
 
 def test_compute_centroid_empty() -> None:
     centroid = compute_centroid([])
-    assert len(centroid) == 768  # default dim
+    assert len(centroid) == 3072  # default dim for gemini-embedding-001
 
 
 def test_author_repo_similarity_basic() -> None:

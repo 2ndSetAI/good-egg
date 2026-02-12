@@ -20,6 +20,7 @@ class CollectedPR(BaseModel):
     number: int
     author_login: str
     title: str
+    body: str = ""
     state: str                         # MERGED, CLOSED, OPEN
     created_at: datetime
     merged_at: datetime | None = None
@@ -37,6 +38,7 @@ class ClassifiedPR(BaseModel):
     number: int
     author_login: str
     title: str
+    body: str = ""
     state: str
     created_at: datetime
     merged_at: datetime | None = None

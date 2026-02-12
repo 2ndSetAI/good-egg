@@ -86,7 +86,7 @@ scoring:
 # ----------------------------------------------------------
 features:
   # Gemini embedding model for H4 semantic similarity
-  embedding_model: "text-embedding-004"
+  embedding_model: "gemini-embedding-001"
   embedding_batch_size: 50
 
 # ----------------------------------------------------------

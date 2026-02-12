@@ -49,7 +49,7 @@ def _save_cached_embedding(
 
 async def embed_texts(
     texts: list[str],
-    model: str = "text-embedding-004",
+    model: str = "gemini-embedding-001",
     batch_size: int = 50,
 ) -> list[np.ndarray]:
     """Embed a list of texts using Gemini's embedding API.
@@ -78,7 +78,7 @@ async def embed_texts(
             "google-generativeai not installed; "
             "returning zero vectors for %d texts", len(to_embed),
         )
-        dim = 768  # default dimension for text-embedding-004
+        dim = 3072  # default dimension for gemini-embedding-001
         for idx, _ in to_embed:
             results[idx] = np.zeros(dim, dtype=np.float32)
         return [r for r in results if r is not None]
@@ -105,7 +105,7 @@ async def embed_texts(
                 "Gemini embedding failed for batch starting at %d",
                 batch_start,
             )
-            dim = 768
+            dim = 3072
             for idx, _ in batch:
                 results[idx] = np.zeros(dim, dtype=np.float32)
 
@@ -124,7 +124,7 @@ def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
 def compute_centroid(embeddings: list[np.ndarray]) -> np.ndarray:
     """Compute the centroid (mean) of a list of embeddings."""
     if not embeddings:
-        return np.zeros(768, dtype=np.float32)
+        return np.zeros(3072, dtype=np.float32)
     return np.mean(np.stack(embeddings), axis=0)
 
 

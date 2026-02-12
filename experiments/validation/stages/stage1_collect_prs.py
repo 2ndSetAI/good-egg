@@ -21,7 +21,7 @@ from experiments.validation.models import (
 logger = logging.getLogger(__name__)
 
 _GH_JSON_FIELDS = (
-    "number,title,author,state,createdAt,closedAt,"
+    "number,title,body,author,state,createdAt,closedAt,"
     "mergedAt,additions,deletions,changedFiles,labels"
 )
 
@@ -92,6 +92,7 @@ def _parse_pr(
         number=raw["number"],
         author_login=author_login,
         title=raw.get("title", ""),
+        body=raw.get("body", ""),
         state=raw.get("state", ""),
         created_at=datetime.fromisoformat(raw["createdAt"]),
         merged_at=(

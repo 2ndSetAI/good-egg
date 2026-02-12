@@ -1,8 +1,8 @@
 # GE Validation Study: Summary Report
 
-**Date:** 2026-02-12
+**Date:** 2026-02-12 (post-audit re-run)
 **Branch:** `experiments/ge-validation`
-**Sample:** 3,005 PRs across 49 repositories, 10 languages
+**Sample:** 4,977 PRs across 49 repositories, 10 languages
 **Temporal scope:** 2024-01-01 to 2025-12-31 (four half-year bins)
 
 ---
@@ -18,9 +18,12 @@ test PR was opened.
 
 The full design is documented in [`DOE.md`](../DOE.md). This report summarizes
 results from the full-scale run across 49 repositories stratified by language,
-size, and domain. A red team audit of the codebase was performed and is
-documented in [`RED_TEAM_AUDIT.md`](RED_TEAM_AUDIT.md); all critical and major
-findings have been addressed in the code (see [Errata](#errata) below).
+size, and domain.
+
+A red team audit of the methodology and implementation was performed and is
+documented in [`RED_TEAM_AUDIT.md`](RED_TEAM_AUDIT.md). All 13 identified
+issues (3 critical, 4 major, 6 minor) have been fixed and the pipeline fully
+re-run. See [Audit and Corrections](#audit-and-corrections) for details.
 
 ---
 
@@ -29,22 +32,30 @@ findings have been addressed in the code (see [Errata](#errata) below).
 ### H1: Binary Merge Discrimination (Primary)
 
 **Result: Supported.** The GE score discriminates between merged and non-merged
-PRs well above the pre-registered threshold of AUC > 0.60.
+PRs above the pre-registered threshold of AUC > 0.60.
 
 | Metric | Value | Note |
 |--------|-------|------|
-| AUC-ROC | **0.695** (95% CI: 0.675--0.715) | Primary metric |
-| AUC-PR | 0.743 | |
-| Brier score | 0.252 | On uncalibrated scores; interpret with caution |
-| Log loss | 4.639 | On uncalibrated scores; interpret with caution |
+| AUC-ROC | **0.671** (95% CI: 0.653--0.689) | Primary metric |
+| AUC-PR | 0.807 | |
+| Brier score | 0.251 | On uncalibrated scores; interpret with caution |
+| Log loss | 5.065 | On uncalibrated scores; interpret with caution |
 
 Brier score and log loss are computed on the raw GE normalized score, which is
 not a calibrated probability. These values should not be compared to calibrated
 baselines. AUC-ROC and AUC-PR are rank-based and unaffected by calibration.
 
-The confidence interval excludes both chance (0.50) and the minimum threshold
-(0.60). Cross-validation confirms stability: mean AUC = 0.697 +/- 0.027
-across 5 folds (grouped by repository).
+The confidence interval [0.653, 0.689] excludes both chance (0.50) and the
+pre-registered minimum threshold (0.60). Cross-validation confirms stability:
+mean AUC = 0.675 +/- 0.048 across 5 folds (grouped by repository).
+
+The binary confusion matrix at Youden's J optimal threshold (0.577) achieves
+J = 0.327:
+
+|  | Predicted Not-Merged | Predicted Merged |
+|--|-----:|-----:|
+| **Actual Not-Merged** | 716 | 595 |
+| **Actual Merged** | 804 | 2,862 |
 
 ![ROC Curve](figures/h1_roc_curve.png)
 
@@ -55,113 +66,140 @@ classes.
 
 | Test | Statistic | p-value |
 |------|-----------|---------|
-| Kruskal-Wallis | H = 476.8 | p < 10^-103 |
-| Merged vs. Rejected (post-hoc) | U = 438,503 | p = 0.0004 (adjusted) |
-| Merged vs. Pocket Veto (post-hoc) | U = 1,009,204 | p < 10^-104 (adjusted) |
-| Rejected vs. Pocket Veto (post-hoc) | U = 199,747 | p < 10^-40 (adjusted) |
+| Kruskal-Wallis | H = 414.6 | p < 10^-90 |
+| Merged vs. Rejected (post-hoc) | U = 859,859 | p = 1.8 x 10^-6 (adjusted) |
+| Merged vs. Pocket Veto (post-hoc) | U = 2,364,761 | p < 10^-89 (adjusted) |
+| Rejected vs. Pocket Veto (post-hoc) | U = 239,246 | p < 10^-19 (adjusted) |
 
-The score distributions show a clear separation: merged PRs cluster at higher
-scores, pocket-vetoed PRs cluster near zero, and rejected PRs fall in between.
+One-vs-rest AUC (how well the GE score separates each class from the other
+two):
+
+| Class | AUC-ROC | 95% CI |
+|-------|---------|--------|
+| Merged | 0.671 | 0.653--0.689 |
+| Rejected | 0.469 | 0.440--0.499 |
+| Pocket Veto | 0.292 | 0.273--0.312 |
+
+The merged-vs-rest AUC mirrors H1. The pocket veto OVR AUC of 0.292
+(equivalently, 0.708 when inverted) confirms low scores strongly predict
+pocket veto outcomes. The rejected class is the hardest to separate (AUC near
+0.50), consistent with rejected PRs occupying the middle of the score
+distribution.
 
 ![Score Distributions](figures/score_distributions_3class.png)
 
 ### Pocket Veto Analysis
 
 Low-trust contributors are disproportionately pocket-vetoed rather than
-explicitly rejected. The association between trust level and outcome type
-(among non-merged PRs) is strong.
+explicitly rejected.
 
 | Test | Statistic | p-value |
 |------|-----------|---------|
-| Chi-squared | chi2 = 200.7, df = 2 | p < 10^-43 |
-| Cramer's V | 0.43 | (medium-large effect) |
+| Chi-squared | chi2 = 118.3, df = 2 | p < 10^-25 |
+| Cramer's V | 0.300 | (medium effect) |
+| Cochran-Armitage trend | z = -0.246 | p = 0.805 (not significant) |
 
-Among non-merged PRs from LOW-trust authors, ~81% are pocket-vetoed vs. ~19%
-explicitly rejected. For HIGH-trust authors, the split is ~41% pocket veto
-vs. ~59% explicit rejection.
+The chi-squared test confirms a significant association between trust level and
+outcome type among non-merged PRs (Cramer's V = 0.300, medium effect). However,
+the Cochran-Armitage trend test is not significant (p = 0.805), indicating the
+relationship between trust level and pocket veto rate is not monotonically
+linear --- the effect is concentrated in the LOW vs. MEDIUM/HIGH contrast
+rather than a smooth gradient.
 
-The Cochran-Armitage trend test and trust-level odds ratios are now computed
-per the DOE specification (added post-audit).
+Trust-level odds ratios for merge outcome:
+
+| Comparison | Odds Ratio | 95% CI | p-value |
+|------------|-----------|--------|---------|
+| HIGH vs. LOW | 4.74 | 4.10--5.47 | p < 10^-99 |
+| MEDIUM vs. LOW | 3.45 | 2.80--4.26 | p < 10^-30 |
+| HIGH vs. MEDIUM | 1.37 | 1.12--1.68 | p = 0.002 |
+
+HIGH-trust authors are 4.7x more likely to have their PRs merged than
+LOW-trust authors. The MEDIUM-to-LOW contrast is also strong (3.5x), while
+HIGH-to-MEDIUM is smaller but still significant (1.4x).
 
 ![Pocket Veto by Trust](figures/pocket_veto_by_trust.png)
 
 ### H2: Ablation Study
 
 **Result: Partially supported.** Of the six scoring dimensions, only recency
-decay shows a statistically significant independent contribution.
+decay shows a statistically significant independent contribution after
+Holm-Bonferroni correction (applied to the 6 primary single-dimension
+ablations per DOE Section 7.4).
 
-Holm-Bonferroni correction is applied to the 6 primary single-dimension
-ablations only (per DOE Section 7.4). Two-way interactions and the recursive
-quality variant are reported separately as exploratory.
-
-| Variant | AUC | Delta | Significant? |
-|---------|-----|-------|:------------:|
-| **Full model** | **0.695** | -- | -- |
-| no_recency | 0.562 | -0.133 | Yes (p < 10^-57) |
-| no_repo_quality | 0.695 | +0.000 | No |
-| no_self_penalty | 0.695 | -0.000 | No |
-| no_language_match | 0.696 | +0.001 | No |
-| no_diversity_volume | 0.695 | +0.000 | No |
-| no_language_norm | 0.695 | -0.000 | No |
+| Variant | AUC | Delta | Adjusted p | Significant? |
+|---------|-----|-------|-----------|:------------:|
+| **Full model** | **0.671** | -- | -- | -- |
+| no_recency | 0.550 | -0.121 | < 10^-68 | Yes |
+| no_repo_quality | 0.669 | -0.002 | 0.117 | No |
+| no_language_match | 0.672 | +0.001 | 0.342 | No |
+| no_diversity_volume | 0.671 | +0.000 | 1.000 | No |
+| no_language_norm | 0.671 | +0.000 | 0.812 | No |
+| no_self_penalty | 0.671 | -0.000 | 0.582 | No |
 
 Exploratory two-way interactions:
 
 | Variant | AUC | Delta |
 |---------|-----|-------|
-| no_recency_no_quality | 0.559 | -0.136 |
-| no_lang_match_no_lang_norm | 0.696 | +0.001 |
-| no_diversity_no_self_penalty | 0.695 | +0.000 |
-| recursive_quality | 0.695 | +0.000 |
+| no_recency_no_quality | 0.546 | -0.125 |
+| recursive_quality | 0.669 | -0.002 |
+| no_lang_match_no_lang_norm | 0.672 | +0.001 |
+| no_diversity_no_self_penalty | 0.671 | +0.000 |
 
-Removing recency drops AUC by 0.133 (from 0.695 to 0.562), nearly to chance.
-All other dimensions have negligible individual impact after correction. This
-suggests that recency decay is the dominant scoring signal, and other dimensions
-are either redundant with it or contribute too little to detect at this sample
-size.
+Removing recency drops AUC by 0.121 (from 0.671 to 0.550), close to chance.
+Repo quality shows a suggestive signal (raw p = 0.023) but does not survive
+Holm-Bonferroni correction (adjusted p = 0.117). All other dimensions have
+negligible individual impact.
 
 ![Ablation Forest Plot](figures/ablation_forest.png)
 
 ### H3: Account Age
 
-**Result: Requires re-run.** The original result (LR = 0.0, p = 1.0) was
-produced using L2-regularized logistic regression, which invalidates the
-likelihood ratio test. The code has been fixed to use unregularized models
-(`penalty=None`). Results will be updated when Stage 6 is re-run on the
-existing dataset.
+**Result: Supported.** Log-transformed account age significantly improves
+prediction when added to the GE score (likelihood ratio test: LR = 8.64,
+df = 1, p = 0.003). Account age carries modest incremental information beyond
+what the GE score captures.
+
+*Note:* The original analysis reported LR = 0.0, p = 1.0 due to
+L2-regularized logistic regression suppressing the additional feature. After
+fixing to unregularized models (`penalty=None`), the true signal emerged.
 
 ### H4: Embedding Similarity
 
-**Result: Inconclusive (implementation limitation).** The embedding similarity
-feature has known issues: repo names were used as proxy descriptions instead
-of actual PR descriptions and repo READMEs, and author repo embeddings were
-only matched against study target repos. See
-[`RED_TEAM_AUDIT.md`](RED_TEAM_AUDIT.md) item C2. A proper test of this
-hypothesis requires fetching actual content from the GitHub API.
+**Result: Supported.** Embedding cosine similarity between PR content and
+target repository content significantly improves prediction when added to
+the GE score (LR = 20.82, df = 1, p = 5.1 x 10^-6).
+
+*Note:* The original analysis reported LR = 0.0, p = 1.0 due to two
+compounding issues: (1) L2 regularization suppressing the feature, and
+(2) embeddings computed from repo names instead of actual content. After
+fixing both issues (unregularized LRT + proper Gemini `gemini-embedding-001`
+embeddings of PR bodies and repo READMEs), embedding similarity shows clear
+predictive value.
 
 ### H5: Author Merge Rate
 
-**Result: Supported.** Historical author merge rate (fraction of an author's
-PRs merged across all repos) significantly improves prediction when added to
-the GE score (LR = 315.2, p < 10^-69). This result was statistically
-significant even under the previous L2-regularized LRT; the unregularized fix
-will produce an even stronger test statistic.
+**Result: Supported.** Historical author merge rate significantly improves
+prediction when added to the GE score (LR = 462.4, df = 1, p < 10^-102).
+This is the strongest incremental signal of the three candidate features,
+indicating that an author's overall merge track record carries substantial
+information beyond the graph-based trust score.
 
 ### Feature Importance
 
-Logistic regression coefficients (unregularized) confirm that the GE normalized
-score is the dominant predictor, with author-level features (public repos,
-followers, account age) contributing little additional information.
+Logistic regression coefficients (unregularized) confirm that the GE
+normalized score is the dominant predictor, with author-level features (public
+repos, followers, account age) contributing less but non-trivial additional
+information.
 
 ![Feature Importance](figures/feature_importance.png)
 
 ### Calibration
 
 The calibration plot shows the GE score is over-confident in the low-to-mid
-range (predicted probabilities 0.2--0.5 correspond to higher actual merge
-rates than predicted), and slightly under-confident at high scores
-(probabilities > 0.7 plateau around ~78% actual merge rate). This confirms
-the GE score should not be interpreted as a merge probability without Platt
-scaling or similar calibration.
+range (scores 0.2--0.5 correspond to higher actual merge rates than predicted)
+and slightly under-confident at high scores. The GE score should not be
+interpreted as a merge probability without Platt scaling or similar calibration.
 
 ![Calibration](figures/calibration.png)
 
@@ -174,12 +212,15 @@ score of 0 and cannot be discriminated by the trust score alone.
 
 | Cohort | n | AUC-ROC | Merge Rate |
 |--------|---|---------|------------|
-| Newcomer (score = 0) | 432 | 0.500 | 53.9% |
-| Established (score > 0) | 2,573 | 0.705 (CI: 0.683--0.728) | 65.5% |
+| Newcomer (score = 0) | 719 | 0.500 | 69.0% |
+| Established (score > 0) | 4,258 | 0.689 (CI: 0.668--0.709) | 74.4% |
 
 Newcomers constitute 14.4% of the sample. Among established contributors, the
-AUC improves to 0.705, indicating that the GE score is most useful for authors
-who already have some contribution history.
+AUC improves to 0.689, confirming the GE score is most useful for authors who
+already have some contribution history. Notably, newcomers have a 69% merge
+rate --- higher than the overall non-merged rate --- suggesting that many
+first-time contributors to a repo already have external histories that would
+produce non-zero GE scores if their other contributions were visible.
 
 ---
 
@@ -189,77 +230,81 @@ Stratified group 5-fold cross-validation (grouped by target repository):
 
 | Fold | AUC-ROC |
 |------|---------|
-| 1 | 0.687 |
-| 2 | 0.745 |
-| 3 | 0.662 |
-| 4 | 0.698 |
-| 5 | 0.691 |
-| **Mean +/- SD** | **0.697 +/- 0.027** |
+| 1 | 0.596 |
+| 2 | 0.707 |
+| 3 | 0.693 |
+| 4 | 0.731 |
+| 5 | 0.647 |
+| **Mean +/- SD** | **0.675 +/- 0.048** |
 
-The per-fold variance is modest, suggesting the score generalizes across
-different repository populations. The weakest fold (0.662) still exceeds the
-0.60 threshold.
+Four of five folds exceed the 0.60 threshold. Fold 1 (0.596) falls just below,
+likely reflecting a repository cluster with weaker signal. The increased
+variance compared to the pre-audit run (SD 0.048 vs. 0.027) is expected given
+the larger, more diverse sample that now includes still-open PRs and
+fast-merged PRs.
 
 ---
 
 ## Implications for Good Egg
 
-1. **The GE score is a meaningful merge predictor.** AUC-ROC of 0.695 confirms
+1. **The GE score is a meaningful merge predictor.** AUC-ROC of 0.671 confirms
    it carries real signal, sufficient for use as a triage heuristic in PR
-   review workflows.
+   review workflows. The 95% CI [0.653, 0.689] excludes both chance and the
+   pre-registered 0.60 threshold.
 
-2. **Recency is the dominant dimension.** The ablation study shows that
-   removing recency decay drops AUC almost to chance. The other five dimensions
-   (repo quality, self-penalty, language match, diversity/volume, language
-   normalization) do not individually contribute detectable signal at this
-   sample size. This could motivate simplifying the scoring model, or it could
-   indicate these dimensions are only useful in combination with recency.
+2. **Recency is the dominant scoring dimension.** Removing recency decay drops
+   AUC by 0.121 to near chance. No other single dimension has a statistically
+   significant independent contribution, though repo quality shows a suggestive
+   trend (raw p = 0.023).
 
-3. **Pocket veto detection is a strong secondary use case.** The clear
-   association between low trust and pocket veto outcomes (Cramer's V = 0.43)
-   suggests the GE score could flag PRs at risk of being silently ignored.
+3. **Three candidate features add incremental value.** All three augmentation
+   hypotheses are supported:
+   - Author merge rate (strongest: LR = 462, p < 10^-102)
+   - Embedding similarity (LR = 20.8, p = 5 x 10^-6)
+   - Account age (modest: LR = 8.6, p = 0.003)
 
-4. **Author merge rate adds incremental value.** Future versions of GE could
-   incorporate historical merge rate as a complementary signal, potentially
-   lifting AUC above 0.70.
+   Future versions of GE could incorporate these as complementary signals.
+
+4. **Pocket veto detection is a strong secondary use case.** LOW-trust authors
+   are 4.7x less likely to have PRs merged than HIGH-trust authors. The
+   association between trust and pocket veto is significant (chi2 p < 10^-25),
+   though the relationship is a step function (LOW vs. rest) rather than a
+   smooth gradient (Cochran-Armitage p = 0.805).
 
 5. **Newcomer cold-start remains an open problem.** The score is uninformative
-   for first-time contributors (14.4% of PRs). Alternative signals (e.g.,
-   account age) did not help in the unregularized LRT, so newcomer assessment
-   will require a different approach.
+   for 14.4% of PRs from first-time contributors. Unlike the pre-audit
+   results, account age and embedding similarity DO carry incremental signal,
+   suggesting they could help in a newcomer-specific model even when the graph
+   score is zero.
 
 ---
 
-## Errata
+## Audit and Corrections
 
-The following issues were identified by a red team audit
-([`RED_TEAM_AUDIT.md`](RED_TEAM_AUDIT.md)) and fixed in code:
+A red team audit ([`RED_TEAM_AUDIT.md`](RED_TEAM_AUDIT.md)) identified 13
+issues. All have been fixed and the pipeline fully re-run:
 
-| Issue | Severity | Fix |
-|-------|----------|-----|
-| LRTs used L2-regularized LR (H3/H4/H5) | Critical | Changed to `penalty=None`; H3/H5 need re-run |
-| H4 embeddings used repo names, not content | Critical | Marked as inconclusive; proper implementation deferred |
-| Still-open PRs from study period not collected | Critical | Stage 1 now collects open PRs per temporal bin |
-| Brier/log loss on uncalibrated scores | Major | Added caveat in results; metrics retained for reference |
+| Issue | Severity | Status |
+|-------|----------|--------|
+| LRTs used L2-regularized LR (H3/H4/H5) | Critical | Fixed (`penalty=None`); re-run confirmed H3/H4 now significant |
+| H4 embeddings used repo names, not content | Critical | Fixed (Gemini `gemini-embedding-001` on PR bodies + repo READMEs) |
+| Still-open PRs from study period not collected | Critical | Fixed; backfilled open PRs, sample grew from 3,005 to 4,977 |
+| Brier/log loss on uncalibrated scores | Major | Caveat added; metrics retained for reference |
 | Holm-Bonferroni on 10 tests instead of 6 | Major | Corrected to 6 primary ablations per DOE |
-| Self-owned repo PRs not excluded | Major | Added author-vs-owner check in Stage 2 |
+| Self-owned repo PRs not excluded | Major | Author-vs-owner check added in Stage 2 |
 | Spam filter excluded fast merges | Major | Filter now only applies to non-merged PRs |
-| Cochran-Armitage trend test missing | Minor | Added to Stage 6 |
-| Odds ratios not computed | Minor | Added to Stage 6 |
-| One-vs-rest AUC missing | Minor | Added to Stage 6 |
-| Confusion matrix missing | Minor | Added to Stage 6 (at Youden's J threshold) |
+| Cochran-Armitage trend test missing | Minor | Added; result: not significant (p = 0.805) |
+| Odds ratios not computed | Minor | Added (HIGH vs LOW OR = 4.74) |
+| One-vs-rest AUC missing | Minor | Added (merged: 0.671, rejected: 0.469, pocket veto: 0.292) |
+| Confusion matrix missing | Minor | Added at Youden's J threshold (0.577) |
 | `_MERGE_BOT_CLOSERS` unused | Minor | Now checked in `_is_merge_bot_close` |
 | Feature importance used regularized LR | Minor | Changed to `penalty=None` |
 
-**To fully update numeric results**, re-run the pipeline from Stage 2 onward
-(Stage 1 open-PR backfill requires GitHub API access):
-
-```bash
-python -m experiments.validation.pipeline run-stage 2
-python -m experiments.validation.pipeline run-stage 4
-python -m experiments.validation.pipeline run-stage 5
-python -m experiments.validation.pipeline run-stage 6
-```
+The most impactful corrections were the LRT regularization fix (H3 and H4
+flipped from "not supported" to "supported") and the open PR backfill (sample
+grew 66%). Overall AUC decreased from 0.695 to 0.671 with the corrected
+dataset, reflecting the inclusion of harder-to-classify open PRs and the
+removal of self-owned repo PRs.
 
 ---
 
@@ -271,12 +316,6 @@ python -m experiments.validation.pipeline run-stage 6
   at query time, not at PR creation time.
 - **Rejected-class contamination**: The "rejected" class includes superseded
   and author-abandoned PRs, which may attenuate effect sizes.
-- **Incomplete pocket veto class**: Still-open PRs from the study period were
-  not collected in the original run. Stage 1 has been fixed to collect them,
-  but a backfill pass is needed.
-- **H4 embedding quality**: Semantic similarity was computed using repo names
-  as proxy descriptions, not actual PR descriptions or repo READMEs. H4
-  results are inconclusive.
 - **No causal claims**: The study evaluates predictive discrimination, not
   whether trust causes merges.
 

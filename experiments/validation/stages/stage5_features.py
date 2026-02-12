@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pandas as pd
 
-from experiments.validation.checkpoint import read_json
+from experiments.validation.checkpoint import read_json, read_jsonl
 from experiments.validation.embedding import (
-    author_repo_similarity,
+    cosine_similarity,
     embed_texts,
 )
 from experiments.validation.models import StudyConfig
@@ -141,52 +141,95 @@ async def run_stage5(base_dir: Path, config: StudyConfig) -> None:
         df["unique_repos_at_time"] <= 1
     ).astype(int)
 
-    # --- Semantic similarity (H4) ---
+    # --- Semantic similarity (H4): PR body x repo README ---
     embedding_model = config.features.get(
-        "embedding_model", "text-embedding-004",
+        "embedding_model", "gemini-embedding-001",
     )
     embed_batch = config.features.get("embedding_batch_size", 50)
 
     try:
-        # Get unique repos and their descriptions
-        unique_repos = df["repo"].unique().tolist()
-        repo_descriptions = []
-        for repo in unique_repos:
-            # Use repo name as description fallback
-            repo_descriptions.append(repo.replace("/", " "))
+        # 1. Load repo READMEs from disk
+        repos_dir = base_dir / "data" / "raw" / "repos"
+        readme_texts: dict[str, str] = {}
+        for repo_name in df["repo"].unique():
+            owner, name = repo_name.split("/", 1)
+            readme_path = (
+                repos_dir / f"{owner}__{name}_readme.md"
+            )
+            if readme_path.exists():
+                text = readme_path.read_text(errors="replace").strip()
+                if text:
+                    readme_texts[repo_name] = text
 
-        repo_embeddings = await embed_texts(
-            repo_descriptions,
-            model=embedding_model,
-            batch_size=embed_batch,
+        # 2. Load PR bodies from classified JSONL files
+        classified_dir = base_dir / config.paths.get(
+            "classified_prs", "data/raw/prs_classified",
         )
-        repo_emb_map = dict(
-            zip(unique_repos, repo_embeddings, strict=True),
-        )
+        pr_body_map: dict[tuple[str, int], str] = {}
+        for repo_name in df["repo"].unique():
+            owner, name = repo_name.split("/", 1)
+            cpath = classified_dir / f"{owner}__{name}.jsonl"
+            if cpath.exists():
+                for rec in read_jsonl(cpath):
+                    body = rec.get("body", "")
+                    pr_body_map[(repo_name, rec["number"])] = body
 
-        # Compute per-author, per-repo similarity
+        # 3. Build list of unique texts to embed
+        unique_texts: dict[str, int] = {}
+        text_list: list[str] = []
+
+        def _register_text(text: str) -> int:
+            if text in unique_texts:
+                return unique_texts[text]
+            idx = len(text_list)
+            unique_texts[text] = idx
+            text_list.append(text)
+            return idx
+
+        # Register README texts
+        readme_idx: dict[str, int] = {}
+        for repo_name, text in readme_texts.items():
+            # Truncate long READMEs to avoid token limits
+            truncated = text[:4000]
+            readme_idx[repo_name] = _register_text(truncated)
+
+        # Register PR body/title texts
+        pr_text_idx: dict[tuple[str, int], int] = {}
+        for _, row in df.iterrows():
+            key = (row["repo"], row["pr_number"])
+            body = pr_body_map.get(key, "")
+            text = body.strip() if body else ""
+            if not text:
+                # Fallback to PR title
+                text = str(row.get("title", ""))
+            if text:
+                truncated = text[:2000]
+                pr_text_idx[key] = _register_text(truncated)
+
+        # 4. Batch embed all unique texts
+        if text_list:
+            all_embeddings = await embed_texts(
+                text_list,
+                model=embedding_model,
+                batch_size=embed_batch,
+            )
+        else:
+            all_embeddings = []
+
+        # 5. Compute cosine similarity per row
         similarities = []
         for _, row in df.iterrows():
-            login = row["author_login"]
-            target_repo = row["repo"]
-            author = author_data_cache.get(login, {})
-            contrib = author.get("contribution_data", {})
-            contrib_repos = contrib.get("contributed_repos", {})
+            repo_name = row["repo"]
+            pr_key = (repo_name, row["pr_number"])
 
-            # Get embeddings for author's contributed repos
-            author_repo_names = [
-                r for r in contrib_repos if r != target_repo
-            ]
-            author_embs = [
-                repo_emb_map.get(r)
-                for r in author_repo_names
-                if r in repo_emb_map
-            ]
-            author_embs = [e for e in author_embs if e is not None]
+            r_idx = readme_idx.get(repo_name)
+            p_idx = pr_text_idx.get(pr_key)
 
-            target_emb = repo_emb_map.get(target_repo)
-            if target_emb is not None and author_embs:
-                sim = author_repo_similarity(author_embs, target_emb)
+            if r_idx is not None and p_idx is not None:
+                sim = cosine_similarity(
+                    all_embeddings[r_idx],
+                    all_embeddings[p_idx],
+                )
             else:
                 sim = None
 
