@@ -1,132 +1,625 @@
 {
-  "methods": {
-    "Gemini": {
-      "name": "Gemini",
-      "n": 1293,
-      "lrt_statistic": 20.81763834601611,
-      "lrt_p_value": 5.051558592648202e-06,
-      "standalone_auc": 0.41624940954180445,
-      "standalone_auc_ci_lower": 0.38210246420031024,
-      "standalone_auc_ci_upper": 0.45039635488329866,
-      "standalone_auc_se": 0.017422231026100982,
-      "marginal": {
-        "auc_base": 0.6518717718319511,
-        "auc_full": 0.6795556360016289,
-        "auc_diff": 0.02768386416967783,
-        "delong_z": -2.088708019593351,
-        "delong_p": 0.03673401451592404,
-        "lrt_statistic": 21.44900474823362,
-        "lrt_p": 3.633645753374387e-06
+  "gemini_subset": {
+    "n_pairs": 1293,
+    "n_with_extras": 1245,
+    "methods": {
+      "Gemini": {
+        "name": "Gemini",
+        "n": 1293,
+        "lrt_statistic": 20.81763834601611,
+        "lrt_p_value": 5.051558592648202e-06,
+        "standalone_auc": 0.41624940954180445,
+        "standalone_auc_ci_lower": 0.38210246420031024,
+        "standalone_auc_ci_upper": 0.45039635488329866,
+        "standalone_auc_se": 0.017422231026100982,
+        "marginal": {
+          "auc_base": 0.6518717718319511,
+          "auc_full": 0.6795556360016289,
+          "auc_diff": 0.02768386416967783,
+          "delong_z": -2.088708019593351,
+          "delong_p": 0.03673401451592404,
+          "lrt_statistic": 21.44900474823362,
+          "lrt_p": 3.633645753374387e-06
+        }
+      },
+      "TF-IDF": {
+        "name": "TF-IDF",
+        "n": 1293,
+        "lrt_statistic": 3.4346576725774867,
+        "lrt_p_value": 0.06384181444567218,
+        "standalone_auc": 0.44217495276334434,
+        "standalone_auc_ci_lower": 0.40861245823690545,
+        "standalone_auc_ci_upper": 0.47573744728978323,
+        "standalone_auc_se": 0.01712403635534916,
+        "pearson_r_gemini": 0.5859277996583463,
+        "pearson_p_gemini": 4.8245506231703955e-120,
+        "spearman_r_gemini": 0.6977890110256287,
+        "spearman_p_gemini": 2.707218757969197e-189,
+        "marginal": {
+          "auc_base": 0.6518717718319511,
+          "auc_full": 0.6602949066861461,
+          "auc_diff": 0.008423134854194991,
+          "delong_z": -1.1141076278070692,
+          "delong_p": 0.265233016675289,
+          "lrt_statistic": 4.338557690697826,
+          "lrt_p": 0.037258473274137095
+        }
+      },
+      "MiniLM-128": {
+        "name": "MiniLM-128",
+        "n": 1293,
+        "lrt_statistic": 0.7681876166864186,
+        "lrt_p_value": 0.38077831219774116,
+        "standalone_auc": 0.46911903637222485,
+        "standalone_auc_ci_lower": 0.43458032906335187,
+        "standalone_auc_ci_upper": 0.5036577436810978,
+        "standalone_auc_se": 0.0176221132537689,
+        "pearson_r_gemini": 0.4382070872696012,
+        "pearson_p_gemini": 8.482313603400947e-62,
+        "spearman_r_gemini": 0.43522643919853654,
+        "spearman_p_gemini": 6.8121599594624e-61,
+        "marginal": {
+          "auc_base": 0.6518717718319511,
+          "auc_full": 0.6518006632491451,
+          "auc_diff": -7.110858280601207e-05,
+          "delong_z": 0.015852979856764544,
+          "delong_p": 0.9873516819212843,
+          "lrt_statistic": 0.9287080520978179,
+          "lrt_p": 0.33519886209639604
+        }
+      },
+      "MiniLM-256": {
+        "name": "MiniLM-256",
+        "n": 1293,
+        "lrt_statistic": 2.2748034421504144,
+        "lrt_p_value": 0.1314917948010968,
+        "standalone_auc": 0.45450667217760987,
+        "standalone_auc_ci_lower": 0.41998499912872433,
+        "standalone_auc_ci_upper": 0.4890283452264954,
+        "standalone_auc_se": 0.017613422145094544,
+        "pearson_r_gemini": 0.5336692167020212,
+        "pearson_p_gemini": 4.468130617310538e-96,
+        "spearman_r_gemini": 0.5320034390558628,
+        "spearman_p_gemini": 2.2204044091017032e-95,
+        "marginal": {
+          "auc_base": 0.6518717718319511,
+          "auc_full": 0.6555209350132197,
+          "auc_diff": 0.003649163181268622,
+          "delong_z": -0.5870097472734076,
+          "delong_p": 0.5571971603575593,
+          "lrt_statistic": 2.337726561250747,
+          "lrt_p": 0.12627372156329367
+        }
+      },
+      "MiniLM-512": {
+        "name": "MiniLM-512",
+        "n": 1293,
+        "lrt_statistic": 0.6007373972549885,
+        "lrt_p_value": 0.43829681386263686,
+        "standalone_auc": 0.5132410250354276,
+        "standalone_auc_ci_lower": 0.47970269523393216,
+        "standalone_auc_ci_upper": 0.546779354836923,
+        "standalone_auc_se": 0.017111707187500127,
+        "pearson_r_gemini": 0.6189502228062266,
+        "pearson_p_gemini": 1.3744046836379306e-137,
+        "spearman_r_gemini": 0.6210077257841656,
+        "spearman_p_gemini": 9.439087077042734e-139,
+        "marginal": {
+          "auc_base": 0.6518717718319511,
+          "auc_full": 0.6523145843703334,
+          "auc_diff": 0.00044281253838229784,
+          "delong_z": -0.1298851652556388,
+          "delong_p": 0.8966572812701883,
+          "lrt_statistic": 0.4816148607935702,
+          "lrt_p": 0.48769176017474125
+        }
+      },
+      "Jaccard": {
+        "name": "Jaccard",
+        "n": 1293,
+        "lrt_statistic": 13.596154253739087,
+        "lrt_p_value": 0.00022664936468762858,
+        "standalone_auc": 0.44121841048653754,
+        "standalone_auc_ci_lower": 0.4068139222985305,
+        "standalone_auc_ci_upper": 0.4756228986745446,
+        "standalone_auc_se": 0.0175536328521265,
+        "pearson_r_gemini": 0.5009110673764123,
+        "pearson_p_gemini": 4.535464217783298e-83,
+        "spearman_r_gemini": 0.4917058653181858,
+        "spearman_p_gemini": 1.1572848151047895e-79,
+        "marginal": {
+          "auc_base": 0.6518717718319511,
+          "auc_full": 0.6678970606297635,
+          "auc_diff": 0.016025288797812398,
+          "delong_z": -1.2850469779872804,
+          "delong_p": 0.19877586821684268,
+          "lrt_statistic": 14.600841534276924,
+          "lrt_p": 0.0001328552025065278
+        }
       }
     },
-    "TF-IDF": {
-      "name": "TF-IDF",
-      "n": 1293,
-      "lrt_statistic": 3.4346576725774867,
-      "lrt_p_value": 0.06384181444567218,
-      "standalone_auc": 0.44217495276334434,
-      "standalone_auc_ci_lower": 0.40861245823690545,
-      "standalone_auc_ci_upper": 0.47573744728978323,
-      "standalone_auc_se": 0.01712403635534916,
-      "pearson_r_gemini": 0.5859277996583463,
-      "pearson_p_gemini": 4.8245506231703955e-120,
-      "spearman_r_gemini": 0.6977890110256287,
-      "spearman_p_gemini": 2.707218757969197e-189,
-      "marginal": {
-        "auc_base": 0.6518717718319511,
-        "auc_full": 0.6602949066861461,
-        "auc_diff": 0.008423134854194991,
-        "delong_z": -1.1141076278070692,
-        "delong_p": 0.265233016675289,
-        "lrt_statistic": 4.338557690697826,
-        "lrt_p": 0.037258473274137095
+    "pairwise_delong": {
+      "Gemini vs TF-IDF": {
+        "auc_a": 0.41624940954180445,
+        "auc_b": 0.44217495276334434,
+        "z_statistic": -1.8736670164443816,
+        "p_value": 0.06097633478351673
+      },
+      "Gemini vs MiniLM-128": {
+        "auc_a": 0.41624940954180445,
+        "auc_b": 0.46911903637222485,
+        "z_statistic": -2.8408623688097228,
+        "p_value": 0.0044991725063356375
+      },
+      "Gemini vs MiniLM-256": {
+        "auc_a": 0.41624940954180445,
+        "auc_b": 0.45450667217760987,
+        "z_statistic": -2.2840664425529345,
+        "p_value": 0.022367626394952916
+      },
+      "Gemini vs MiniLM-512": {
+        "auc_a": 0.41624940954180445,
+        "auc_b": 0.5132410250354276,
+        "z_statistic": -6.185818384213347,
+        "p_value": 6.178110445439748e-10
+      },
+      "Gemini vs Jaccard": {
+        "auc_a": 0.41624940954180445,
+        "auc_b": 0.44121841048653754,
+        "z_statistic": -1.3940262487744146,
+        "p_value": 0.163309678302899
+      },
+      "TF-IDF vs MiniLM-128": {
+        "auc_a": 0.44217495276334434,
+        "auc_b": 0.46911903637222485,
+        "z_statistic": -1.520743469839557,
+        "p_value": 0.1283242254610263
+      },
+      "TF-IDF vs MiniLM-256": {
+        "auc_a": 0.44217495276334434,
+        "auc_b": 0.45450667217760987,
+        "z_statistic": -0.7629440415846488,
+        "p_value": 0.4454967690984649
+      },
+      "TF-IDF vs MiniLM-512": {
+        "auc_a": 0.44217495276334434,
+        "auc_b": 0.5132410250354276,
+        "z_statistic": -4.686601545681484,
+        "p_value": 2.777790249567429e-06
+      },
+      "TF-IDF vs Jaccard": {
+        "auc_a": 0.44217495276334434,
+        "auc_b": 0.44121841048653754,
+        "z_statistic": 0.04895215258286262,
+        "p_value": 0.9609574268975981
+      },
+      "MiniLM-128 vs MiniLM-256": {
+        "auc_a": 0.46911903637222485,
+        "auc_b": 0.45450667217760987,
+        "z_statistic": 1.7422692282428318,
+        "p_value": 0.08146134526660935
+      },
+      "MiniLM-128 vs MiniLM-512": {
+        "auc_a": 0.46911903637222485,
+        "auc_b": 0.5132410250354276,
+        "z_statistic": -2.9479593617302555,
+        "p_value": 0.0031987911210813133
+      },
+      "MiniLM-128 vs Jaccard": {
+        "auc_a": 0.46911903637222485,
+        "auc_b": 0.44121841048653754,
+        "z_statistic": 1.2219812983142557,
+        "p_value": 0.22171469932898846
+      },
+      "MiniLM-256 vs MiniLM-512": {
+        "auc_a": 0.45450667217760987,
+        "auc_b": 0.5132410250354276,
+        "z_statistic": -4.848007656489083,
+        "p_value": 1.2470758896658e-06
+      },
+      "MiniLM-256 vs Jaccard": {
+        "auc_a": 0.45450667217760987,
+        "auc_b": 0.44121841048653754,
+        "z_statistic": 0.6166122541476124,
+        "p_value": 0.5374905098524709
+      },
+      "MiniLM-512 vs Jaccard": {
+        "auc_a": 0.5132410250354276,
+        "auc_b": 0.44121841048653754,
+        "z_statistic": 3.8164839764017695,
+        "p_value": 0.00013536686183331217
       }
     },
-    "MiniLM": {
-      "name": "MiniLM",
-      "n": 1293,
-      "lrt_statistic": 0.7681876166864186,
-      "lrt_p_value": 0.38077831219774116,
-      "standalone_auc": 0.46911903637222485,
-      "standalone_auc_ci_lower": 0.43458032906335187,
-      "standalone_auc_ci_upper": 0.5036577436810978,
-      "standalone_auc_se": 0.0176221132537689,
-      "pearson_r_gemini": 0.4382070872696012,
-      "pearson_p_gemini": 8.482313603400947e-62,
-      "spearman_r_gemini": 0.43522643919853654,
-      "spearman_p_gemini": 6.8121599594624e-61,
-      "marginal": {
-        "auc_base": 0.6518717718319511,
-        "auc_full": 0.6518006632491451,
-        "auc_diff": -7.110858280601207e-05,
-        "delong_z": 0.015852979856764544,
-        "delong_p": 0.9873516819212843,
-        "lrt_statistic": 0.9287080520978179,
-        "lrt_p": 0.33519886209639604
+    "lrt_corrections": {
+      "Jaccard": {
+        "p_value": 0.00022664936468762858,
+        "adjusted_p": 0.0011332468234381428,
+        "reject": true,
+        "rank": 1
+      },
+      "TF-IDF": {
+        "p_value": 0.06384181444567218,
+        "adjusted_p": 0.2553672577826887,
+        "reject": false,
+        "rank": 2
+      },
+      "MiniLM-256": {
+        "p_value": 0.1314917948010968,
+        "adjusted_p": 0.3944753844032904,
+        "reject": false,
+        "rank": 3
+      },
+      "MiniLM-128": {
+        "p_value": 0.38077831219774116,
+        "adjusted_p": 0.7615566243954823,
+        "reject": false,
+        "rank": 4
+      },
+      "MiniLM-512": {
+        "p_value": 0.43829681386263686,
+        "adjusted_p": 0.43829681386263686,
+        "reject": false,
+        "rank": 5
       }
     },
-    "Jaccard": {
-      "name": "Jaccard",
-      "n": 1293,
-      "lrt_statistic": 13.596154253739087,
-      "lrt_p_value": 0.00022664936468762858,
-      "standalone_auc": 0.44121841048653754,
-      "standalone_auc_ci_lower": 0.4068139222985305,
-      "standalone_auc_ci_upper": 0.4756228986745446,
-      "standalone_auc_se": 0.0175536328521265,
-      "pearson_r_gemini": 0.5009110673764123,
-      "pearson_p_gemini": 4.535464217783298e-83,
-      "spearman_r_gemini": 0.4917058653181858,
-      "spearman_p_gemini": 1.1572848151047895e-79,
-      "marginal": {
-        "auc_base": 0.6518717718319511,
-        "auc_full": 0.6678970606297635,
-        "auc_diff": 0.016025288797812398,
-        "delong_z": -1.2850469779872804,
-        "delong_p": 0.19877586821684268,
-        "lrt_statistic": 14.600841534276924,
-        "lrt_p": 0.0001328552025065278
+    "delong_corrections": {
+      "Gemini vs MiniLM-512": {
+        "p_value": 6.178110445439748e-10,
+        "adjusted_p": 9.267165668159622e-09,
+        "reject": true,
+        "rank": 1
+      },
+      "MiniLM-256 vs MiniLM-512": {
+        "p_value": 1.2470758896658e-06,
+        "adjusted_p": 1.7459062455321202e-05,
+        "reject": true,
+        "rank": 2
+      },
+      "TF-IDF vs MiniLM-512": {
+        "p_value": 2.777790249567429e-06,
+        "adjusted_p": 3.6111273244376575e-05,
+        "reject": true,
+        "rank": 3
+      },
+      "MiniLM-512 vs Jaccard": {
+        "p_value": 0.00013536686183331217,
+        "adjusted_p": 0.001624402341999746,
+        "reject": true,
+        "rank": 4
+      },
+      "MiniLM-128 vs MiniLM-512": {
+        "p_value": 0.0031987911210813133,
+        "adjusted_p": 0.03518670233189444,
+        "reject": true,
+        "rank": 5
+      },
+      "Gemini vs MiniLM-128": {
+        "p_value": 0.0044991725063356375,
+        "adjusted_p": 0.04499172506335637,
+        "reject": true,
+        "rank": 6
+      },
+      "Gemini vs MiniLM-256": {
+        "p_value": 0.022367626394952916,
+        "adjusted_p": 0.20130863755457623,
+        "reject": false,
+        "rank": 7
+      },
+      "Gemini vs TF-IDF": {
+        "p_value": 0.06097633478351673,
+        "adjusted_p": 0.48781067826813385,
+        "reject": false,
+        "rank": 8
+      },
+      "MiniLM-128 vs MiniLM-256": {
+        "p_value": 0.08146134526660935,
+        "adjusted_p": 0.5702294168662655,
+        "reject": false,
+        "rank": 9
+      },
+      "TF-IDF vs MiniLM-128": {
+        "p_value": 0.1283242254610263,
+        "adjusted_p": 0.7699453527661577,
+        "reject": false,
+        "rank": 10
+      },
+      "Gemini vs Jaccard": {
+        "p_value": 0.163309678302899,
+        "adjusted_p": 0.816548391514495,
+        "reject": false,
+        "rank": 11
+      },
+      "MiniLM-128 vs Jaccard": {
+        "p_value": 0.22171469932898846,
+        "adjusted_p": 0.8868587973159539,
+        "reject": false,
+        "rank": 12
+      },
+      "TF-IDF vs MiniLM-256": {
+        "p_value": 0.4454967690984649,
+        "adjusted_p": 1.0,
+        "reject": false,
+        "rank": 13
+      },
+      "MiniLM-256 vs Jaccard": {
+        "p_value": 0.5374905098524709,
+        "adjusted_p": 1.0,
+        "reject": false,
+        "rank": 14
+      },
+      "TF-IDF vs Jaccard": {
+        "p_value": 0.9609574268975981,
+        "adjusted_p": 0.9609574268975981,
+        "reject": false,
+        "rank": 15
       }
     }
   },
-  "pairwise_delong": {
-    "Gemini vs TF-IDF": {
-      "auc_a": 0.41624940954180445,
-      "auc_b": 0.44217495276334434,
-      "z_statistic": -1.8736670164443816,
-      "p_value": 0.06097633478351673
+  "full_dataset": {
+    "n_pairs": 4977,
+    "n_with_extras": 4736,
+    "methods": {
+      "TF-IDF": {
+        "name": "TF-IDF",
+        "n": 4977,
+        "lrt_statistic": 44.785271951298455,
+        "lrt_p_value": 2.1987030959728203e-11,
+        "standalone_auc": 0.47096133143409064,
+        "standalone_auc_ci_lower": 0.4527667249039391,
+        "standalone_auc_ci_upper": 0.48915593796424217,
+        "standalone_auc_se": 0.009283133095132505,
+        "marginal": {
+          "auc_base": 0.667488213831837,
+          "auc_full": 0.6979250487552049,
+          "auc_diff": 0.030436834923367906,
+          "delong_z": -7.258716219978304,
+          "delong_p": 3.9078134084915827e-13,
+          "lrt_statistic": 48.512155457902736,
+          "lrt_p": 3.2824797366428428e-12
+        }
+      },
+      "MiniLM-128": {
+        "name": "MiniLM-128",
+        "n": 4977,
+        "lrt_statistic": 33.2856151736878,
+        "lrt_p_value": 7.956904627331408e-09,
+        "standalone_auc": 0.45840173561825054,
+        "standalone_auc_ci_lower": 0.43985608787027386,
+        "standalone_auc_ci_upper": 0.4769473833662272,
+        "standalone_auc_se": 0.009462239048402106,
+        "marginal": {
+          "auc_base": 0.667488213831837,
+          "auc_full": 0.6906990881458968,
+          "auc_diff": 0.02321087431405977,
+          "delong_z": -6.191527155198461,
+          "delong_p": 5.958406999753823e-10,
+          "lrt_statistic": 31.322471412699088,
+          "lrt_p": 2.185354822890549e-08
+        }
+      },
+      "MiniLM-256": {
+        "name": "MiniLM-256",
+        "n": 4977,
+        "lrt_statistic": 34.037423524117,
+        "lrt_p_value": 5.406220828561677e-09,
+        "standalone_auc": 0.4545177342416741,
+        "standalone_auc_ci_lower": 0.4360681926347281,
+        "standalone_auc_ci_upper": 0.47296727584862003,
+        "standalone_auc_se": 0.009413204401955129,
+        "marginal": {
+          "auc_base": 0.667488213831837,
+          "auc_full": 0.6916410445619645,
+          "auc_diff": 0.024152830730127528,
+          "delong_z": -6.3779590168251605,
+          "delong_p": 1.7946352008412635e-10,
+          "lrt_statistic": 33.90101528338346,
+          "lrt_p": 5.7988431330059e-09
+        }
+      },
+      "MiniLM-512": {
+        "name": "MiniLM-512",
+        "n": 4977,
+        "lrt_statistic": 30.577649314901464,
+        "lrt_p_value": 3.2076777789423757e-08,
+        "standalone_auc": 0.46174767369810954,
+        "standalone_auc_ci_lower": 0.4435032223876123,
+        "standalone_auc_ci_upper": 0.4799921250086068,
+        "standalone_auc_se": 0.009308564572822338,
+        "marginal": {
+          "auc_base": 0.667488213831837,
+          "auc_full": 0.6891274428846683,
+          "auc_diff": 0.021639229052831332,
+          "delong_z": -6.15231915738224,
+          "delong_p": 7.635801842271033e-10,
+          "lrt_statistic": 28.366787839747303,
+          "lrt_p": 1.0037258893730218e-07
+        }
+      },
+      "Jaccard": {
+        "name": "Jaccard",
+        "n": 4977,
+        "lrt_statistic": 62.14850507713072,
+        "lrt_p_value": 3.185087234499086e-15,
+        "standalone_auc": 0.4619381597569436,
+        "standalone_auc_ci_lower": 0.4437644019298543,
+        "standalone_auc_ci_upper": 0.4801119175840329,
+        "standalone_auc_se": 0.009272495806270726,
+        "marginal": {
+          "auc_base": 0.667488213831837,
+          "auc_full": 0.6972126663972685,
+          "auc_diff": 0.029724452565431547,
+          "delong_z": -6.5644391508992905,
+          "delong_p": 5.222906639235619e-11,
+          "lrt_statistic": 57.507357356987086,
+          "lrt_p": 3.367174023349515e-14
+        }
+      }
     },
-    "Gemini vs MiniLM": {
-      "auc_a": 0.41624940954180445,
-      "auc_b": 0.46911903637222485,
-      "z_statistic": -2.8408623688097228,
-      "p_value": 0.0044991725063356375
+    "pairwise_delong": {
+      "TF-IDF vs MiniLM-128": {
+        "auc_a": 0.47096133143409064,
+        "auc_b": 0.45840173561825054,
+        "z_statistic": 1.3882155817854538,
+        "p_value": 0.16507140891281746
+      },
+      "TF-IDF vs MiniLM-256": {
+        "auc_a": 0.47096133143409064,
+        "auc_b": 0.4545177342416741,
+        "z_statistic": 1.8786203889646909,
+        "p_value": 0.06029634514013062
+      },
+      "TF-IDF vs MiniLM-512": {
+        "auc_a": 0.47096133143409064,
+        "auc_b": 0.46174767369810954,
+        "z_statistic": 1.0800609106741303,
+        "p_value": 0.28011505712027707
+      },
+      "TF-IDF vs Jaccard": {
+        "auc_a": 0.47096133143409064,
+        "auc_b": 0.4619381597569436,
+        "z_statistic": 1.0108305649174254,
+        "p_value": 0.31209753147014785
+      },
+      "MiniLM-128 vs MiniLM-256": {
+        "auc_a": 0.45840173561825054,
+        "auc_b": 0.4545177342416741,
+        "z_statistic": 1.00467853913966,
+        "p_value": 0.31505166526447015
+      },
+      "MiniLM-128 vs MiniLM-512": {
+        "auc_a": 0.45840173561825054,
+        "auc_b": 0.46174767369810954,
+        "z_statistic": -0.5427175724939544,
+        "p_value": 0.5873242733679811
+      },
+      "MiniLM-128 vs Jaccard": {
+        "auc_a": 0.45840173561825054,
+        "auc_b": 0.4619381597569436,
+        "z_statistic": -0.31222110339981274,
+        "p_value": 0.7548724950010401
+      },
+      "MiniLM-256 vs MiniLM-512": {
+        "auc_a": 0.4545177342416741,
+        "auc_b": 0.46174767369810954,
+        "z_statistic": -1.5214372119936472,
+        "p_value": 0.12815015657515821
+      },
+      "MiniLM-256 vs Jaccard": {
+        "auc_a": 0.4545177342416741,
+        "auc_b": 0.4619381597569436,
+        "z_statistic": -0.6754610738548433,
+        "p_value": 0.49938287446686647
+      },
+      "MiniLM-512 vs Jaccard": {
+        "auc_a": 0.46174767369810954,
+        "auc_b": 0.4619381597569436,
+        "z_statistic": -0.017883571718080162,
+        "p_value": 0.9857317347893662
+      }
     },
-    "Gemini vs Jaccard": {
-      "auc_a": 0.41624940954180445,
-      "auc_b": 0.44121841048653754,
-      "z_statistic": -1.3940262487744146,
-      "p_value": 0.163309678302899
+    "lrt_corrections": {
+      "Jaccard": {
+        "p_value": 3.185087234499086e-15,
+        "adjusted_p": 1.592543617249543e-14,
+        "reject": true,
+        "rank": 1
+      },
+      "TF-IDF": {
+        "p_value": 2.1987030959728203e-11,
+        "adjusted_p": 8.794812383891281e-11,
+        "reject": true,
+        "rank": 2
+      },
+      "MiniLM-256": {
+        "p_value": 5.406220828561677e-09,
+        "adjusted_p": 1.6218662485685032e-08,
+        "reject": true,
+        "rank": 3
+      },
+      "MiniLM-128": {
+        "p_value": 7.956904627331408e-09,
+        "adjusted_p": 1.5913809254662816e-08,
+        "reject": true,
+        "rank": 4
+      },
+      "MiniLM-512": {
+        "p_value": 3.2076777789423757e-08,
+        "adjusted_p": 3.2076777789423757e-08,
+        "reject": true,
+        "rank": 5
+      }
     },
-    "TF-IDF vs MiniLM": {
-      "auc_a": 0.44217495276334434,
-      "auc_b": 0.46911903637222485,
-      "z_statistic": -1.520743469839557,
-      "p_value": 0.1283242254610263
-    },
-    "TF-IDF vs Jaccard": {
-      "auc_a": 0.44217495276334434,
-      "auc_b": 0.44121841048653754,
-      "z_statistic": 0.04895215258286262,
-      "p_value": 0.9609574268975981
-    },
-    "MiniLM vs Jaccard": {
-      "auc_a": 0.46911903637222485,
-      "auc_b": 0.44121841048653754,
-      "z_statistic": 1.2219812983142557,
-      "p_value": 0.22171469932898846
+    "delong_corrections": {
+      "TF-IDF vs MiniLM-256": {
+        "p_value": 0.06029634514013062,
+        "adjusted_p": 0.6029634514013061,
+        "reject": false,
+        "rank": 1
+      },
+      "MiniLM-256 vs MiniLM-512": {
+        "p_value": 0.12815015657515821,
+        "adjusted_p": 1.0,
+        "reject": false,
+        "rank": 2
+      },
+      "TF-IDF vs MiniLM-128": {
+        "p_value": 0.16507140891281746,
+        "adjusted_p": 1.0,
+        "reject": false,
+        "rank": 3
+      },
+      "TF-IDF vs MiniLM-512": {
+        "p_value": 0.28011505712027707,
+        "adjusted_p": 1.0,
+        "reject": false,
+        "rank": 4
+      },
+      "TF-IDF vs Jaccard": {
+        "p_value": 0.31209753147014785,
+        "adjusted_p": 1.0,
+        "reject": false,
+        "rank": 5
+      },
+      "MiniLM-128 vs MiniLM-256": {
+        "p_value": 0.31505166526447015,
+        "adjusted_p": 1.0,
+        "reject": false,
+        "rank": 6
+      },
+      "MiniLM-256 vs Jaccard": {
+        "p_value": 0.49938287446686647,
+        "adjusted_p": 1.0,
+        "reject": false,
+        "rank": 7
+      },
+      "MiniLM-128 vs MiniLM-512": {
+        "p_value": 0.5873242733679811,
+        "adjusted_p": 1.0,
+        "reject": false,
+        "rank": 8
+      },
+      "MiniLM-128 vs Jaccard": {
+        "p_value": 0.7548724950010401,
+        "adjusted_p": 1.0,
+        "reject": false,
+        "rank": 9
+      },
+      "MiniLM-512 vs Jaccard": {
+        "p_value": 0.9857317347893662,
+        "adjusted_p": 0.9857317347893662,
+        "reject": false,
+        "rank": 10
+      }
     }
   },
-  "n_pairs": 1293,
-  "n_with_extras": 1245
+  "selection_bias": {
+    "gemini_merge_rate": 0.7177107501933488,
+    "full_merge_rate": 0.7365883062085594,
+    "gemini_n": 1293,
+    "full_n": 4977,
+    "title_only_fraction": 0.7402049427365883,
+    "title_only_count": 3684,
+    "gemini_mean_ge": 0.7212098005328046,
+    "full_mean_ge": 0.5979211544822385
+  }
 }
