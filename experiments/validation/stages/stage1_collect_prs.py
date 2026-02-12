@@ -151,20 +151,21 @@ def _collect_repo_prs(
                 seen_numbers.add(pr.number)
                 all_prs.append(pr.model_dump(mode="json"))
 
-    # Fetch long-open PRs (created > 210 days ago = max stale + buffer)
-    open_raw = _gh_search_prs(
-        repo,
-        "open",
-        f"<{bins[0].start}",
-        per_bin_closed,
-    )
-    time.sleep(delay)
+    # Fetch still-open PRs created within the study temporal bins.
+    # These may be pocket vetoes if they've exceeded the stale
+    # threshold + buffer (DOE Section 2.3).
+    for tbin in bins:
+        date_range = f"{tbin.start}..{tbin.end}"
+        open_raw = _gh_search_prs(
+            repo, "open", date_range, per_bin_closed,
+        )
+        time.sleep(delay)
 
-    for raw in open_raw:
-        pr = _parse_pr(raw, repo, bins[0].label)
-        if pr.number not in seen_numbers:
-            seen_numbers.add(pr.number)
-            all_prs.append(pr.model_dump(mode="json"))
+        for raw in open_raw:
+            pr = _parse_pr(raw, repo, tbin.label)
+            if pr.number not in seen_numbers:
+                seen_numbers.add(pr.number)
+                all_prs.append(pr.model_dump(mode="json"))
 
     if all_prs:
         append_jsonl(output_path, all_prs)

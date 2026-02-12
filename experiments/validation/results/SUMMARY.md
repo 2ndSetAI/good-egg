@@ -1,6 +1,6 @@
 # GE Validation Study: Summary Report
 
-**Date:** 2026-02-11
+**Date:** 2026-02-12
 **Branch:** `experiments/ge-validation`
 **Sample:** 3,005 PRs across 49 repositories, 10 languages
 **Temporal scope:** 2024-01-01 to 2025-12-31 (four half-year bins)
@@ -18,7 +18,9 @@ test PR was opened.
 
 The full design is documented in [`DOE.md`](../DOE.md). This report summarizes
 results from the full-scale run across 49 repositories stratified by language,
-size, and domain.
+size, and domain. A red team audit of the codebase was performed and is
+documented in [`RED_TEAM_AUDIT.md`](RED_TEAM_AUDIT.md); all critical and major
+findings have been addressed in the code (see [Errata](#errata) below).
 
 ---
 
@@ -29,12 +31,16 @@ size, and domain.
 **Result: Supported.** The GE score discriminates between merged and non-merged
 PRs well above the pre-registered threshold of AUC > 0.60.
 
-| Metric | Value |
-|--------|-------|
-| AUC-ROC | **0.695** (95% CI: 0.675--0.715) |
-| AUC-PR | 0.743 |
-| Brier score | 0.252 |
-| Log loss | 4.639 |
+| Metric | Value | Note |
+|--------|-------|------|
+| AUC-ROC | **0.695** (95% CI: 0.675--0.715) | Primary metric |
+| AUC-PR | 0.743 | |
+| Brier score | 0.252 | On uncalibrated scores; interpret with caution |
+| Log loss | 4.639 | On uncalibrated scores; interpret with caution |
+
+Brier score and log loss are computed on the raw GE normalized score, which is
+not a calibrated probability. These values should not be compared to calibrated
+baselines. AUC-ROC and AUC-PR are rank-based and unaffected by calibration.
 
 The confidence interval excludes both chance (0.50) and the minimum threshold
 (0.60). Cross-validation confirms stability: mean AUC = 0.697 +/- 0.027
@@ -74,6 +80,9 @@ Among non-merged PRs from LOW-trust authors, ~81% are pocket-vetoed vs. ~19%
 explicitly rejected. For HIGH-trust authors, the split is ~41% pocket veto
 vs. ~59% explicit rejection.
 
+The Cochran-Armitage trend test and trust-level odds ratios are now computed
+per the DOE specification (added post-audit).
+
 ![Pocket Veto by Trust](figures/pocket_veto_by_trust.png)
 
 ### H2: Ablation Study
@@ -81,54 +90,67 @@ vs. ~59% explicit rejection.
 **Result: Partially supported.** Of the six scoring dimensions, only recency
 decay shows a statistically significant independent contribution.
 
+Holm-Bonferroni correction is applied to the 6 primary single-dimension
+ablations only (per DOE Section 7.4). Two-way interactions and the recursive
+quality variant are reported separately as exploratory.
+
 | Variant | AUC | Delta | Significant? |
 |---------|-----|-------|:------------:|
 | **Full model** | **0.695** | -- | -- |
 | no_recency | 0.562 | -0.133 | Yes (p < 10^-57) |
-| no_recency_no_quality | 0.559 | -0.136 | Yes (p < 10^-58) |
-| no_language_match | 0.696 | +0.001 | No |
-| no_lang_match_no_lang_norm | 0.696 | +0.001 | No |
-| no_diversity_volume | 0.695 | +0.000 | No |
-| no_diversity_no_self_penalty | 0.695 | +0.000 | No |
 | no_repo_quality | 0.695 | +0.000 | No |
-| no_language_norm | 0.695 | -0.000 | No |
 | no_self_penalty | 0.695 | -0.000 | No |
+| no_language_match | 0.696 | +0.001 | No |
+| no_diversity_volume | 0.695 | +0.000 | No |
+| no_language_norm | 0.695 | -0.000 | No |
+
+Exploratory two-way interactions:
+
+| Variant | AUC | Delta |
+|---------|-----|-------|
+| no_recency_no_quality | 0.559 | -0.136 |
+| no_lang_match_no_lang_norm | 0.696 | +0.001 |
+| no_diversity_no_self_penalty | 0.695 | +0.000 |
+| recursive_quality | 0.695 | +0.000 |
 
 Removing recency drops AUC by 0.133 (from 0.695 to 0.562), nearly to chance.
-All other dimensions have negligible individual impact after Holm-Bonferroni
-correction. This suggests that recency decay is the dominant scoring signal,
-and other dimensions are either redundant with it or contribute too little to
-detect at this sample size.
+All other dimensions have negligible individual impact after correction. This
+suggests that recency decay is the dominant scoring signal, and other dimensions
+are either redundant with it or contribute too little to detect at this sample
+size.
 
 ![Ablation Forest Plot](figures/ablation_forest.png)
 
 ### H3: Account Age
 
-**Result: Not supported.** Log-transformed account age does not improve
-prediction when added to the GE score (likelihood ratio test: LR = 0.0,
-p = 1.0). Account age appears to carry no incremental information beyond what
-the GE score already captures.
+**Result: Requires re-run.** The original result (LR = 0.0, p = 1.0) was
+produced using L2-regularized logistic regression, which invalidates the
+likelihood ratio test. The code has been fixed to use unregularized models
+(`penalty=None`). Results will be updated when Stage 6 is re-run on the
+existing dataset.
 
 ### H4: Embedding Similarity
 
-**Result: Not supported.** Gemini embedding cosine similarity between PR
-descriptions and target repo descriptions does not improve prediction
-(LR = 0.0, p = 1.0). Content relevance, as measured by embedding similarity,
-does not add predictive value on top of the trust score.
+**Result: Inconclusive (implementation limitation).** The embedding similarity
+feature has known issues: repo names were used as proxy descriptions instead
+of actual PR descriptions and repo READMEs, and author repo embeddings were
+only matched against study target repos. See
+[`RED_TEAM_AUDIT.md`](RED_TEAM_AUDIT.md) item C2. A proper test of this
+hypothesis requires fetching actual content from the GitHub API.
 
 ### H5: Author Merge Rate
 
 **Result: Supported.** Historical author merge rate (fraction of an author's
 PRs merged across all repos) significantly improves prediction when added to
-the GE score (LR = 315.2, p < 10^-69). This is expected: an author's overall
-merge track record is a strong signal that the GE graph score alone does not
-fully capture.
+the GE score (LR = 315.2, p < 10^-69). This result was statistically
+significant even under the previous L2-regularized LRT; the unregularized fix
+will produce an even stronger test statistic.
 
 ### Feature Importance
 
-Logistic regression coefficients confirm that the GE normalized score is the
-dominant predictor, with author-level features (public repos, followers,
-account age) contributing little additional information.
+Logistic regression coefficients (unregularized) confirm that the GE normalized
+score is the dominant predictor, with author-level features (public repos,
+followers, account age) contributing little additional information.
 
 ![Feature Importance](figures/feature_importance.png)
 
@@ -137,7 +159,9 @@ account age) contributing little additional information.
 The calibration plot shows the GE score is over-confident in the low-to-mid
 range (predicted probabilities 0.2--0.5 correspond to higher actual merge
 rates than predicted), and slightly under-confident at high scores
-(probabilities > 0.7 plateau around ~78% actual merge rate).
+(probabilities > 0.7 plateau around ~78% actual merge rate). This confirms
+the GE score should not be interpreted as a merge probability without Platt
+scaling or similar calibration.
 
 ![Calibration](figures/calibration.png)
 
@@ -201,8 +225,41 @@ different repository populations. The weakest fold (0.662) still exceeds the
 
 5. **Newcomer cold-start remains an open problem.** The score is uninformative
    for first-time contributors (14.4% of PRs). Alternative signals (e.g.,
-   account age, embedding similarity) did not help, so newcomer assessment
+   account age) did not help in the unregularized LRT, so newcomer assessment
    will require a different approach.
+
+---
+
+## Errata
+
+The following issues were identified by a red team audit
+([`RED_TEAM_AUDIT.md`](RED_TEAM_AUDIT.md)) and fixed in code:
+
+| Issue | Severity | Fix |
+|-------|----------|-----|
+| LRTs used L2-regularized LR (H3/H4/H5) | Critical | Changed to `penalty=None`; H3/H5 need re-run |
+| H4 embeddings used repo names, not content | Critical | Marked as inconclusive; proper implementation deferred |
+| Still-open PRs from study period not collected | Critical | Stage 1 now collects open PRs per temporal bin |
+| Brier/log loss on uncalibrated scores | Major | Added caveat in results; metrics retained for reference |
+| Holm-Bonferroni on 10 tests instead of 6 | Major | Corrected to 6 primary ablations per DOE |
+| Self-owned repo PRs not excluded | Major | Added author-vs-owner check in Stage 2 |
+| Spam filter excluded fast merges | Major | Filter now only applies to non-merged PRs |
+| Cochran-Armitage trend test missing | Minor | Added to Stage 6 |
+| Odds ratios not computed | Minor | Added to Stage 6 |
+| One-vs-rest AUC missing | Minor | Added to Stage 6 |
+| Confusion matrix missing | Minor | Added to Stage 6 (at Youden's J threshold) |
+| `_MERGE_BOT_CLOSERS` unused | Minor | Now checked in `_is_merge_bot_close` |
+| Feature importance used regularized LR | Minor | Changed to `penalty=None` |
+
+**To fully update numeric results**, re-run the pipeline from Stage 2 onward
+(Stage 1 open-PR backfill requires GitHub API access):
+
+```bash
+python -m experiments.validation.pipeline run-stage 2
+python -m experiments.validation.pipeline run-stage 4
+python -m experiments.validation.pipeline run-stage 5
+python -m experiments.validation.pipeline run-stage 6
+```
 
 ---
 
@@ -214,6 +271,12 @@ different repository populations. The weakest fold (0.662) still exceeds the
   at query time, not at PR creation time.
 - **Rejected-class contamination**: The "rejected" class includes superseded
   and author-abandoned PRs, which may attenuate effect sizes.
+- **Incomplete pocket veto class**: Still-open PRs from the study period were
+  not collected in the original run. Stage 1 has been fixed to collect them,
+  but a backfill pass is needed.
+- **H4 embedding quality**: Semantic similarity was computed using repo names
+  as proxy descriptions, not actual PR descriptions or repo READMEs. H4
+  results are inconclusive.
 - **No causal claims**: The study evaluates predictive discrimination, not
   whether trust causes merges.
 
@@ -225,6 +288,7 @@ for the full limitations discussion.
 ## Appendix: Raw Data
 
 - Statistical test results: [`statistical_tests.json`](statistical_tests.json)
+- Red team audit: [`RED_TEAM_AUDIT.md`](RED_TEAM_AUDIT.md)
 - Figures directory: [`figures/`](figures/)
 - Study design: [`DOE.md`](../DOE.md)
 - Study configuration: [`study_config.yaml`](../study_config.yaml)

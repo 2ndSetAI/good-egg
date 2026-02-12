@@ -22,11 +22,13 @@ from experiments.validation.plots import (
 from experiments.validation.stats import (
     auc_roc_with_ci,
     chi_squared_test,
+    cochran_armitage_trend,
     compute_binary_metrics,
     delong_auc_test,
     holm_bonferroni,
     kruskal_wallis_with_dunn,
     likelihood_ratio_test,
+    odds_ratio,
 )
 
 logger = logging.getLogger(__name__)
@@ -86,6 +88,13 @@ def run_stage6(base_dir: Path, config: StudyConfig) -> None:
     h1_metrics = compute_binary_metrics(y_binary, y_scores)
     h1_auc_ci = auc_roc_with_ci(y_binary, y_scores, alpha=alpha)
 
+    # Note: brier_score and log_loss are computed on raw (uncalibrated)
+    # scores. They are not interpretable as calibration metrics without
+    # Platt scaling. AUC-ROC and AUC-PR are rank-based and remain valid.
+    h1_metrics["_note"] = (
+        "brier_score and log_loss use uncalibrated scores; "
+        "interpret with caution"
+    )
     all_results["H1_binary_metrics"] = h1_metrics
     all_results["H1_auc_ci"] = h1_auc_ci
 
@@ -186,6 +195,65 @@ def run_stage6(base_dir: Path, config: StudyConfig) -> None:
                 output_path=figures_dir / "pocket_veto_by_trust.png",
             )
 
+        # Cochran-Armitage trend test (DOE Section 6.3)
+        # Build 2xK table: rows = outcome (pocket_veto=0, rejected=1),
+        # columns = trust level (LOW, MEDIUM, HIGH)
+        try:
+            ca_rows = []
+            for level in trust_order:
+                subset = non_merged[non_merged["trust_bin"] == level]
+                if len(subset) > 0:
+                    n_pv = (
+                        subset["outcome"] == PROutcome.POCKET_VETO.value
+                    ).sum()
+                    n_rej = (
+                        subset["outcome"] == PROutcome.REJECTED.value
+                    ).sum()
+                    ca_rows.append((n_pv, n_rej))
+
+            if len(ca_rows) >= 2:
+                ca_table = np.array(ca_rows).T  # 2 x K
+                ca_result = cochran_armitage_trend(ca_table)
+                all_results["pocket_veto_cochran_armitage"] = ca_result
+        except Exception:
+            logger.exception("Cochran-Armitage trend test failed")
+
+        # Odds ratios for trust level pairs (DOE Section 6.4)
+        try:
+            trust_odds: dict[str, Any] = {}
+            # Binary outcome for odds: merged=1, not-merged=0
+            all_with_trust = df.copy()
+            all_with_trust["trust_bin"] = all_with_trust[
+                "normalized_score"
+            ].apply(lambda s: _trust_level_bin(s, trust_thresholds))
+            all_with_trust["is_merged"] = (
+                all_with_trust["outcome"] == PROutcome.MERGED.value
+            ).astype(int)
+
+            pairs = [
+                ("HIGH", "LOW"),
+                ("HIGH", "MEDIUM"),
+                ("MEDIUM", "LOW"),
+            ]
+            for level_a, level_b in pairs:
+                subset = all_with_trust[
+                    all_with_trust["trust_bin"].isin([level_a, level_b])
+                ]
+                if len(subset) < 10:
+                    continue
+                ct_2x2 = pd.crosstab(
+                    subset["trust_bin"] == level_a,
+                    subset["is_merged"],
+                ).values
+                if ct_2x2.shape == (2, 2):
+                    or_result = odds_ratio(ct_2x2)
+                    trust_odds[f"{level_a}_vs_{level_b}"] = or_result
+
+            if trust_odds:
+                all_results["trust_level_odds_ratios"] = trust_odds
+        except Exception:
+            logger.exception("Odds ratio computation failed")
+
     # === H2: Ablation study ===
     # Extract ablation scores from the dict column
     ablation_results_h2: dict[str, dict[str, float]] = {}
@@ -219,12 +287,34 @@ def run_stage6(base_dir: Path, config: StudyConfig) -> None:
             }
             ablation_p_values[abl_name] = delong["p_value"]
 
-        # Holm-Bonferroni correction
-        if ablation_p_values:
+        # Holm-Bonferroni correction on the 6 primary single-dimension
+        # ablations only (DOE Section 7.4). Two-way interactions and
+        # recursive_quality are exploratory.
+        primary_ablations = {
+            "no_recency", "no_repo_quality", "no_self_penalty",
+            "no_language_match", "no_diversity_volume",
+            "no_language_norm",
+        }
+        primary_p_values = {
+            k: v for k, v in ablation_p_values.items()
+            if k in primary_ablations
+        }
+        exploratory_p_values = {
+            k: v for k, v in ablation_p_values.items()
+            if k not in primary_ablations
+        }
+        if primary_p_values:
             corrected = holm_bonferroni(
-                ablation_p_values, alpha=alpha,
+                primary_p_values, alpha=alpha,
             )
             all_results["H2_ablation_corrected"] = corrected
+        if exploratory_p_values:
+            corrected_exploratory = holm_bonferroni(
+                exploratory_p_values, alpha=alpha,
+            )
+            all_results["H2_ablation_exploratory"] = (
+                corrected_exploratory
+            )
 
         all_results["H2_ablation_raw"] = ablation_results_h2
 
@@ -235,6 +325,8 @@ def run_stage6(base_dir: Path, config: StudyConfig) -> None:
         )
 
     # === H3: Account age ===
+    # LRTs require unregularized logistic regression (penalty=None)
+    # so the chi-squared distributional assumption holds.
     if "log_account_age_days" in df.columns:
         x_base = y_scores.reshape(-1, 1)
         x_age = np.column_stack(
@@ -243,7 +335,7 @@ def run_stage6(base_dir: Path, config: StudyConfig) -> None:
 
         try:
             lr_base = LogisticRegression(
-                max_iter=1000, random_state=seed,
+                penalty=None, max_iter=1000, random_state=seed,
             )
             lr_base.fit(x_base, y_binary)
             ll_base = -log_loss_manual(
@@ -252,7 +344,7 @@ def run_stage6(base_dir: Path, config: StudyConfig) -> None:
             ) * len(y_binary)
 
             lr_age = LogisticRegression(
-                max_iter=1000, random_state=seed,
+                penalty=None, max_iter=1000, random_state=seed,
             )
             lr_age.fit(x_age, y_binary)
             ll_age = -log_loss_manual(
@@ -266,6 +358,9 @@ def run_stage6(base_dir: Path, config: StudyConfig) -> None:
             logger.exception("H3 analysis failed")
 
     # === H4: Semantic similarity ===
+    # Note: embedding similarity feature has known limitations (see
+    # RED_TEAM_AUDIT.md C2). Results should be interpreted as
+    # inconclusive rather than definitive.
     if "embedding_similarity" in df.columns:
         valid_mask = df["embedding_similarity"].notna()
         if valid_mask.sum() > 50:
@@ -277,6 +372,7 @@ def run_stage6(base_dir: Path, config: StudyConfig) -> None:
 
             try:
                 lr_base = LogisticRegression(
+                    penalty=None,
                     max_iter=1000, random_state=seed,
                 )
                 lr_base.fit(
@@ -290,6 +386,7 @@ def run_stage6(base_dir: Path, config: StudyConfig) -> None:
                 ) * len(y_emb)
 
                 lr_full = LogisticRegression(
+                    penalty=None,
                     max_iter=1000, random_state=seed,
                 )
                 lr_full.fit(x_emb, y_emb)
@@ -317,6 +414,7 @@ def run_stage6(base_dir: Path, config: StudyConfig) -> None:
 
             try:
                 lr_base = LogisticRegression(
+                    penalty=None,
                     max_iter=1000, random_state=seed,
                 )
                 lr_base.fit(
@@ -330,6 +428,7 @@ def run_stage6(base_dir: Path, config: StudyConfig) -> None:
                 ) * len(y_mr)
 
                 lr_full = LogisticRegression(
+                    penalty=None,
                     max_iter=1000, random_state=seed,
                 )
                 lr_full.fit(x_mr, y_mr)
@@ -410,6 +509,39 @@ def run_stage6(base_dir: Path, config: StudyConfig) -> None:
                     res["merge_rate"],
                 )
 
+    # === One-vs-rest AUC (DOE Section 6.2) ===
+    try:
+        ovr_aucs: dict[str, float] = {}
+        for outcome_name, outcome_code in outcome_map.items():
+            y_ovr = (y_multi == outcome_code).astype(int)
+            if y_ovr.sum() > 0 and y_ovr.sum() < len(y_ovr):
+                ovr_auc = auc_roc_with_ci(y_ovr, y_scores, alpha=alpha)
+                ovr_aucs[outcome_name] = ovr_auc
+        all_results["H1a_one_vs_rest_auc"] = ovr_aucs
+    except Exception:
+        logger.exception("One-vs-rest AUC failed")
+
+    # === Confusion matrix at Youden's J (DOE Section 6.2) ===
+    try:
+        from sklearn.metrics import confusion_matrix
+        from sklearn.metrics import roc_curve as sk_roc
+
+        fpr, tpr, thresholds = sk_roc(y_binary, y_scores)
+        j_scores = tpr - fpr
+        best_idx = np.argmax(j_scores)
+        best_threshold = float(thresholds[best_idx])
+
+        y_pred_binary = (y_scores >= best_threshold).astype(int)
+        cm = confusion_matrix(y_binary, y_pred_binary)
+        all_results["confusion_matrix_binary"] = {
+            "threshold": best_threshold,
+            "youdens_j": float(j_scores[best_idx]),
+            "matrix": cm.tolist(),
+            "labels": ["not_merged", "merged"],
+        }
+    except Exception:
+        logger.exception("Confusion matrix computation failed")
+
     # === Cross-validation ===
     groups = df["repo"].values
     try:
@@ -448,7 +580,7 @@ def run_stage6(base_dir: Path, config: StudyConfig) -> None:
         x_all = df[available].fillna(0).values
         try:
             lr = LogisticRegression(
-                max_iter=1000, random_state=seed,
+                penalty=None, max_iter=1000, random_state=seed,
             )
             lr.fit(x_all, y_binary)
             plot_feature_importance(

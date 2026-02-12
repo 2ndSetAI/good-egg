@@ -56,9 +56,13 @@ _MERGE_BOT_LABELS = re.compile(
 def _is_merge_bot_close(pr: CollectedPR) -> bool:
     """Detect if a closed (non-merged) PR was actually merged by a bot.
 
-    Checks PR labels for merge bot indicators (e.g. "merged", "auto-merge").
+    Checks PR labels for merge bot indicators (e.g. "merged", "auto-merge")
+    and known merge bot closer usernames.
     """
-    return any(_MERGE_BOT_LABELS.search(label) for label in pr.labels)
+    if any(_MERGE_BOT_LABELS.search(label) for label in pr.labels):
+        return True
+    # Also check if the PR author is a known merge bot
+    return pr.author_login.lower() in _MERGE_BOT_CLOSERS
 
 
 def _is_bursty(
@@ -261,9 +265,11 @@ def run_stage2(base_dir: Path, config: StudyConfig) -> None:
         # Classify each PR
         classified_records: list[dict] = []
         for pr in prs:
-            # Skip PRs open < 1 day or closed < 1 day (spam filter)
-            if pr.created_at:
-                end_time = pr.closed_at or pr.merged_at
+            # Skip non-merged PRs closed < 1 day (spam filter).
+            # Merged PRs that close quickly are legitimate fast merges
+            # and should NOT be excluded.
+            if pr.merged_at is None and pr.created_at:
+                end_time = pr.closed_at
                 if end_time:
                     duration = (end_time - pr.created_at).total_seconds()
                     if duration < 86400:
@@ -300,6 +306,12 @@ def run_stage2(base_dir: Path, config: StudyConfig) -> None:
 
             # Skip empty author logins
             if not result.author_login:
+                continue
+
+            # Skip PRs to self-owned repos (DOE Section 5)
+            repo_owner = result.repo.split("/")[0].lower()
+            if repo_owner == result.author_login.lower():
+                total_excluded += 1
                 continue
 
             classified_records.append(
