@@ -86,13 +86,58 @@ async def run_stage5(base_dir: Path, config: StudyConfig) -> None:
             math.log1p(profile.get("public_repos_count", 0)),
         )
 
-        # Author merge rate (Tier 1)
-        merged_ct = author.get("merged_count")
-        closed_ct = author.get("closed_count")
-        if merged_ct is not None and closed_ct is not None:
-            total = merged_ct + closed_ct
-            rate = merged_ct / total if total > 0 else None
-            author_merge_rates.append(rate)
+        # Author merge rate (temporally scoped to avoid lookahead)
+        # Use merged_prs and closed_prs lists filtered by timestamp
+        # < pr.created_at, rather than lifetime counts from the API.
+        pr_created_at = pd.Timestamp(row["created_at"])
+        if pr_created_at.tzinfo is None:
+            pr_created_at = pr_created_at.tz_localize("UTC")
+        merged_prs_list = contrib.get("merged_prs", [])
+        prior_merged = 0
+        for mpr in merged_prs_list:
+            merged_at_str = mpr.get("merged_at")
+            if merged_at_str:
+                try:
+                    merged_ts = pd.Timestamp(str(merged_at_str))
+                    if merged_ts.tzinfo is None:
+                        merged_ts = merged_ts.tz_localize("UTC")
+                    if merged_ts < pr_created_at:
+                        prior_merged += 1
+                except (ValueError, TypeError):
+                    pass
+        # Count prior closed PRs using backfilled timestamp data.
+        closed_prs_list = author.get("closed_prs", [])
+        prior_closed = 0
+        for cpr in closed_prs_list:
+            closed_at_str = cpr.get("closed_at")
+            if closed_at_str:
+                try:
+                    closed_ts = pd.Timestamp(str(closed_at_str))
+                    if closed_ts.tzinfo is None:
+                        closed_ts = closed_ts.tz_localize("UTC")
+                    if closed_ts < pr_created_at:
+                        prior_closed += 1
+                except (ValueError, TypeError):
+                    pass
+        if not closed_prs_list:
+            # Fallback: estimate proportionally from lifetime counts
+            # if closed_prs backfill data is missing for this author.
+            lifetime_merged = author.get("merged_count")
+            lifetime_closed = author.get("closed_count")
+            if (
+                lifetime_merged is not None
+                and lifetime_closed is not None
+                and lifetime_merged > 0
+            ):
+                prior_closed = int(
+                    lifetime_closed * (prior_merged / lifetime_merged)
+                )
+        total_prior = prior_merged + prior_closed
+        if total_prior > 0:
+            author_merge_rates.append(prior_merged / total_prior)
+        elif prior_merged > 0:
+            # Edge case: merged PRs but no closed data at all
+            author_merge_rates.append(1.0)
         else:
             author_merge_rates.append(None)
 

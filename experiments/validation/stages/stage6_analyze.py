@@ -13,6 +13,7 @@ from sklearn.model_selection import StratifiedGroupKFold
 from experiments.validation.models import PROutcome, StudyConfig
 from experiments.validation.plots import (
     plot_ablation_forest,
+    plot_baseline_comparison,
     plot_calibration,
     plot_feature_importance,
     plot_pocket_veto_by_trust,
@@ -142,6 +143,7 @@ def run_stage6(base_dir: Path, config: StudyConfig) -> None:
 
     try:
         multi_lr = LogisticRegression(
+            penalty=None,
             solver="lbfgs",
             max_iter=1000,
             random_state=seed,
@@ -328,34 +330,43 @@ def run_stage6(base_dir: Path, config: StudyConfig) -> None:
     # LRTs require unregularized logistic regression (penalty=None)
     # so the chi-squared distributional assumption holds.
     if "log_account_age_days" in df.columns:
-        x_base = y_scores.reshape(-1, 1)
-        x_age = np.column_stack(
-            [y_scores, df["log_account_age_days"]],
+        # Exclude rows with missing/imputed-zero account age, matching
+        # the H4/H5 pattern of filtering to valid data only.
+        h3_valid = (
+            df["log_account_age_days"].notna()
+            & (df["log_account_age_days"] > 0)
         )
-
-        try:
-            lr_base = LogisticRegression(
-                penalty=None, max_iter=1000, random_state=seed,
+        if h3_valid.sum() > 50:
+            x_base_h3 = y_scores[h3_valid].reshape(-1, 1)
+            x_age = np.column_stack(
+                [y_scores[h3_valid], df.loc[h3_valid, "log_account_age_days"]],
             )
-            lr_base.fit(x_base, y_binary)
-            ll_base = -log_loss_manual(
-                y_binary,
-                lr_base.predict_proba(x_base)[:, 1],
-            ) * len(y_binary)
+            y_h3 = y_binary[h3_valid]
 
-            lr_age = LogisticRegression(
-                penalty=None, max_iter=1000, random_state=seed,
-            )
-            lr_age.fit(x_age, y_binary)
-            ll_age = -log_loss_manual(
-                y_binary,
-                lr_age.predict_proba(x_age)[:, 1],
-            ) * len(y_binary)
+            try:
+                lr_base = LogisticRegression(
+                    penalty=None, max_iter=1000, random_state=seed,
+                )
+                lr_base.fit(x_base_h3, y_h3)
+                ll_base = -log_loss_manual(
+                    y_h3,
+                    lr_base.predict_proba(x_base_h3)[:, 1],
+                ) * len(y_h3)
 
-            lrt = likelihood_ratio_test(ll_base, ll_age, df_diff=1)
-            all_results["H3_account_age_lrt"] = lrt
-        except Exception:
-            logger.exception("H3 analysis failed")
+                lr_age = LogisticRegression(
+                    penalty=None, max_iter=1000, random_state=seed,
+                )
+                lr_age.fit(x_age, y_h3)
+                ll_age = -log_loss_manual(
+                    y_h3,
+                    lr_age.predict_proba(x_age)[:, 1],
+                ) * len(y_h3)
+
+                lrt = likelihood_ratio_test(ll_base, ll_age, df_diff=1)
+                lrt["n_valid"] = int(h3_valid.sum())
+                all_results["H3_account_age_lrt"] = lrt
+            except Exception:
+                logger.exception("H3 analysis failed")
 
     # === H4: Semantic similarity ===
     # Note: embedding similarity feature has known limitations (see
@@ -398,6 +409,7 @@ def run_stage6(base_dir: Path, config: StudyConfig) -> None:
                 lrt = likelihood_ratio_test(
                     ll_base, ll_full, df_diff=1,
                 )
+                lrt["n_valid"] = int(valid_mask.sum())
                 all_results["H4_embedding_lrt"] = lrt
             except Exception:
                 logger.exception("H4 analysis failed")
@@ -440,6 +452,7 @@ def run_stage6(base_dir: Path, config: StudyConfig) -> None:
                 lrt = likelihood_ratio_test(
                     ll_base, ll_full, df_diff=1,
                 )
+                lrt["n_valid"] = int(valid_mask.sum())
                 all_results["H5_merge_rate_lrt"] = lrt
             except Exception:
                 logger.exception("H5 analysis failed")
@@ -553,7 +566,7 @@ def run_stage6(base_dir: Path, config: StudyConfig) -> None:
             x_score, y_binary, groups,
         ):
             lr = LogisticRegression(
-                max_iter=1000, random_state=seed,
+                penalty=None, max_iter=1000, random_state=seed,
             )
             lr.fit(x_score[train_idx], y_binary[train_idx])
             proba = lr.predict_proba(x_score[test_idx])[:, 1]
@@ -567,6 +580,278 @@ def run_stage6(base_dir: Path, config: StudyConfig) -> None:
         }
     except Exception:
         logger.exception("Cross-validation failed")
+
+    # === Baseline comparisons ===
+    # Compare GE score against simple features and "dumb" models to
+    # assess whether the graph machinery adds value beyond arithmetic.
+    try:
+        baseline_results: dict[str, Any] = {}
+        ge_auc_val = h1_auc_ci["auc"]
+
+        # --- Single-feature AUC baselines ---
+        single_feature_aucs: dict[str, Any] = {}
+        single_feature_cols = {
+            "author_merge_rate": "Author merge rate",
+            "log_account_age_days": "Account age (log)",
+            "log_followers": "Followers (log)",
+            "log_public_repos": "Public repos (log)",
+            "embedding_similarity": "Embedding similarity",
+        }
+        # total_prs_at_time is prior merge count, already in df
+        if "total_prs_at_time" in df.columns:
+            single_feature_cols["total_prs_at_time"] = (
+                "Prior merge count"
+            )
+
+        for col, label in single_feature_cols.items():
+            if col not in df.columns:
+                continue
+            feat_valid = df[col].notna()
+            if feat_valid.sum() < 50:
+                continue
+            feat_scores = df.loc[feat_valid, col].values
+            feat_y = y_binary[feat_valid]
+            feat_auc_ci = auc_roc_with_ci(feat_y, feat_scores)
+            # Paired DeLong test vs GE score
+            feat_delong = delong_auc_test(
+                feat_y,
+                y_scores[feat_valid],
+                feat_scores,
+            )
+            single_feature_aucs[col] = {
+                "label": label,
+                "auc": feat_auc_ci["auc"],
+                "ci_lower": feat_auc_ci["ci_lower"],
+                "ci_upper": feat_auc_ci["ci_upper"],
+                "n_valid": int(feat_valid.sum()),
+                "vs_ge_delong_z": feat_delong["z_statistic"],
+                "vs_ge_delong_p": feat_delong["p_value"],
+            }
+        baseline_results["single_feature_aucs"] = single_feature_aucs
+
+        # --- "Dumb baseline" models ---
+        # Model A: merge_rate + account_age
+        dumb_feature_sets = {
+            "model_A_merge_rate_age": [
+                "author_merge_rate", "log_account_age_days",
+            ],
+            "model_B_merge_rate_age_emb": [
+                "author_merge_rate", "log_account_age_days",
+                "embedding_similarity",
+            ],
+        }
+        for model_name, feat_cols in dumb_feature_sets.items():
+            avail_cols = [c for c in feat_cols if c in df.columns]
+            if len(avail_cols) != len(feat_cols):
+                continue
+            valid = df[avail_cols].notna().all(axis=1)
+            if valid.sum() < 50:
+                continue
+            x_dumb = df.loc[valid, avail_cols].values
+            y_dumb = y_binary[valid]
+            groups_dumb = groups[valid]
+
+            # Full-sample AUC via LR
+            lr_dumb = LogisticRegression(
+                penalty=None, max_iter=1000, random_state=seed,
+            )
+            lr_dumb.fit(x_dumb, y_dumb)
+            dumb_proba = lr_dumb.predict_proba(x_dumb)[:, 1]
+            dumb_auc_ci = auc_roc_with_ci(y_dumb, dumb_proba)
+
+            # 5-fold grouped CV
+            try:
+                cv_dumb = StratifiedGroupKFold(
+                    n_splits=cv_folds, shuffle=True,
+                    random_state=seed,
+                )
+                cv_dumb_aucs = []
+                for tr_idx, te_idx in cv_dumb.split(
+                    x_dumb, y_dumb, groups_dumb,
+                ):
+                    lr_cv = LogisticRegression(
+                        penalty=None, max_iter=1000,
+                        random_state=seed,
+                    )
+                    lr_cv.fit(x_dumb[tr_idx], y_dumb[tr_idx])
+                    p = lr_cv.predict_proba(x_dumb[te_idx])[:, 1]
+                    cv_a = auc_roc_with_ci(y_dumb[te_idx], p)
+                    cv_dumb_aucs.append(cv_a["auc"])
+                cv_mean = float(np.mean(cv_dumb_aucs))
+                cv_std = float(np.std(cv_dumb_aucs))
+            except Exception:
+                cv_mean = float("nan")
+                cv_std = float("nan")
+                cv_dumb_aucs = []
+
+            # DeLong vs GE (on common valid subset)
+            delong_vs_ge = delong_auc_test(
+                y_dumb, y_scores[valid], dumb_proba,
+            )
+
+            baseline_results[model_name] = {
+                "features": avail_cols,
+                "auc": dumb_auc_ci["auc"],
+                "ci_lower": dumb_auc_ci["ci_lower"],
+                "ci_upper": dumb_auc_ci["ci_upper"],
+                "cv_mean": cv_mean,
+                "cv_std": cv_std,
+                "cv_fold_aucs": cv_dumb_aucs,
+                "n_valid": int(valid.sum()),
+                "vs_ge_delong_z": delong_vs_ge["z_statistic"],
+                "vs_ge_delong_p": delong_vs_ge["p_value"],
+            }
+
+        # --- Combined model: GE + significant external features ---
+        combined_cols = ["normalized_score"]
+        for c in [
+            "author_merge_rate", "log_account_age_days",
+            "embedding_similarity",
+        ]:
+            if c in df.columns:
+                combined_cols.append(c)
+        if len(combined_cols) > 1:
+            valid_comb = df[combined_cols].notna().all(axis=1)
+            if valid_comb.sum() > 50:
+                x_comb = df.loc[valid_comb, combined_cols].values
+                y_comb = y_binary[valid_comb]
+                groups_comb = groups[valid_comb]
+
+                lr_comb = LogisticRegression(
+                    penalty=None, max_iter=1000, random_state=seed,
+                )
+                lr_comb.fit(x_comb, y_comb)
+                comb_proba = lr_comb.predict_proba(x_comb)[:, 1]
+                comb_auc_ci = auc_roc_with_ci(y_comb, comb_proba)
+
+                try:
+                    cv_comb = StratifiedGroupKFold(
+                        n_splits=cv_folds, shuffle=True,
+                        random_state=seed,
+                    )
+                    cv_comb_aucs = []
+                    for tr_idx, te_idx in cv_comb.split(
+                        x_comb, y_comb, groups_comb,
+                    ):
+                        lr_cv = LogisticRegression(
+                            penalty=None, max_iter=1000,
+                            random_state=seed,
+                        )
+                        lr_cv.fit(x_comb[tr_idx], y_comb[tr_idx])
+                        p = lr_cv.predict_proba(
+                            x_comb[te_idx],
+                        )[:, 1]
+                        cv_a = auc_roc_with_ci(
+                            y_comb[te_idx], p,
+                        )
+                        cv_comb_aucs.append(cv_a["auc"])
+                    cv_comb_mean = float(np.mean(cv_comb_aucs))
+                    cv_comb_std = float(np.std(cv_comb_aucs))
+                except Exception:
+                    cv_comb_mean = float("nan")
+                    cv_comb_std = float("nan")
+                    cv_comb_aucs = []
+
+                delong_comb = delong_auc_test(
+                    y_comb,
+                    y_scores[valid_comb],
+                    comb_proba,
+                )
+                baseline_results["combined_model"] = {
+                    "features": combined_cols,
+                    "auc": comb_auc_ci["auc"],
+                    "ci_lower": comb_auc_ci["ci_lower"],
+                    "ci_upper": comb_auc_ci["ci_upper"],
+                    "cv_mean": cv_comb_mean,
+                    "cv_std": cv_comb_std,
+                    "cv_fold_aucs": cv_comb_aucs,
+                    "n_valid": int(valid_comb.sum()),
+                    "vs_ge_delong_z": delong_comb["z_statistic"],
+                    "vs_ge_delong_p": delong_comb["p_value"],
+                }
+
+        # --- GE score baseline entry (for comparison table) ---
+        baseline_results["ge_score"] = {
+            "auc": ge_auc_val,
+            "ci_lower": h1_auc_ci["ci_lower"],
+            "ci_upper": h1_auc_ci["ci_upper"],
+            "cv_mean": all_results.get(
+                "cross_validation", {},
+            ).get("mean_auc"),
+            "cv_std": all_results.get(
+                "cross_validation", {},
+            ).get("std_auc"),
+        }
+
+        all_results["baseline_comparisons"] = baseline_results
+
+        # --- Generate baseline comparison figure ---
+        plot_labels = []
+        plot_aucs = []
+        plot_ci_lo = []
+        plot_ci_hi = []
+
+        # GE score first
+        plot_labels.append("GE Score (graph)")
+        plot_aucs.append(ge_auc_val)
+        plot_ci_lo.append(h1_auc_ci["ci_lower"])
+        plot_ci_hi.append(h1_auc_ci["ci_upper"])
+
+        # Single features
+        for _col, info in single_feature_aucs.items():
+            plot_labels.append(info["label"])
+            plot_aucs.append(info["auc"])
+            plot_ci_lo.append(info["ci_lower"])
+            plot_ci_hi.append(info["ci_upper"])
+
+        # Dumb baselines
+        for model_name in [
+            "model_A_merge_rate_age",
+            "model_B_merge_rate_age_emb",
+        ]:
+            if model_name in baseline_results:
+                info = baseline_results[model_name]
+                short = model_name.replace("model_", "Model ")
+                short = short.replace("_merge_rate_age_emb", "")
+                short = short.replace("_merge_rate_age", "")
+                feat_str = " + ".join(
+                    f.replace("log_", "").replace("_", " ")
+                    for f in info["features"]
+                )
+                plot_labels.append(f"LR({feat_str})")
+                plot_aucs.append(info["auc"])
+                plot_ci_lo.append(info["ci_lower"])
+                plot_ci_hi.append(info["ci_upper"])
+
+        # Combined model
+        if "combined_model" in baseline_results:
+            info = baseline_results["combined_model"]
+            plot_labels.append("GE + external features")
+            plot_aucs.append(info["auc"])
+            plot_ci_lo.append(info["ci_lower"])
+            plot_ci_hi.append(info["ci_upper"])
+
+        if len(plot_labels) > 1:
+            plot_baseline_comparison(
+                plot_labels, plot_aucs, plot_ci_lo, plot_ci_hi,
+                ge_auc=ge_auc_val,
+                title="AUC-ROC: GE Score vs. Baselines",
+                output_path=(
+                    figures_dir / "baseline_comparison.png"
+                ),
+            )
+
+        logger.info(
+            "Baseline comparisons: %d single features, %d models",
+            len(single_feature_aucs),
+            sum(
+                1 for k in baseline_results
+                if k.startswith("model_")
+                or k == "combined_model"
+            ),
+        )
+    except Exception:
+        logger.exception("Baseline comparison failed")
 
     # === Feature importance ===
     feature_cols = [

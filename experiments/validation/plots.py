@@ -205,6 +205,52 @@ def plot_pocket_veto_by_trust(
     plt.close(fig)
 
 
+def plot_baseline_comparison(
+    labels: list[str],
+    aucs: list[float],
+    ci_lowers: list[float],
+    ci_uppers: list[float],
+    ge_auc: float,
+    title: str = "AUC-ROC: GE Score vs. Baselines",
+    output_path: Path | None = None,
+) -> None:
+    """Forest plot comparing GE score AUC against baselines."""
+    fig, ax = plt.subplots(
+        figsize=(10, max(4, len(labels) * 0.5)),
+    )
+    y_pos = np.arange(len(labels))
+    errors = [
+        [a - lo for a, lo in zip(aucs, ci_lowers, strict=True)],
+        [hi - a for a, hi in zip(aucs, ci_uppers, strict=True)],
+    ]
+
+    colors = [
+        "#3498db" if "GE" in lbl else "#95a5a6"
+        for lbl in labels
+    ]
+    ax.barh(
+        y_pos, aucs, xerr=errors, color=colors, alpha=0.7,
+        capsize=3,
+    )
+    ax.axvline(ge_auc, color="#e74c3c", linewidth=1.5, linestyle="--",
+               label=f"GE Score AUC = {ge_auc:.3f}", alpha=0.8)
+    ax.axvline(0.5, color="gray", linewidth=0.8, linestyle=":",
+               label="Random (0.500)")
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(labels, fontsize=9)
+    ax.set_xlabel("AUC-ROC")
+    ax.set_title(title)
+    ax.set_xlim([0.4, max(max(aucs) + 0.05, ge_auc + 0.05)])
+    ax.legend(loc="lower right", fontsize=8)
+    ax.invert_yaxis()
+
+    if output_path:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(output_path, dpi=DPI, bbox_inches="tight")
+        logger.info("Saved baseline comparison to %s", output_path)
+    plt.close(fig)
+
+
 def plot_feature_importance(
     feature_names: list[str],
     importances: list[float],

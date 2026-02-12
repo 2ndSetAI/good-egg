@@ -167,8 +167,14 @@ to the base GE score.
 | Test | Likelihood ratio test (nested logistic regression models) |
 | Base model | logit(merged) ~ GE_score |
 | Extended model | logit(merged) ~ GE_score + embedding_similarity |
-| Embedding model | `text-embedding-004` (Gemini) |
+| Embedding model | `gemini-embedding-001` (Gemini) |
 | Significance level | alpha = 0.05 |
+
+**Protocol deviation:** The original DOE specified `text-embedding-004` as the
+embedding model. During implementation, `gemini-embedding-001` was used instead
+because `text-embedding-004` was deprecated in favor of the newer model. Both
+are Google Gemini embedding models with the same dimensionality (3072). The
+substitution does not affect the study design or statistical methodology.
 
 ### 3.6 H5 (Author Merge Rate): Incremental Value of Historical Merge Rate
 

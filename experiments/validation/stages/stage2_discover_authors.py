@@ -56,13 +56,17 @@ _MERGE_BOT_LABELS = re.compile(
 def _is_merge_bot_close(pr: CollectedPR) -> bool:
     """Detect if a closed (non-merged) PR was actually merged by a bot.
 
-    Checks PR labels for merge bot indicators (e.g. "merged", "auto-merge")
-    and known merge bot closer usernames.
+    Checks PR labels for merge bot indicators (e.g. "merged", "auto-merge").
+
+    Note: Ideally we would also check the closer's login against
+    _MERGE_BOT_CLOSERS, but CollectedPR does not include a closer_login
+    field (GitHub's GraphQL API requires a separate timelineItems query
+    to get the actor who closed a PR). The previous implementation
+    incorrectly checked the PR *author* login, which would misclassify
+    PRs authored by bot accounts. Label-based detection alone is
+    sufficient for the most common merge bot workflows (bors, mergify).
     """
-    if any(_MERGE_BOT_LABELS.search(label) for label in pr.labels):
-        return True
-    # Also check if the PR author is a known merge bot
-    return pr.author_login.lower() in _MERGE_BOT_CLOSERS
+    return any(_MERGE_BOT_LABELS.search(label) for label in pr.labels)
 
 
 def _is_bursty(

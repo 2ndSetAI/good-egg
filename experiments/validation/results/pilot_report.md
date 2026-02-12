@@ -28,7 +28,7 @@
 
 ## Cross-Validation
 
-- **Mean AUC**: 0.6746 +/- 0.0479
+- **Mean AUC**: 0.6746 +/- 0.0478
 
 ## Newcomer Cohort Analysis
 
