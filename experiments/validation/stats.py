@@ -165,13 +165,15 @@ def holm_bonferroni(
     m = len(sorted_tests)
     results: dict[str, dict[str, Any]] = {}
 
+    prev_adj = 0.0
     for rank, (name, p) in enumerate(sorted_tests, start=1):
-        adjusted_alpha = alpha / (m - rank + 1)
         adjusted_p = min(1.0, p * (m - rank + 1))
+        adjusted_p = max(adjusted_p, prev_adj)  # monotonicity enforcement
+        prev_adj = adjusted_p
         results[name] = {
             "p_value": p,
             "adjusted_p": adjusted_p,
-            "reject": p <= adjusted_alpha,
+            "reject": adjusted_p <= alpha,
             "rank": rank,
         }
 

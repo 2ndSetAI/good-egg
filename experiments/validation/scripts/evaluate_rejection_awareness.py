@@ -1,11 +1,15 @@
 """Evaluate whether incorporating rejection (closed PR) data improves merge prediction.
 
-Tests five approaches:
+Tests four approaches:
   1. Full model (no rejection awareness) — existing normalized_score
   2. Per-repo scaling — scale edges by author's merge rate at each repo
   3. Author-level scaling — scale all edges by author's overall merge rate
-  4. Hybrid — per-repo where data exists, author-level fallback
-  5. LR(GE + merge_rate) — logistic regression combining GE score with merge rate
+  4. LR(GE + merge_rate) — logistic regression combining GE score with merge rate
+
+A hybrid mode (per-repo with author-level fallback) was initially considered
+but dropped: the trust graph is built exclusively from merged PRs, so every
+repo node has at least one merged PR, guaranteeing a per-repo rate always
+exists. The fallback is structurally unreachable.
 """
 from __future__ import annotations
 
@@ -22,6 +26,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import StratifiedKFold, cross_val_predict
 
 from good_egg.config import GoodEggConfig
 from good_egg.graph_builder import TrustGraphBuilder
@@ -67,7 +72,7 @@ class RejectionAwareGraphBuilder(TrustGraphBuilder):
         author_merge_rate: float | None = None,
     ) -> None:
         super().__init__(config)
-        self.mode = mode  # "per_repo", "author_level", "hybrid"
+        self.mode = mode  # "per_repo" or "author_level"
         self.per_repo_merge_rates = per_repo_merge_rates or {}
         self.author_merge_rate = author_merge_rate
 
@@ -88,12 +93,6 @@ class RejectionAwareGraphBuilder(TrustGraphBuilder):
                     continue
             elif self.mode == "author_level":
                 rate = self.author_merge_rate
-                if rate is None:
-                    continue
-            elif self.mode == "hybrid":
-                rate = self.per_repo_merge_rates.get(
-                    repo_name, self.author_merge_rate,
-                )
                 if rate is None:
                     continue
             else:
@@ -246,21 +245,24 @@ def score_all_prs(
     """Score all PRs with rejection-aware approaches.
 
     Returns DataFrame with columns: per_repo_score, author_level_score,
-    hybrid_score, author_merge_rate_temporal.
+    author_merge_rate_temporal, account_age_days.
     """
     config = GoodEggConfig()
 
     # Caches
     author_data_cache: dict[str, UserContributionData | None] = {}
     closed_prs_cache: dict[str, list[dict[str, str]]] = {}
+    author_created_cache: dict[str, datetime | None] = {}
 
     per_repo_scores = np.full(len(df), np.nan)
     author_level_scores = np.full(len(df), np.nan)
-    hybrid_scores = np.full(len(df), np.nan)
     merge_rates_temporal = np.full(len(df), np.nan)
+    account_age_arr = np.full(len(df), np.nan)
 
     # Sanity check tracking
     sanity_samples: list[dict[str, Any]] = []
+    sanity_checks_total = 0
+    sanity_violations = 0
 
     total = len(df)
     for idx, (_, row) in enumerate(df.iterrows()):
@@ -284,6 +286,24 @@ def score_all_prs(
         if user_data is None:
             continue
 
+        # Compute account age at PR creation time
+        if login not in author_created_cache:
+            created_str = getattr(user_data.profile, "created_at", None)
+            if created_str:
+                try:
+                    author_created_cache[login] = datetime.fromisoformat(
+                        str(created_str),
+                    )
+                except (ValueError, TypeError):
+                    author_created_cache[login] = None
+            else:
+                author_created_cache[login] = None
+        author_created = author_created_cache[login]
+        if author_created is not None:
+            age_days = (cutoff - author_created).days
+            if age_days >= 0:
+                account_age_arr[idx] = age_days
+
         # Load closed PRs
         if login not in closed_prs_cache:
             closed_prs_cache[login] = _load_closed_prs(
@@ -301,7 +321,6 @@ def score_all_prs(
         if not closed_prs:
             per_repo_scores[idx] = row["normalized_score"]
             author_level_scores[idx] = row["normalized_score"]
-            hybrid_scores[idx] = row["normalized_score"]
             merge_rates_temporal[idx] = np.nan
             continue
 
@@ -313,31 +332,38 @@ def score_all_prs(
             author_rate if author_rate is not None else np.nan
         )
 
-        # Sanity check: collect samples
-        if len(sanity_samples) < 50 and filtered_closed:
+        # Sanity check: verify ALL entries, log first 50 as samples
+        if filtered_closed:
             max_closed_at = max(
                 datetime.fromisoformat(cp["closed_at"])
                 for cp in filtered_closed
             )
-            sanity_samples.append({
-                "login": login,
-                "pr_created_at": str(cutoff),
-                "max_closed_at": str(max_closed_at),
-                "ok": max_closed_at < cutoff,
-            })
+            sanity_checks_total += 1
+            ok = max_closed_at < cutoff
+            if not ok:
+                sanity_violations += 1
+                logger.error(
+                    "VIOLATION: %s closed_at=%s >= cutoff=%s",
+                    login, max_closed_at, cutoff,
+                )
+            if len(sanity_samples) < 50:
+                sanity_samples.append({
+                    "login": login,
+                    "pr_created_at": str(cutoff),
+                    "max_closed_at": str(max_closed_at),
+                    "ok": ok,
+                })
 
         # Score with each mode
         if not filtered_data.merged_prs:
             # No merged PRs before cutoff => score is 0
             per_repo_scores[idx] = 0.0
             author_level_scores[idx] = 0.0
-            hybrid_scores[idx] = 0.0
             continue
 
         for mode, arr in [
             ("per_repo", per_repo_scores),
             ("author_level", author_level_scores),
-            ("hybrid", hybrid_scores),
         ]:
             builder = RejectionAwareGraphBuilder(
                 config=config,
@@ -357,27 +383,26 @@ def score_all_prs(
                 )
                 arr[idx] = row["normalized_score"]
 
-    # Run sanity check
-    _run_sanity_check(sanity_samples)
+    # Run sanity check (comprehensive: all entries verified, 50 logged)
+    _run_sanity_check(sanity_samples, sanity_checks_total, sanity_violations)
 
     return pd.DataFrame({
         "per_repo_score": per_repo_scores,
         "author_level_score": author_level_scores,
-        "hybrid_score": hybrid_scores,
         "author_merge_rate_temporal": merge_rates_temporal,
+        "account_age_days": account_age_arr,
     })
 
 
-def _run_sanity_check(samples: list[dict[str, Any]]) -> None:
-    """Verify anti-lookahead on closed PRs."""
-    if not samples:
-        logger.warning("No sanity check samples collected")
-        return
-
-    violations = [s for s in samples if not s["ok"]]
+def _run_sanity_check(
+    samples: list[dict[str, Any]],
+    total_checks: int,
+    total_violations: int,
+) -> None:
+    """Verify anti-lookahead on closed PRs (comprehensive)."""
     logger.info(
-        "Sanity check: %d/%d samples passed (no future closed PRs counted)",
-        len(samples) - len(violations), len(samples),
+        "Anti-lookahead sanity check: %d/%d passed (0 violations expected)",
+        total_checks - total_violations, total_checks,
     )
     for s in samples[:5]:
         logger.info(
@@ -385,18 +410,19 @@ def _run_sanity_check(samples: list[dict[str, Any]]) -> None:
             s["login"], s["pr_created_at"],
             s["max_closed_at"], s["ok"],
         )
-    if violations:
+    if total_violations > 0:
         logger.error(
             "SANITY CHECK FAILED: %d violations found!",
-            len(violations),
+            total_violations,
         )
-        for v in violations[:5]:
+        sample_violations = [s for s in samples if not s["ok"]]
+        for v in sample_violations[:5]:
             logger.error(
                 "  VIOLATION: login=%s pr_created=%s max_closed=%s",
                 v["login"], v["pr_created_at"], v["max_closed_at"],
             )
         msg = (
-            f"Anti-lookahead violation: {len(violations)} "
+            f"Anti-lookahead violation: {total_violations} "
             f"closed PRs with closed_at >= cutoff"
         )
         raise ValueError(msg)
@@ -429,30 +455,49 @@ def run_analysis(
 
     per_repo = scores_df["per_repo_score"].values
     author_level = scores_df["author_level_score"].values
-    hybrid = scores_df["hybrid_score"].values
     merge_rates = scores_df["author_merge_rate_temporal"].values
 
-    # --- AUC for all 5 approaches ---
+    # --- AUC for all approaches ---
     approaches: dict[str, np.ndarray] = {
         "Full model": full_scores,
         "Per-repo scaling": per_repo,
         "Author-level scaling": author_level,
-        "Hybrid": hybrid,
     }
 
-    # LR(GE + merge_rate)
+    # LR(GE + merge_rate) — cross-validated to avoid in-sample bias
     valid_mr = ~np.isnan(merge_rates)
     x_lr = np.column_stack([full_scores[valid_mr], merge_rates[valid_mr]])
     y_lr = y[valid_mr]
-    lr = LogisticRegression(
-        penalty=None, max_iter=1000, random_state=SEED,
-    )
-    lr.fit(x_lr, y_lr)
-    lr_proba_valid = lr.predict_proba(x_lr)[:, 1]
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=SEED)
+    lr = LogisticRegression(penalty=None, max_iter=1000, random_state=SEED)
+    lr_proba_valid = cross_val_predict(
+        lr, x_lr, y_lr, cv=cv, method="predict_proba",
+    )[:, 1]
     # Expand to full array (NaN for missing)
     lr_scores = np.full(len(y), np.nan)
     lr_scores[valid_mr] = lr_proba_valid
     approaches["LR(GE + merge_rate)"] = lr_scores
+
+    # LR(GE + merge_rate + age) — intermediate combined model
+    account_age = scores_df["account_age_days"].values
+    log_age = np.log(account_age + 1)
+    valid_mra = valid_mr & ~np.isnan(log_age)
+    x_mra = np.column_stack([
+        full_scores[valid_mra],
+        merge_rates[valid_mra],
+        log_age[valid_mra],
+    ])
+    y_mra = y[valid_mra]
+    cv_mra = StratifiedKFold(n_splits=5, shuffle=True, random_state=SEED)
+    lr_mra = LogisticRegression(
+        penalty=None, max_iter=1000, random_state=SEED,
+    )
+    lr_mra_proba = cross_val_predict(
+        lr_mra, x_mra, y_mra, cv=cv_mra, method="predict_proba",
+    )[:, 1]
+    lr_mra_scores = np.full(len(y), np.nan)
+    lr_mra_scores[valid_mra] = lr_mra_proba
+    approaches["LR(GE + merge_rate + age)"] = lr_mra_scores
 
     auc_results: dict[str, dict[str, Any]] = {}
     for name, scores in approaches.items():
@@ -465,14 +510,20 @@ def run_analysis(
             "n": int(valid.sum()),
         }
 
+    # Full model AUC on merge-rate subset for apples-to-apples LR comparison
+    auc_ci_subset = auc_roc_with_ci(y[valid_mr], full_scores[valid_mr])
+    auc_results["Full model (merge rate subset)"] = {
+        **auc_ci_subset,
+        "n": int(valid_mr.sum()),
+    }
+
     # --- Pairwise DeLong tests ---
-    # Full vs each variant, Hybrid vs LR
     delong_pairs = [
         ("Full model", "Per-repo scaling"),
         ("Full model", "Author-level scaling"),
-        ("Full model", "Hybrid"),
         ("Full model", "LR(GE + merge_rate)"),
-        ("Hybrid", "LR(GE + merge_rate)"),
+        ("Full model", "LR(GE + merge_rate + age)"),
+        ("LR(GE + merge_rate)", "LR(GE + merge_rate + age)"),
     ]
     delong_results: dict[str, dict[str, Any]] = {}
     for name_a, name_b in delong_pairs:
@@ -492,27 +543,38 @@ def run_analysis(
     }
     delong_corrections = holm_bonferroni(delong_pvals)
 
-    # --- LRT: LR(GE + merge_rate) vs LR(GE) ---
+    # LRT using out-of-fold log-likelihoods (consistent with CV AUC above)
     x_base = full_scores[valid_mr].reshape(-1, 1)
-    x_full = np.column_stack([full_scores[valid_mr], merge_rates[valid_mr]])
-
-    lr_base = LogisticRegression(
+    lr_base_cv = LogisticRegression(
         penalty=None, max_iter=1000, random_state=SEED,
     )
-    lr_base.fit(x_base, y_lr)
-    ll_base = -log_loss_manual(
-        y_lr, lr_base.predict_proba(x_base)[:, 1],
-    ) * len(y_lr)
+    lr_base_proba = cross_val_predict(
+        lr_base_cv, x_base, y_lr, cv=cv, method="predict_proba",
+    )[:, 1]
 
-    lr_full = LogisticRegression(
-        penalty=None, max_iter=1000, random_state=SEED,
-    )
-    lr_full.fit(x_full, y_lr)
-    ll_full = -log_loss_manual(
-        y_lr, lr_full.predict_proba(x_full)[:, 1],
-    ) * len(y_lr)
+    ll_base_cv = -log_loss_manual(y_lr, lr_base_proba) * len(y_lr)
+    ll_full_cv = -log_loss_manual(y_lr, lr_proba_valid) * len(y_lr)
 
-    lrt = likelihood_ratio_test(ll_base, ll_full, df_diff=1)
+    lrt = likelihood_ratio_test(ll_base_cv, ll_full_cv, df_diff=1)
+
+    # LRT for age: LR(GE + merge_rate + age) vs LR(GE + merge_rate)
+    # on the subset where all three features are available
+    lrt_age: dict[str, Any] | None = None
+    if valid_mra.sum() >= 50:
+        x_mr_sub = np.column_stack([
+            full_scores[valid_mra], merge_rates[valid_mra],
+        ])
+        cv_age = StratifiedKFold(n_splits=5, shuffle=True, random_state=SEED)
+        lr_mr_sub = LogisticRegression(
+            penalty=None, max_iter=1000, random_state=SEED,
+        )
+        lr_mr_sub_proba = cross_val_predict(
+            lr_mr_sub, x_mr_sub, y_mra, cv=cv_age, method="predict_proba",
+        )[:, 1]
+
+        ll_mr_sub_cv = -log_loss_manual(y_mra, lr_mr_sub_proba) * len(y_mra)
+        ll_mra_cv = -log_loss_manual(y_mra, lr_mra_proba) * len(y_mra)
+        lrt_age = likelihood_ratio_test(ll_mr_sub_cv, ll_mra_cv, df_diff=1)
 
     # --- Subgroup: high-rejection authors (merge_rate < 0.5) ---
     high_rej_mask = merge_rates < 0.5
@@ -575,6 +637,7 @@ def run_analysis(
         "delong_results": delong_results,
         "delong_corrections": delong_corrections,
         "lrt_ge_merge_rate": lrt,
+        "lrt_age_increment": lrt_age,
         "subgroup_high_rejection": subgroup_results,
         "sensitivity_closed_data": sensitivity_data,
         "sensitivity_truncation": truncation_results,
@@ -730,24 +793,44 @@ def generate_report(
     lines.extend([
         "## Graph Integration vs Feature Engineering",
         "",
-        "Comparing the hybrid graph-integrated approach against logistic",
+        "Comparing graph-integrated edge scaling against logistic",
         "regression that uses merge rate as a separate feature.",
         "",
         f"- **LRT statistic (GE+merge_rate vs GE)**: "
-        f"{lrt['lr_statistic']:.3f}",
+        f"{lrt['lr_statistic']:.3f} (cross-validated)",
         f"- **LRT p-value**: {lrt['p_value']:.4e}",
         f"- **LRT df**: {lrt['df']}",
         "",
     ])
 
-    hybrid_auc = auc_results.get("Hybrid", {})
+    per_repo_auc = auc_results.get("Per-repo scaling", {})
     lr_auc = auc_results.get("LR(GE + merge_rate)", {})
-    if hybrid_auc and lr_auc:
+    if per_repo_auc and lr_auc:
         lines.extend([
-            f"Hybrid AUC = {hybrid_auc['auc']:.4f}, "
+            f"Per-repo scaling AUC = {per_repo_auc['auc']:.4f}, "
             f"LR(GE + merge_rate) AUC = {lr_auc['auc']:.4f}.",
             "",
         ])
+
+    # Intermediate combined model
+    lr_mra_auc = auc_results.get("LR(GE + merge_rate + age)", {})
+    lrt_age = analysis.get("lrt_age_increment")
+    if lr_mra_auc:
+        lines.extend([
+            "### Intermediate Combined Model (GE + merge_rate + age)",
+            "",
+            f"- **AUC**: {lr_mra_auc['auc']:.4f}"
+            f" (95% CI: [{lr_mra_auc['ci_lower']:.4f},"
+            f" {lr_mra_auc['ci_upper']:.4f}],"
+            f" n={lr_mra_auc['n']:,})",
+        ])
+        if lrt_age:
+            lines.extend([
+                f"- **LRT (age increment over GE+merge_rate)**:"
+                f" {lrt_age['lr_statistic']:.3f}"
+                f" (p={lrt_age['p_value']:.4e}, cross-validated)",
+            ])
+        lines.extend([""])
 
     # --- Subgroup: High-Rejection Authors ---
     lines.extend([
@@ -888,7 +971,7 @@ def generate_figure(
     fig, axes = plt.subplots(3, 2, figsize=(14, 15))
     y = (df["outcome"] == "merged").astype(int).values
     full_scores = df["normalized_score"].values
-    hybrid = scores_df["hybrid_score"].values
+    per_repo = scores_df["per_repo_score"].values
     merge_rates = scores_df["author_merge_rate_temporal"].values
 
     auc_results = analysis["auc_results"]
@@ -918,9 +1001,9 @@ def generate_figure(
     for i, v in enumerate(aucs):
         ax.text(i, v + yerr_hi[i] + 0.002, f"{v:.4f}", ha="center", fontsize=7)
 
-    # (B) KDE: score distributions for full model vs hybrid
+    # (B) KDE: score distributions for full model vs per-repo
     ax = axes[0, 1]
-    valid_hybrid = ~np.isnan(hybrid)
+    valid_pr = ~np.isnan(per_repo)
     merged_mask = y == 1
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -933,33 +1016,33 @@ def generate_figure(
             color="#e74c3c", label="Full (not merged)",
             linewidth=2, linestyle="--",
         )
-        if valid_hybrid.sum() > 0:
+        if valid_pr.sum() > 0:
             sns.kdeplot(
-                hybrid[valid_hybrid & merged_mask], ax=ax,
-                color="#3498db", label="Hybrid (merged)", linewidth=2,
+                per_repo[valid_pr & merged_mask], ax=ax,
+                color="#3498db", label="Per-repo (merged)", linewidth=2,
             )
             sns.kdeplot(
-                hybrid[valid_hybrid & ~merged_mask], ax=ax,
-                color="#f39c12", label="Hybrid (not merged)",
+                per_repo[valid_pr & ~merged_mask], ax=ax,
+                color="#f39c12", label="Per-repo (not merged)",
                 linewidth=2, linestyle="--",
             )
     ax.set_xlabel("Score")
     ax.set_ylabel("Density")
-    ax.set_title("(B) Score Distributions: Full vs Hybrid")
+    ax.set_title("(B) Score Distributions: Full vs Per-repo")
     ax.legend(fontsize=7)
 
-    # (C) Scatter: full vs hybrid scores, colored by outcome
+    # (C) Scatter: full vs per-repo scores, colored by outcome
     ax = axes[1, 0]
-    valid = valid_hybrid
+    valid = valid_pr
     colors = np.where(y[valid] == 1, "#2ecc71", "#e74c3c")
     ax.scatter(
-        full_scores[valid], hybrid[valid],
+        full_scores[valid], per_repo[valid],
         c=colors, alpha=0.3, s=10,
     )
     ax.plot([0, 1], [0, 1], "k--", alpha=0.3, linewidth=1)
     ax.set_xlabel("Full Model Score")
-    ax.set_ylabel("Hybrid Score")
-    ax.set_title("(C) Full vs Hybrid Scores")
+    ax.set_ylabel("Per-repo Score")
+    ax.set_title("(C) Full vs Per-repo Scores")
     from matplotlib.lines import Line2D
     legend_elements = [
         Line2D(
@@ -993,7 +1076,7 @@ def generate_figure(
     ax = axes[1 + 1, 0]
     if valid_mr.sum() > 100:
         mr_valid = merge_rates[valid_mr]
-        delta_valid = hybrid[valid_mr] - full_scores[valid_mr]
+        delta_valid = per_repo[valid_mr] - full_scores[valid_mr]
         delta_nonan = ~np.isnan(delta_valid)
         if delta_nonan.sum() > 50:
             mr_q = mr_valid[delta_nonan]
@@ -1022,13 +1105,13 @@ def generate_figure(
             ax.set_xticklabels(q_labels, fontsize=7)
             ax.axhline(0, color="black", linewidth=0.5)
     ax.set_xlabel("Merge Rate Quintile")
-    ax.set_ylabel("Mean Score Delta (Hybrid - Full)")
+    ax.set_ylabel("Mean Score Delta (Per-repo - Full)")
     ax.set_title("(E) Score Delta by Merge Rate Quintile")
 
     # (F) Scatter: merge rate vs score delta with LOWESS trend
     ax = axes[2, 1]
     if valid_mr.sum() > 50:
-        delta = hybrid[valid_mr] - full_scores[valid_mr]
+        delta = per_repo[valid_mr] - full_scores[valid_mr]
         delta_valid_mask = ~np.isnan(delta)
         mr_plot = merge_rates[valid_mr][delta_valid_mask]
         delta_plot = delta[delta_valid_mask]
@@ -1054,7 +1137,7 @@ def generate_figure(
             logger.warning("statsmodels not available, skipping LOWESS")
         ax.axhline(0, color="black", linewidth=0.5)
     ax.set_xlabel("Author Merge Rate")
-    ax.set_ylabel("Score Delta (Hybrid - Full)")
+    ax.set_ylabel("Score Delta (Per-repo - Full)")
     ax.set_title("(F) Merge Rate vs Score Delta")
 
     fig.tight_layout()

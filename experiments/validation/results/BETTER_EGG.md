@@ -26,9 +26,13 @@ because projects, maintainers, and coding practices change.
 
 With exact temporal scoping (using backfilled closed PR timestamps), author
 merge rate alone achieves AUC = 0.546 and adds LR = 49.8 (p < 10^-12) when
-combined with the GE score. It is a meaningful incremental signal but far
-weaker than it appeared before fixing temporal leakage (original LR = 462.4
-with lifetime counts, corrected to 49.8 with exact scoping).
+combined with the GE score. The LRT confirms merge rate carries information
+the graph misses. However, this statistical significance does not translate
+to ranking improvement: LR(GE + merge_rate + age) achieves AUC = 0.665 on
+the 4,416-PR merge-rate subset, not significantly different from the graph
+alone (0.667 on the same subset, DeLong p = 0.73). Merge rate and age add
+information but not discriminative power beyond what the graph already
+captures through recency weighting.
 
 The initially dramatic-looking result (merge rate alone matching GE) was
 entirely an artifact of temporal leakage: using lifetime `merged_count /
@@ -38,9 +42,9 @@ cautionary tale about feature leakage in retrospective studies.
 ### Account age (modest signal)
 
 Account age provides a small but statistically significant incremental signal
-(LR = 8.64, p = 0.003). Older accounts have more history and tend to be more
-reliable contributors. This is useful primarily as a cold-start tiebreaker
-when the graph score is zero.
+(LR = 8.64, p = 0.003). However, like merge rate, it does not improve AUC
+when combined with the graph (see Section 6.7). It is useful primarily as a
+cold-start tiebreaker when the graph score is zero.
 
 ### Embedding similarity (informative, but inverted)
 
@@ -154,15 +158,16 @@ with 10 merged. The rejected PRs are invisible to the graph. This means:
   graph misses rejection signal.
 
 A [rejection awareness sub-study](rejection_awareness/report.md) tested whether
-graph-integrated merge-rate scaling could address this. Three approaches were
-evaluated: per-repo scaling (scale each edge by the author's merge rate at that
-repo), author-level scaling (scale all edges by overall merge rate), and a
-hybrid. None produced a statistically significant improvement (all DeLong
-p > 0.39). Notably, even among high-rejection authors (merge rate < 0.5,
+graph-integrated merge-rate scaling could address this. Two approaches were
+evaluated: per-repo scaling (scale each edge by the author's merge rate at
+that repo) and author-level scaling (scale all edges by overall merge rate).
+Neither produced a statistically significant improvement (all DeLong
+p > 0.45). Notably, even among high-rejection authors (merge rate < 0.5,
 n=924), graph-integrated scaling barely moved AUC (0.553 vs. full model's
 0.553), while the LR(GE + merge_rate) feature-engineering approach achieved
-0.597 in that subgroup. This suggests rejection signal is better captured as a
-*separate feature* than through edge weight scaling in the graph.
+0.581 in that subgroup (cross-validated). This suggests rejection signal is
+better captured as a *separate feature* than through edge weight scaling in
+the graph.
 
 ### Newcomer cold-start
 
@@ -186,10 +191,10 @@ summarizes the evidence and the disposition for v2.
 | Language match (personalization) | Active | H2: Delta AUC = +0.001, p = 0.342 | **Drop** |
 | Diversity/volume scaling | Active | H2: Delta AUC = +0.000, p = 1.000 | **Drop** |
 | Language normalization (star multipliers) | Active | H2: Delta AUC = +0.000, p = 0.812 | **Drop** |
-| Author merge rate | Not in graph | H5: LR = 49.8, p < 10^-12; [rejection study](rejection_awareness/report.md): LR = 70.3, p < 10^-16 | **Add as feature** |
+| Author merge rate | Not in graph | H5: LR = 49.8, p < 10^-12 (n=4,736, proportional merge rate); [rejection study](rejection_awareness/report.md): LR = 68.5, p < 10^-16 (n=4,416, cross-validated, exact timestamps only) | **Add as feature** |
 | Account age | Not in graph | H3: LR = 8.64, p = 0.003 | **Add as feature** |
 | Text dissimilarity | Not in graph | H4: LR = 20.82, p = 5.1x10^-6 (inverted) | **Add as feature** |
-| Graph-integrated rejection scaling | Tested | [Rejection study](rejection_awareness/report.md): all 3 approaches p > 0.39 | **Do not add** |
+| Graph-integrated rejection scaling | Tested | [Rejection study](rejection_awareness/report.md): both approaches p > 0.45 | **Do not add** |
 
 ---
 
@@ -205,7 +210,7 @@ final_score = CombinedModel(
     graph_score,          # Layer 1: simplified trust graph
     temporal_merge_rate,  # Layer 2: external features
     log_account_age,
-    text_dissimilarity,   # optional; simple methods suffice
+    text_dissimilarity,   # required for AUC lift; simple methods suffice
 )
 ```
 
@@ -213,7 +218,7 @@ final_score = CombinedModel(
 
 ### 6.2 Layer 1: Simplified Trust Graph
 
-A bipartite directed graph (user->repo, repo->user) scored with PageRank.
+A bipartite directed graph (user->repo, repo->user) scored with graph scoring.
 Structurally identical to v1, but with four dimensions removed.
 
 #### 6.2.1 Graph Construction
@@ -259,8 +264,10 @@ recency_decay(days_ago) =
 
 ```
 repo_quality(meta) =
-    1.0                                          if meta is None
-    log(1 + stars) * archived_penalty * fork_penalty    otherwise
+    1.0                                   if meta is None
+    quality = log(1 + stars)              otherwise
+    if is_archived: quality *= 0.5
+    if is_fork:     quality *= 0.3
 ```
 
 **What changed from v1:** The `stars * language_multiplier` term is simplified
@@ -274,8 +281,8 @@ to just `stars`. The 28-entry language normalization table is removed
 
 #### 6.2.4 Personalization Vector
 
-The restart distribution for PageRank, determining how much weight each repo
-node receives.
+The restart distribution for graph scoring, determining how much weight each
+repo node receives.
 
 ```
 personalization[context_repo] = context_repo_weight
@@ -299,16 +306,18 @@ Normalized to sum to 1.0.
 | `context_repo_weight` | 0.5 | float | Retained from v1. Not independently ablated but structurally necessary --- the context repo should dominate the restart vector. |
 | `other_weight` | 0.03 | float | Now a fixed value, no longer dynamically adjusted. |
 
-#### 6.2.5 PageRank
+#### 6.2.5 Graph Scoring Algorithm
 
 ```
 scores = nx.pagerank(graph, alpha=alpha, personalization=pvec, weight="weight")
 raw_score = scores["user:{login}"]
 ```
 
+Internally uses `nx.pagerank()`.
+
 | Parameter | Default | Type | Evidence |
 |-----------|---------|------|----------|
-| `alpha` (damping) | 0.85 | float | Standard PageRank default; not independently tuned |
+| `alpha` (damping) | 0.85 | float | Standard damping factor; not independently tuned |
 | `max_iterations` | 100 | int | Convergence parameter |
 | `tolerance` | 1e-6 | float | Convergence parameter |
 
@@ -320,15 +329,15 @@ ratio = raw_score / baseline
 normalized_score = ratio / (ratio + 1.0)     # sigmoid mapping: uniform -> 0.5
 ```
 
-Unchanged from v1. Maps raw PageRank output to [0, 1].
+Unchanged from v1. Maps raw graph scoring output to [0, 1].
 
 #### 6.2.7 Anti-Gaming Mechanisms
 
-| Mechanism | Value | Purpose |
-|-----------|-------|---------|
-| `MAX_PRS_PER_REPO` | 20 | Prevents score inflation via high-volume contributions to a single repo |
-| `reverse_edge_ratio` | 0.3 | Reverse edges (repo->user) are 0.3x forward weight; prevents repo node from over-amplifying author score |
-| `edge_multiplier` | 1.0 | Base weight for merged PR edges (extensible to reviews, stars in future) |
+| Mechanism | Value | Configurable? | Purpose |
+|-----------|-------|:---:|---------|
+| `MAX_PRS_PER_REPO` | 20 | Hardcoded | Prevents score inflation via high-volume contributions to a single repo |
+| `reverse_edge_ratio` | 0.3 | Hardcoded | Reverse edges (repo->user) are 0.3x forward weight; prevents repo node from over-amplifying author score |
+| `edge_multiplier` | 1.0 | Hardcoded | Base weight for merged PR edges (extensible to reviews, stars in future) |
 
 ---
 
@@ -353,8 +362,8 @@ for 1,958 of 2,251 authors (87%), capped at 500 most recent per author.
 Production should fetch all available or document the cap.
 
 **Evidence:** H5 corrected LR = 49.8 (p < 10^-12). Rejection awareness study
-LRT = 70.3 (p < 10^-16). Among high-rejection authors (rate < 0.5, n=924),
-this feature lifts subgroup AUC from 0.553 to 0.597.
+LRT = 68.5 (p < 10^-16, cross-validated). Among high-rejection authors (rate < 0.5, n=924),
+this feature lifts subgroup AUC from 0.553 to 0.581 (cross-validated).
 
 **Edge case:** If `merged_before_T + closed_before_T = 0`, merge rate is
 undefined. Use a prior or treat as missing (impute population mean, or exclude
@@ -375,7 +384,7 @@ but AUC = 0.500 from the graph alone).
 
 **No tunable parameters.** Computed from `UserProfile.created_at`.
 
-#### 6.3.3 Text Dissimilarity (Optional)
+#### 6.3.3 Text Dissimilarity
 
 ```
 text_dissimilarity = 1.0 - similarity(pr_text, repo_readme)
@@ -422,13 +431,18 @@ P(merge) = sigmoid(
   + w1 * graph_normalized_score
   + w2 * temporal_merge_rate
   + w3 * log_account_age
-  + w4 * text_dissimilarity          # optional
+  + w4 * text_dissimilarity          # required for AUC improvement
 )
 ```
 
 **Evidence:** The combined model (GE + merge_rate + age + embedding) achieved
 AUC = 0.680 (CV mean = 0.671) vs. GE alone at 0.671. DeLong p = 0.002 for the
-improvement.
+improvement. However, the intermediate model *without* text dissimilarity
+(GE + merge_rate + age) achieves AUC = 0.665, which is not significantly
+different from GE alone (DeLong p = 0.73). The AUC improvement comes from
+text dissimilarity, not from merge rate or account age. Those features carry
+statistically significant information (per LRT) but do not improve ranking
+performance beyond what the graph already captures.
 
 #### 6.4.2 Training
 
@@ -483,7 +497,7 @@ classified into trust levels:
 | `MAX_PRS_PER_REPO` | 20 | Yes |
 | `reverse_edge_ratio` | 0.3 | Yes |
 
-#### PageRank (3 parameters, unchanged)
+#### Graph scoring (3 parameters, unchanged)
 
 | Parameter | Default |
 |-----------|---------|
@@ -516,7 +530,7 @@ classified into trust levels:
 | `w1` (graph score) | Yes |
 | `w2` (merge rate) | Yes |
 | `w3` (account age) | Yes |
-| `w4` (text dissimilarity) | Yes (optional) |
+| `w4` (text dissimilarity) | Yes (required for AUC lift) |
 
 #### Removed entirely from v1
 
@@ -551,16 +565,32 @@ of authors had this data available (1,958/2,251), with a backfill cap of 500
 most recent per author. In production, fetching closed PRs adds one GraphQL
 query per author.
 
+**Note on text dissimilarity:** PR body and README text are listed as optional
+data inputs, but text dissimilarity is the only external feature that produces
+a statistically significant AUC improvement over the graph alone (see Section
+6.7). Deployments that omit it will have merge rate and account age available
+but should not expect AUC gains from those features alone.
+
 ---
 
 ### 6.7 Expected Performance
 
-| Model | AUC | CV Mean +/- SD | n |
-|-------|-----|----------------|---|
+| Model | AUC | CV | n |
+|-------|-----|----|----|
 | v1 (full graph, 14 params) | 0.671 | 0.675 +/- 0.048 | 4,977 |
-| v2 graph only (6 params, no externals) | ~0.671 | ~same | --- |
-| v2 combined (graph + merge_rate + age) | ~0.675 | ~0.671 +/- 0.036 | 4,977 |
-| v2 combined + text dissimilarity | 0.680 | 0.671 +/- 0.036 | 4,977 |
+| v2 graph only (6 params, no externals) | ~0.671 | ~same | 4,977 |
+| v2 combined (graph + merge_rate + age) | 0.665 ^a | cross-validated | 4,416 ^b |
+| v2 combined + text dissimilarity | 0.680 | 0.671 +/- 0.036 | 1,245 ^c |
+
+^a Cross-validated AUC from the [rejection awareness
+study](rejection_awareness/report.md). The intermediate model does not
+significantly differ from the graph alone (DeLong p = 0.73 on the same
+4,416-PR subset where the graph achieves 0.667). Adding age significantly
+improves over GE + merge_rate alone (LRT = 9.5, p = 0.002), but the
+combined model with external features roughly matches rather than exceeds
+the graph.
+^b Subset with temporally-scoped merge rate data (87% of authors).
+^c Subset with valid Gemini embeddings and merge rate data.
 
 The graph simplification (removing 5 inert dimensions) is expected to preserve
 AUC exactly --- the ablation data confirms removing them individually or in

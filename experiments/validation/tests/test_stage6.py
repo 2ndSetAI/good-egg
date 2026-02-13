@@ -57,6 +57,37 @@ def test_holm_bonferroni_correction() -> None:
     assert not results["test_c"]["reject"]
 
 
+def test_holm_bonferroni_monotonicity() -> None:
+    """Adjusted p-values must be monotonically non-decreasing by rank.
+
+    With p_values where naive p * (m - rank + 1) would produce a
+    non-monotonic sequence, the monotonicity enforcement should correct it.
+    """
+    # Naive computation would give:
+    #   rank 1: 0.01 * 4 = 0.04
+    #   rank 2: 0.03 * 3 = 0.09
+    #   rank 3: 0.025 * 2 = 0.05  <-- would drop below 0.09 without fix
+    #   rank 4: 0.06 * 1 = 0.06   <-- would drop below 0.09 without fix
+    p_values = {
+        "a": 0.01,
+        "b": 0.03,
+        "c": 0.025,  # out of order raw p to force non-monotonic naive adj
+        "d": 0.06,
+    }
+    results = holm_bonferroni(p_values, alpha=0.05)
+
+    # Extract adjusted_p in rank order
+    ranked = sorted(results.items(), key=lambda x: x[1]["rank"])
+    adj_ps = [r["adjusted_p"] for _, r in ranked]
+
+    # Verify monotonically non-decreasing
+    for i in range(1, len(adj_ps)):
+        assert adj_ps[i] >= adj_ps[i - 1], (
+            f"adjusted_p not monotonic: rank {i} ({adj_ps[i]}) "
+            f"< rank {i - 1} ({adj_ps[i - 1]})"
+        )
+
+
 def test_likelihood_ratio_test() -> None:
     result = likelihood_ratio_test(
         ll_null=-100.0, ll_alt=-90.0, df_diff=1,

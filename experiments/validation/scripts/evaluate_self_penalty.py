@@ -23,6 +23,10 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
+from good_egg.config import GoodEggConfig
+from good_egg.models import UserContributionData
+from good_egg.scorer import TrustScorer
+
 # Add parent directory for local imports
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from checkpoint import read_json  # noqa: E402
@@ -31,10 +35,6 @@ from stats import (  # noqa: E402
     delong_auc_test,
     holm_bonferroni,
 )
-
-from good_egg.config import GoodEggConfig  # noqa: E402
-from good_egg.models import UserContributionData  # noqa: E402
-from good_egg.scorer import TrustScorer  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,

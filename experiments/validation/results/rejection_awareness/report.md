@@ -25,31 +25,37 @@ prediction.
 | Approach | AUC | 95% CI | SE | n |
 |----------|-----|--------|----|----|
 | Full model | 0.6709 | [0.6532, 0.6887] | 0.0090 | 4,977 |
-| Per-repo scaling | 0.6709 | [0.6532, 0.6886] | 0.0090 | 4,977 |
-| Author-level scaling | 0.6708 | [0.6531, 0.6885] | 0.0090 | 4,977 |
-| Hybrid | 0.6709 | [0.6532, 0.6886] | 0.0090 | 4,977 |
-| LR(GE + merge_rate) | 0.6624 | [0.6418, 0.6830] | 0.0105 | 4,416 |
+| Per-repo scaling | 0.6708 | [0.6531, 0.6886] | 0.0090 | 4,977 |
+| Author-level scaling | 0.6708 | [0.6531, 0.6886] | 0.0090 | 4,977 |
+| LR(GE + merge_rate) | 0.6617 | [0.6411, 0.6823] | 0.0105 | 4,416 |
+| LR(GE + merge_rate + age) | 0.6653 | [0.6446, 0.6860] | 0.0106 | 4,416 |
+| Full model (merge rate subset) | 0.6668 | [0.6475, 0.6862] | 0.0099 | 4,416 |
 
 ## Pairwise DeLong Tests
 
 | Comparison | AUC A | AUC B | z | Raw p | Adj. p |
 |------------|-------|-------|---|------|--------|
-| Full model vs Per-repo scaling | 0.6709 | 0.6709 | 0.372 | 7.0981e-01 | 1.0000e+00 |
-| Full model vs Author-level scaling | 0.6709 | 0.6708 | 0.854 | 3.9305e-01 | 1.0000e+00 |
-| Full model vs Hybrid | 0.6709 | 0.6709 | 0.372 | 7.0981e-01 | 7.0981e-01 |
-| Full model vs LR(GE + merge_rate) | 0.6668 | 0.6624 | 0.989 | 3.2288e-01 | 1.0000e+00 |
-| Hybrid vs LR(GE + merge_rate) | 0.6668 | 0.6624 | 0.969 | 3.3253e-01 | 1.0000e+00 |
+| Full model vs Per-repo scaling | 0.6709 | 0.6708 | 0.709 | 4.7823e-01 | 1.0000e+00 |
+| Full model vs Author-level scaling | 0.6709 | 0.6708 | 0.740 | 4.5946e-01 | 1.0000e+00 |
+| Full model vs LR(GE + merge_rate) | 0.6668 | 0.6617 | 1.142 | 2.5329e-01 | 1.0000e+00 |
+| Full model vs LR(GE + merge_rate + age) | 0.6668 | 0.6653 | 0.340 | 7.3364e-01 | 1.0000e+00 |
+| LR(GE + merge_rate) vs LR(GE + merge_rate + age) | 0.6617 | 0.6653 | -2.285 | 2.2292e-02 | 1.1146e-01 |
 
 ## Graph Integration vs Feature Engineering
 
-Comparing the hybrid graph-integrated approach against logistic
+Comparing graph-integrated edge scaling against logistic
 regression that uses merge rate as a separate feature.
 
-- **LRT statistic (GE+merge_rate vs GE)**: 70.252
-- **LRT p-value**: 5.2183e-17
+- **LRT statistic (GE+merge_rate vs GE)**: 68.455 (cross-validated)
+- **LRT p-value**: 1.2984e-16
 - **LRT df**: 1
 
-Hybrid AUC = 0.6709, LR(GE + merge_rate) AUC = 0.6624.
+Per-repo scaling AUC = 0.6708, LR(GE + merge_rate) AUC = 0.6617.
+
+### Intermediate Combined Model (GE + merge_rate + age)
+
+- **AUC**: 0.6653 (95% CI: [0.6446, 0.6860], n=4,416)
+- **LRT (age increment over GE+merge_rate)**: 9.455 (p=2.1054e-03, cross-validated)
 
 ## Subgroup: High-Rejection Authors
 
@@ -58,10 +64,10 @@ Authors with temporally-scoped merge rate < 0.5 (n=924).
 | Approach | AUC | 95% CI | n |
 |----------|-----|--------|---|
 | Full model | 0.5529 | [0.5187, 0.5870] | 924 |
-| Per-repo scaling | 0.5532 | [0.5191, 0.5874] | 924 |
-| Author-level scaling | 0.5529 | [0.5187, 0.5870] | 924 |
-| Hybrid | 0.5532 | [0.5191, 0.5874] | 924 |
-| LR(GE + merge_rate) | 0.5972 | [0.5585, 0.6358] | 924 |
+| Per-repo scaling | 0.5528 | [0.5186, 0.5870] | 924 |
+| Author-level scaling | 0.5530 | [0.5188, 0.5871] | 924 |
+| LR(GE + merge_rate) | 0.5809 | [0.5400, 0.6218] | 924 |
+| LR(GE + merge_rate + age) | 0.6279 | [0.5857, 0.6701] | 924 |
 
 ## Sensitivity: Missing Data
 
@@ -86,8 +92,8 @@ the scaling approaches would under-penalize their scores.
 | Full model | 0.3686 | [0.2789, 0.4584] | 151 |
 | Per-repo scaling | 0.3686 | [0.2789, 0.4584] | 151 |
 | Author-level scaling | 0.3686 | [0.2789, 0.4584] | 151 |
-| Hybrid | 0.3686 | [0.2789, 0.4584] | 151 |
-| LR(GE + merge_rate) | 0.3985 | [0.3062, 0.4909] | 145 |
+| LR(GE + merge_rate) | 0.3972 | [0.3048, 0.4896] | 145 |
+| LR(GE + merge_rate + age) | 0.4061 | [0.3130, 0.4991] | 145 |
 
 ## Conclusions
 

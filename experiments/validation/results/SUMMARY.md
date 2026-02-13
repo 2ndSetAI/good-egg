@@ -293,8 +293,12 @@ The graph's complexity is justified: it captures contributor reputation signal
 that simple features do not.
 
 The combined model (GE + all external features, AUC = 0.680, CV mean = 0.671)
-shows modest improvement over GE alone, suggesting external features add
-marginal value on top of the graph.
+shows modest improvement over GE alone. However, the intermediate model
+without text dissimilarity (GE + merge_rate + age) achieves only AUC = 0.665
+on the merge-rate subset (n=4,416), not significantly different from GE alone
+(0.667, DeLong p = 0.73). The AUC improvement requires text dissimilarity;
+merge rate and account age add statistically significant information (per LRT)
+but do not improve ranking performance beyond the graph.
 
 ![Baseline Comparison](figures/baseline_comparison.png)
 
@@ -390,7 +394,9 @@ fast-merged PRs.
      dataset (n=4,977)
    - Account age (LR = 8.6, p = 0.003)
 
-   A combined model (GE + externals, AUC = 0.680) shows modest improvement.
+   A combined model (GE + externals, AUC = 0.680) shows modest improvement,
+   but only when text dissimilarity is included. Without it, GE + merge_rate
+   + age (AUC = 0.665) does not significantly differ from the graph alone.
 
 5. **Pocket veto detection is a strong secondary use case.** LOW-trust authors
    are 4.7x less likely to have PRs merged than HIGH-trust authors. The
@@ -444,10 +450,10 @@ total issues. All have been fixed and the pipeline fully re-run.
 
 - **Survivorship bias**: GE scores are computed only from merged PRs. Authors
   with high rejection rates may appear more trustworthy than warranted. A
-  [rejection awareness sub-study](rejection_awareness/report.md) tested three
-  graph-integrated approaches (per-repo, author-level, and hybrid merge-rate
+  [rejection awareness sub-study](rejection_awareness/report.md) tested two
+  graph-integrated approaches (per-repo and author-level merge-rate
   scaling) but found no statistically significant improvement over the full model
-  (all DeLong p > 0.39). Graph-integrated rejection awareness does not improve
+  (all DeLong p > 0.45). Graph-integrated rejection awareness does not improve
   AUC in this dataset.
 - **Repository metadata currency**: Star counts and archive status are fetched
   at query time, not at PR creation time.
@@ -456,7 +462,7 @@ total issues. All have been fixed and the pipeline fully re-run.
 - **No causal claims**: The study evaluates predictive discrimination, not
   whether trust causes merges.
 - **Closed PR coverage**: H5 merge rate uses exact temporal filtering for
-  both merged and closed PRs. Closed PR timestamps were backfilled for 1,959
+  both merged and closed PRs. Closed PR timestamps were backfilled for 1,958
   authors (capped at 500 most recent per author). Authors with > 500 closed
   PRs may have incomplete historical data.
 

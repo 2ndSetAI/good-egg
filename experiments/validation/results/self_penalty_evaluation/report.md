@@ -44,15 +44,15 @@ going to self-owned repositories:
 |---------|-----|--------|----|
 | 0.3x (current) | 0.6709 | [0.6532, 0.6887] | 0.0090 |
 | 1.0x (no penalty) | 0.6709 | [0.6532, 0.6887] | 0.0090 |
-| 0.0x (excluded) | 0.6704 | [0.6526, 0.6883] | 0.0091 |
+| 0.0x (excluded) | 0.6705 | [0.6527, 0.6884] | 0.0091 |
 
 ## Pairwise DeLong Tests
 
 | Comparison | AUC A | AUC B | z | Raw p | Adj. p |
 |------------|-------|-------|---|------|--------|
 | 0.3x vs 1.0x | 0.6709 | 0.6709 | 0.551 | 5.8151e-01 | 1.0000e+00 |
-| 0.3x vs 0.0x | 0.6709 | 0.6704 | 0.345 | 7.2976e-01 | 1.0000e+00 |
-| 1.0x vs 0.0x | 0.6709 | 0.6704 | 0.341 | 7.3293e-01 | 7.3293e-01 |
+| 0.3x vs 0.0x | 0.6709 | 0.6705 | 0.290 | 7.7160e-01 | 1.0000e+00 |
+| 1.0x vs 0.0x | 0.6709 | 0.6705 | 0.286 | 7.7484e-01 | 1.0000e+00 |
 
 *Holm-Bonferroni corrected p-values.*
 *\* p < 0.05, \*\* p < 0.01, \*\*\* p < 0.001*
@@ -61,7 +61,7 @@ going to self-owned repositories:
 
 - **Test PRs from authors with self-owned repos**: 3,278
 - **Rows where 0.0x != 0.3x**: 2,287 (46.0%)
-- **Mean score difference (0.0x - 0.3x)**: -0.019164
+- **Mean score difference (0.0x - 0.3x)**: -0.019169
 - **Max score decrease (0.3x - 0.0x)**: 0.823656
 
 For authors WITHOUT self-owned repos, 0.0x = 0.3x by definition.
