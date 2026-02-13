@@ -173,108 +173,421 @@ PR to a new ecosystem is unscored.
 
 ---
 
-## 5. Recommendations for Better Egg v2
+## 5. Evidence Disposition: What Stays, What Goes
 
-Based on the validation results, here are concrete recommendations ranked by
-expected impact:
+Every component of the v1 scoring model has now been evaluated. This table
+summarizes the evidence and the disposition for v2.
 
-### High priority (clear evidence)
+| Component | v1 Status | Evidence | v2 Decision |
+|-----------|-----------|----------|-------------|
+| Recency decay | Active | H2: Delta AUC = -0.121, p < 10^-68 | **Keep** |
+| Repo quality (stars, archived, fork) | Active | H2: Delta AUC = -0.002, raw p = 0.023 | **Keep** (borderline, cheap) |
+| Self-contribution penalty (0.3x) | Active | [Self-penalty study](self_penalty_evaluation/report.md): all 3 variants identical, p > 0.58 | **Drop** |
+| Language match (personalization) | Active | H2: Delta AUC = +0.001, p = 0.342 | **Drop** |
+| Diversity/volume scaling | Active | H2: Delta AUC = +0.000, p = 1.000 | **Drop** |
+| Language normalization (star multipliers) | Active | H2: Delta AUC = +0.000, p = 0.812 | **Drop** |
+| Author merge rate | Not in graph | H5: LR = 49.8, p < 10^-12; [rejection study](rejection_awareness/report.md): LR = 70.3, p < 10^-16 | **Add as feature** |
+| Account age | Not in graph | H3: LR = 8.64, p = 0.003 | **Add as feature** |
+| Text dissimilarity | Not in graph | H4: LR = 20.82, p = 5.1x10^-6 (inverted) | **Add as feature** |
+| Graph-integrated rejection scaling | Tested | [Rejection study](rejection_awareness/report.md): all 3 approaches p > 0.39 | **Do not add** |
 
-**a. Incorporate author merge rate as a first-class signal.**
-A meaningful incremental predictor (LR = 49.8, p < 10^-12). Computation:
-count merged and closed PRs using GitHub API, apply temporal scoping
-(`merged_at < T`, `closed_at < T`). Closed PR timestamps are available
-via GraphQL `pullRequests(states: CLOSED)` query. The combined model
-(GE + merge rate + age + embedding) achieves AUC = 0.680.
+---
 
-**b. Simplify the graph to recency + repo quality.**
-Repo quality is the only non-recency dimension with a suggestive signal
-(raw p = 0.023). Drop language match, diversity/volume, self-contribution
-penalty, and language normalization from the scoring model. This reduces
-API calls, computation, and configuration surface area while preserving
-(or improving) prediction.
+## 6. Better Egg v2: Full Specification
 
-**c. Add account age as a cold-start tiebreaker.**
-When the graph score is 0 (newcomer), use account age as the primary
-discriminator. A 5-year account with many public repos is a better bet than
-a 2-day-old account, even without contribution history.
+### 6.1 Architecture Overview
 
-### Medium priority (promising evidence)
+v2 uses a two-layer architecture: a simplified trust graph (Layer 1) combined
+with external features (Layer 2) via a trained logistic regression (Layer 3).
 
-**d. Add text similarity as a novelty/specificity signal.**
-PR body vs. repo README similarity adds real predictive signal (LR = 20.8),
-but the relationship is *inverted*: higher similarity predicts lower merge
-probability. This means the useful signal is likely PR *specificity* or
-*novelty* — PRs that diverge from the README tend to target concrete
-subsystems, while generic/template PRs that echo the README text tend to fail.
-Simple methods (TF-IDF, Jaccard) capture this signal without an embedding API
-call and work on all PRs including title-only ones. Consider using
-`1 - similarity` as a specificity feature, or using high similarity as a flag
-for template/boilerplate PRs.
+```
+final_score = CombinedModel(
+    graph_score,          # Layer 1: simplified trust graph
+    temporal_merge_rate,  # Layer 2: external features
+    log_account_age,
+    text_dissimilarity,   # optional; simple methods suffice
+)
+```
 
-**e. Incorporate rejection/closed PR data as a feature, not graph scaling.**
-A [rejection awareness sub-study](rejection_awareness/report.md) found that
-graph-integrated merge-rate scaling does not improve AUC (all three approaches
-p > 0.39). However, merge rate as a *separate feature* in logistic regression
-adds significant signal (LR = 70.3, p < 10^-16) and particularly helps for
-high-rejection authors (AUC 0.597 vs. 0.553). Recommendation: keep rejection
-data as a feature-engineered input to a combined model rather than trying to
-bake it into edge weights.
+---
 
-**f. Remove self-contribution penalty.**
-A [self-penalty sub-study](self_penalty_evaluation/report.md) tested three
-variants (0.3x, 1.0x, 0.0x) and found all produce identical AUCs (p > 0.58).
-The penalty adds configuration complexity with zero predictive benefit. Simply
-remove it.
+### 6.2 Layer 1: Simplified Trust Graph
 
-### Lower priority (speculative)
+A bipartite directed graph (user->repo, repo->user) scored with PageRank.
+Structurally identical to v1, but with four dimensions removed.
 
-**g. Repository-specific calibration.**
+#### 6.2.1 Graph Construction
+
+**Nodes:**
+- `user:{login}` --- one per author
+- `repo:{owner/name}` --- one per contributed repository
+
+**Edges (user->repo, forward):**
+
+```
+forward_weight = sum_pr [ recency_decay(pr.days_ago)
+                          * repo_quality(repo)
+                          * edge_multiplier ]
+```
+
+Summed over the author's merged PRs at that repo, capped at
+`MAX_PRS_PER_REPO` most recent.
+
+**Edges (repo->user, reverse):**
+
+```
+reverse_weight = forward_weight * reverse_edge_ratio
+```
+
+**What changed from v1:** The `* 0.3` self-contribution penalty is removed.
+All repos are treated equally regardless of ownership.
+
+#### 6.2.2 Recency Decay
+
+```
+recency_decay(days_ago) =
+    0.0                                    if days_ago > max_age_days
+    exp(-0.693 * days_ago / half_life)     otherwise
+```
+
+| Parameter | Default | Type | Evidence |
+|-----------|---------|------|----------|
+| `half_life_days` | 180 | int | H2: removing recency -> AUC 0.550. Half-life not separately optimized; 180 is the v1 default. |
+| `max_age_days` | 730 | int | Contributions >2 years old decay to ~0 anyway with 180-day half-life. Hard cutoff for efficiency. |
+
+#### 6.2.3 Repo Quality
+
+```
+repo_quality(meta) =
+    1.0                                          if meta is None
+    log(1 + stars) * archived_penalty * fork_penalty    otherwise
+```
+
+**What changed from v1:** The `stars * language_multiplier` term is simplified
+to just `stars`. The 28-entry language normalization table is removed
+(H2: Delta AUC = 0.000, p = 0.812). Stars alone carry the signal.
+
+| Parameter | Default | Type | Evidence |
+|-----------|---------|------|----------|
+| `archived_penalty` | 0.5 | float | Retained from v1; not independently tested but cheap and logically sound |
+| `fork_penalty` | 0.3 | float | Same |
+
+#### 6.2.4 Personalization Vector
+
+The restart distribution for PageRank, determining how much weight each repo
+node receives.
+
+```
+personalization[context_repo] = context_repo_weight
+personalization[other_repos]  = other_weight        # uniform for all non-context repos
+personalization[user_nodes]   = 0.0
+```
+
+Normalized to sum to 1.0.
+
+**What changed from v1:** Three things removed:
+
+1. `same_language_weight` --- all non-context repos get the same weight
+   (H2: Delta AUC = +0.001 for language match)
+2. `diversity_scale` --- no longer adjusts `other_weight` based on unique
+   repo count (H2: Delta AUC = 0.000)
+3. `volume_scale` --- no longer adjusts `other_weight` based on PR count
+   (H2: Delta AUC = 0.000)
+
+| Parameter | Default | Type | Evidence |
+|-----------|---------|------|----------|
+| `context_repo_weight` | 0.5 | float | Retained from v1. Not independently ablated but structurally necessary --- the context repo should dominate the restart vector. |
+| `other_weight` | 0.03 | float | Now a fixed value, no longer dynamically adjusted. |
+
+#### 6.2.5 PageRank
+
+```
+scores = nx.pagerank(graph, alpha=alpha, personalization=pvec, weight="weight")
+raw_score = scores["user:{login}"]
+```
+
+| Parameter | Default | Type | Evidence |
+|-----------|---------|------|----------|
+| `alpha` (damping) | 0.85 | float | Standard PageRank default; not independently tuned |
+| `max_iterations` | 100 | int | Convergence parameter |
+| `tolerance` | 1e-6 | float | Convergence parameter |
+
+#### 6.2.6 Normalization
+
+```
+baseline = 1.0 / n_nodes
+ratio = raw_score / baseline
+normalized_score = ratio / (ratio + 1.0)     # sigmoid mapping: uniform -> 0.5
+```
+
+Unchanged from v1. Maps raw PageRank output to [0, 1].
+
+#### 6.2.7 Anti-Gaming Mechanisms
+
+| Mechanism | Value | Purpose |
+|-----------|-------|---------|
+| `MAX_PRS_PER_REPO` | 20 | Prevents score inflation via high-volume contributions to a single repo |
+| `reverse_edge_ratio` | 0.3 | Reverse edges (repo->user) are 0.3x forward weight; prevents repo node from over-amplifying author score |
+| `edge_multiplier` | 1.0 | Base weight for merged PR edges (extensible to reviews, stars in future) |
+
+---
+
+### 6.3 Layer 2: External Features
+
+Three features not captured by the graph, combined with the graph score via
+a trained model.
+
+#### 6.3.1 Temporal Merge Rate
+
+```
+merged_before_T = count(author's merged PRs where merged_at < T)
+closed_before_T = count(author's closed PRs where closed_at < T)
+temporal_merge_rate = merged_before_T / (merged_before_T + closed_before_T)
+```
+
+Where `T` = the creation time of the PR being scored.
+
+**Data requirement:** Closed PR timestamps per author. Available via GitHub
+GraphQL `pullRequests(states: CLOSED)`. The validation study backfilled data
+for 1,958 of 2,251 authors (87%), capped at 500 most recent per author.
+Production should fetch all available or document the cap.
+
+**Evidence:** H5 corrected LR = 49.8 (p < 10^-12). Rejection awareness study
+LRT = 70.3 (p < 10^-16). Among high-rejection authors (rate < 0.5, n=924),
+this feature lifts subgroup AUC from 0.553 to 0.597.
+
+**Edge case:** If `merged_before_T + closed_before_T = 0`, merge rate is
+undefined. Use a prior or treat as missing (impute population mean, or exclude
+from the feature vector and let the combined model handle it).
+
+**No tunable parameters.** This is a computed statistic.
+
+#### 6.3.2 Account Age
+
+```
+log_account_age = log(account_age_days + 1)
+```
+
+**Evidence:** H3 LR = 8.64, p = 0.003. Modest signal. Most useful as a
+cold-start discriminator when graph score is 0 (14.4% of PRs are from
+newcomers with zero graph history; these newcomers have a 69% merge rate
+but AUC = 0.500 from the graph alone).
+
+**No tunable parameters.** Computed from `UserProfile.created_at`.
+
+#### 6.3.3 Text Dissimilarity (Optional)
+
+```
+text_dissimilarity = 1.0 - similarity(pr_text, repo_readme)
+```
+
+Where `similarity` can be any of:
+
+- **TF-IDF cosine** --- no external API, works on all PRs (recommended for
+  production)
+- **Jaccard** --- simplest; word-set overlap
+- Gemini/MiniLM embeddings --- more expensive, validated but not required
+
+The *inverted* direction is intentional: higher PR-README similarity predicts
+*lower* merge probability (standalone AUC = 0.416). PRs that diverge from the
+README (targeting specific subsystems) merge more often than generic/template
+PRs that echo the README text.
+
+**Evidence:** H4 LR = 20.82, p = 5.1x10^-6. Robustness sub-study: Jaccard
+survives Holm-Bonferroni on Gemini subset (adj. p = 0.001); all 5 non-Gemini
+methods significant on full dataset (all adj. p < 10^-8).
+
+**Preprocessing parameters (if using TF-IDF):**
+
+| Parameter | Default | Type | Notes |
+|-----------|---------|------|-------|
+| `max_features` | 10000 | int | Vocabulary size |
+| `max_pr_text_chars` | 2000 | int | Truncation for PR body |
+| `max_readme_chars` | 4000 | int | Truncation for README |
+
+These are preprocessing constants, not model hyperparameters. The validation
+study used these values.
+
+---
+
+### 6.4 Layer 3: Combined Model
+
+#### 6.4.1 Architecture
+
+Logistic regression combining the graph score with external features:
+
+```
+P(merge) = sigmoid(
+    w0
+  + w1 * graph_normalized_score
+  + w2 * temporal_merge_rate
+  + w3 * log_account_age
+  + w4 * text_dissimilarity          # optional
+)
+```
+
+**Evidence:** The combined model (GE + merge_rate + age + embedding) achieved
+AUC = 0.680 (CV mean = 0.671) vs. GE alone at 0.671. DeLong p = 0.002 for the
+improvement.
+
+#### 6.4.2 Training
+
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| `penalty` | None | Unregularized. Required for valid LRT chi-squared assumption per DOE. With 3--4 features and thousands of observations, regularization is unnecessary. |
+| `max_iter` | 1000 | Convergence for logistic regression solver |
+| `random_state` | 42 | Reproducibility |
+
+**Training data:** The weights `w0..w4` must be fit on a calibration dataset.
+Options:
+
+1. Fit on the full validation study data (4,977 PRs, 49 repos) and ship fixed
+   weights
+2. Fit per-deployment on the target repository's historical PR data
+3. Use the validation study weights as defaults with per-repo fine-tuning
+
+The validation study used option 1 (in-sample). Cross-validation (5-fold,
+grouped by repo) showed stability: mean AUC = 0.671 +/- 0.036.
+
+#### 6.4.3 Output and Classification
+
+The combined model outputs a calibrated probability P(merge) in [0, 1],
+classified into trust levels:
+
+| Trust Level | Threshold | Evidence |
+|-------------|-----------|----------|
+| HIGH | P >= `high_trust` | v1 default; validation confirms meaningful separation (OR = 4.74 HIGH vs LOW) |
+| MEDIUM | `medium_trust` <= P < `high_trust` | v1 default |
+| LOW | P < `medium_trust` | v1 default |
+| UNKNOWN | No data | Newcomer with no merged PRs and no closed PRs |
+| BOT | `is_bot` flag | Short-circuit, unchanged from v1 |
+
+| Parameter | Default | Type |
+|-----------|---------|------|
+| `high_trust` | 0.7 | float |
+| `medium_trust` | 0.3 | float |
+| `new_account_days` | 30 | int |
+
+---
+
+### 6.5 Complete Parameter Inventory
+
+#### Graph construction (6 parameters, down from 14 in v1)
+
+| Parameter | Default | Retained from v1? |
+|-----------|---------|:-:|
+| `half_life_days` | 180 | Yes |
+| `max_age_days` | 730 | Yes |
+| `archived_penalty` | 0.5 | Yes |
+| `fork_penalty` | 0.3 | Yes |
+| `MAX_PRS_PER_REPO` | 20 | Yes |
+| `reverse_edge_ratio` | 0.3 | Yes |
+
+#### PageRank (3 parameters, unchanged)
+
+| Parameter | Default |
+|-----------|---------|
+| `alpha` | 0.85 |
+| `max_iterations` | 100 |
+| `tolerance` | 1e-6 |
+
+#### Personalization (2 parameters, down from 5)
+
+| Parameter | Default | Status |
+|-----------|---------|--------|
+| `context_repo_weight` | 0.5 | Retained |
+| `other_weight` | 0.03 | Retained (now fixed, not dynamically adjusted) |
+| ~~`same_language_weight`~~ | ~~0.3~~ | **Removed** (H2: p = 0.342) |
+| ~~`diversity_scale`~~ | ~~0.5~~ | **Removed** (H2: p = 1.000) |
+| ~~`volume_scale`~~ | ~~0.3~~ | **Removed** (H2: p = 1.000) |
+
+#### Classification (2 parameters, unchanged)
+
+| Parameter | Default |
+|-----------|---------|
+| `high_trust` | 0.7 |
+| `medium_trust` | 0.3 |
+
+#### Combined model (4--5 weights, NEW, learned)
+
+| Weight | Learned from data |
+|--------|:-:|
+| `w0` (intercept) | Yes |
+| `w1` (graph score) | Yes |
+| `w2` (merge rate) | Yes |
+| `w3` (account age) | Yes |
+| `w4` (text dissimilarity) | Yes (optional) |
+
+#### Removed entirely from v1
+
+| Parameter | v1 Default | Evidence for removal |
+|-----------|------------|----------------------|
+| `self_contribution_penalty` | 0.3 | [Self-penalty study](self_penalty_evaluation/report.md): 0.3x = 1.0x = 0.0x (all p > 0.58) |
+| `same_language_weight` | 0.3 | H2: Delta AUC = +0.001, p = 0.342 |
+| `diversity_scale` | 0.5 | H2: Delta AUC = 0.000, p = 1.000 |
+| `volume_scale` | 0.3 | H2: Delta AUC = 0.000, p = 1.000 |
+| `language_normalization.multipliers` | 28-entry table | H2: Delta AUC = 0.000, p = 0.812 |
+| `language_normalization.default` | 3.0 | Same |
+| `edge_weights.merged_pr` | 1.0 | Collapses to constant 1.0 when it is the only edge type; remove the config indirection |
+
+**Net change:** 14 graph parameters -> 6, plus 4--5 learned weights. The
+28-entry language normalization table is deleted entirely.
+
+---
+
+### 6.6 Data Requirements (v1 -> v2 diff)
+
+| Data | v1 | v2 | Source |
+|------|----|----|--------|
+| Author's merged PRs | Required | Required | GraphQL `pullRequests(states: MERGED)` |
+| Repo metadata (stars, language, archived, fork) | Required | Required (stars, archived, fork only; language no longer used in scoring) | GraphQL `repository` |
+| Author's closed PRs (timestamps) | Not used | **Required** for merge rate | GraphQL `pullRequests(states: CLOSED)` --- fetch `closedAt` for each |
+| Author profile (created_at) | Fetched but not scored | **Scored** (account age feature) | GraphQL `user` |
+| PR body text | Not used | **Optional** (text dissimilarity) | REST API or already available at PR creation |
+| Repo README text | Not used | **Optional** (text dissimilarity) | REST API `repos/{owner}/{repo}/readme` |
+
+The main new data cost is closed PR timestamps. The validation study found 87%
+of authors had this data available (1,958/2,251), with a backfill cap of 500
+most recent per author. In production, fetching closed PRs adds one GraphQL
+query per author.
+
+---
+
+### 6.7 Expected Performance
+
+| Model | AUC | CV Mean +/- SD | n |
+|-------|-----|----------------|---|
+| v1 (full graph, 14 params) | 0.671 | 0.675 +/- 0.048 | 4,977 |
+| v2 graph only (6 params, no externals) | ~0.671 | ~same | --- |
+| v2 combined (graph + merge_rate + age) | ~0.675 | ~0.671 +/- 0.036 | 4,977 |
+| v2 combined + text dissimilarity | 0.680 | 0.671 +/- 0.036 | 4,977 |
+
+The graph simplification (removing 5 inert dimensions) is expected to preserve
+AUC exactly --- the ablation data confirms removing them individually or in
+combination has no measurable effect. The improvement comes from the external
+features, primarily merge rate.
+
+---
+
+### 6.8 Future Work (Speculative, Not in v2 Scope)
+
+These ideas have some theoretical motivation but no direct evidence from the
+validation study:
+
+**a. Repository-specific calibration.**
 The calibration plot shows systematic miscalibration. Fitting per-repository
 or per-language Platt scaling could improve probability estimates, though
 AUC (rank-based) would be unchanged.
 
-**h. Temporal dynamics.**
+**b. Temporal dynamics.**
 Track how an author's merge rate *changes* over time, not just the static
 rate. An author whose merge rate is improving may be more trustworthy than
 one whose rate is declining.
 
-**i. Review latency signals.**
+**c. Review latency signals.**
 Time-to-merge and time-to-close carry information about maintainer
 confidence. Fast merges may indicate high trust; slow merges may indicate
 caution. These are available in the existing data but not currently used.
-
----
-
-## 6. The Simplest Better Egg
-
-The validation results support keeping the graph as the foundation and
-augmenting it with external features. The minimal effective improvement:
-
-```
-score = w1 * ge_graph_score(author, cutoff=T)   [keep as-is]
-      + w2 * temporal_merge_rate(author, cutoff=T)
-      + w3 * log(account_age_days)
-      - w4 * text_similarity(pr_body, repo_readme)       [optional]
-```
-
-Where:
-- `ge_graph_score` is the existing recency-weighted graph scoring (the core
-  that works and outperforms all simple baselines)
-- `temporal_merge_rate` adds rejection signal the graph misses
-  (merged/(merged+closed) using only PRs before cutoff)
-- `account_age` handles cold-start
-- `text_similarity` enters with a *negative* weight (higher similarity →
-  lower score) — this captures PR specificity/novelty, as generic/template PRs
-  that echo the README text are less likely to merge. Simple methods like
-  TF-IDF or Jaccard suffice; no embedding API call required.
-
-The combined model (GE + all three features) achieves AUC = 0.680 with CV
-mean = 0.671, a modest but real improvement over the graph alone (0.671).
-
-A simpler graph (recency only, dropping the five ineffective dimensions)
-should also be evaluated. This would reduce configuration surface area and
-API requirements while preserving the core signal.
 
 ---
 
