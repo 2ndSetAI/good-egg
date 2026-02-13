@@ -166,6 +166,14 @@ adds no measurable value to merge prediction. This does not mean these
 dimensions are useless for other purposes (e.g., interpretability, fairness),
 but they do not improve the score's ability to predict merge outcomes.
 
+*Self-penalty sub-study:* A [dedicated evaluation](self_penalty_evaluation/report.md)
+tested the self-contribution penalty more aggressively by fully excluding
+self-owned repos from the scoring graph (0.0x weight). Even this extreme
+variant produced AUC = 0.670, indistinguishable from the full model (DeLong
+p = 0.73). The penalty's null effect is not an artifact of insufficient
+variation: 62% of authors have self-owned repos, and full exclusion changes
+46% of scores (mean shift -0.019).
+
 ![Ablation Forest Plot](figures/ablation_forest.png)
 
 ### H3--H5: External Features (Incremental Value Beyond GE Score)
@@ -435,7 +443,12 @@ total issues. All have been fixed and the pipeline fully re-run.
 ## Limitations
 
 - **Survivorship bias**: GE scores are computed only from merged PRs. Authors
-  with high rejection rates may appear more trustworthy than warranted.
+  with high rejection rates may appear more trustworthy than warranted. A
+  [rejection awareness sub-study](rejection_awareness/report.md) tested three
+  graph-integrated approaches (per-repo, author-level, and hybrid merge-rate
+  scaling) but found no statistically significant improvement over the full model
+  (all DeLong p > 0.39). Graph-integrated rejection awareness does not improve
+  AUC in this dataset.
 - **Repository metadata currency**: Star counts and archive status are fetched
   at query time, not at PR creation time.
 - **Rejected-class contamination**: The "rejected" class includes superseded
@@ -461,6 +474,12 @@ for the full limitations discussion.
   ([report](similarity_comparison/comparison_report.md),
   [audit](similarity_comparison/RED_TEAM_AUDIT.md),
   [results](similarity_comparison/results.json))
+- Self-penalty evaluation: [`self_penalty_evaluation/`](self_penalty_evaluation/)
+  ([report](self_penalty_evaluation/report.md),
+  [results](self_penalty_evaluation/results.json))
+- Rejection awareness evaluation: [`rejection_awareness/`](rejection_awareness/)
+  ([report](rejection_awareness/report.md),
+  [results](rejection_awareness/results.json))
 - Figures directory: [`figures/`](figures/)
 - Study design: [`DOE.md`](../DOE.md)
 - Study configuration: [`study_config.yaml`](../study_config.yaml)

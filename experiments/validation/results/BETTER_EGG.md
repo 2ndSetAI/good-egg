@@ -90,9 +90,12 @@ resistance) but do not improve merge prediction.
 ### Self-contribution penalty
 
 Designed to penalize contributions to self-owned repos, this has zero measured
-impact. Likely because: (a) self-owned repo PRs are already excluded from the
-study, and (b) the penalty is a flat 0.3x multiplier that doesn't distinguish
-between meaningful self-hosted projects and trivial ones.
+impact. A [dedicated sub-study](self_penalty_evaluation/report.md) tested three
+variants: 0.3x (current), 1.0x (no penalty), and 0.0x (full exclusion from the
+graph). All three produce effectively identical AUCs (0.671, 0.671, 0.670; all
+pairwise DeLong p > 0.58). Even full exclusion changes only 46% of scores (mean
+shift -0.019) and moves AUC by -0.0005. The penalty is neither helpful nor
+harmful --- it can be safely removed to simplify the model.
 
 ### The full graph vs. simple features
 
@@ -150,6 +153,17 @@ with 10 merged. The rejected PRs are invisible to the graph. This means:
 - The H5 result (author merge rate adds LR = 49.8 beyond GE) confirms the
   graph misses rejection signal.
 
+A [rejection awareness sub-study](rejection_awareness/report.md) tested whether
+graph-integrated merge-rate scaling could address this. Three approaches were
+evaluated: per-repo scaling (scale each edge by the author's merge rate at that
+repo), author-level scaling (scale all edges by overall merge rate), and a
+hybrid. None produced a statistically significant improvement (all DeLong
+p > 0.39). Notably, even among high-rejection authors (merge rate < 0.5,
+n=924), graph-integrated scaling barely moved AUC (0.553 vs. full model's
+0.553), while the LR(GE + merge_rate) feature-engineering approach achieved
+0.597 in that subgroup. This suggests rejection signal is better captured as a
+*separate feature* than through edge weight scaling in the graph.
+
 ### Newcomer cold-start
 
 14.4% of PRs in the study come from authors with score = 0 (AUC = 0.500, pure
@@ -198,17 +212,20 @@ call and work on all PRs including title-only ones. Consider using
 `1 - similarity` as a specificity feature, or using high similarity as a flag
 for template/boilerplate PRs.
 
-**e. Incorporate rejection/closed PR data.**
-Currently invisible due to survivorship bias. The graph should at minimum
-track the *existence* of closed PRs (not just merged ones) to penalize
-high-rejection-rate authors. This requires expanding the GitHub data
-collection to include closed PRs per author.
+**e. Incorporate rejection/closed PR data as a feature, not graph scaling.**
+A [rejection awareness sub-study](rejection_awareness/report.md) found that
+graph-integrated merge-rate scaling does not improve AUC (all three approaches
+p > 0.39). However, merge rate as a *separate feature* in logistic regression
+adds significant signal (LR = 70.3, p < 10^-16) and particularly helps for
+high-rejection authors (AUC 0.597 vs. 0.553). Recommendation: keep rejection
+data as a feature-engineered input to a combined model rather than trying to
+bake it into edge weights.
 
-**f. Redesign self-contribution penalty.**
-The current flat 0.3x multiplier is ineffective. Consider: instead of
-penalizing self-contributions, use author merge rate on *external* repos
-only. This naturally handles the gaming vector of self-merged PRs without
-a blunt multiplier.
+**f. Remove self-contribution penalty.**
+A [self-penalty sub-study](self_penalty_evaluation/report.md) tested three
+variants (0.3x, 1.0x, 0.0x) and found all produce identical AUCs (p > 0.58).
+The penalty adds configuration complexity with zero predictive benefit. Simply
+remove it.
 
 ### Lower priority (speculative)
 

@@ -1,0 +1,87 @@
+{
+  "auc_results": {
+    "0.3x (current)": {
+      "auc": 0.6709393386690236,
+      "ci_lower": 0.6532092251342303,
+      "ci_upper": 0.6886694522038168,
+      "se": 0.009046142518253478
+    },
+    "1.0x (no penalty)": {
+      "auc": 0.6709332006693125,
+      "ci_lower": 0.6532029383302623,
+      "ci_upper": 0.6886634630083627,
+      "se": 0.009046218440187785
+    },
+    "0.0x (excluded)": {
+      "auc": 0.6704495470988483,
+      "ci_lower": 0.6526057297620094,
+      "ci_upper": 0.6882933644356872,
+      "se": 0.009104155728160635
+    }
+  },
+  "delong_pairs": {
+    "0.3x vs 1.0x": {
+      "auc_a": 0.6709393386690236,
+      "auc_b": 0.6709332006693125,
+      "z_statistic": 0.5511770843987184,
+      "p_value": 0.581512287320902
+    },
+    "0.3x vs 0.0x": {
+      "auc_a": 0.6709393386690236,
+      "auc_b": 0.6704495470988483,
+      "z_statistic": 0.3454477637950428,
+      "p_value": 0.7297577742847039
+    },
+    "1.0x vs 0.0x": {
+      "auc_a": 0.6709332006693125,
+      "auc_b": 0.6704495470988483,
+      "z_statistic": 0.3412342998312082,
+      "p_value": 0.7329272036680015
+    }
+  },
+  "delong_corrections": {
+    "0.3x vs 1.0x": {
+      "p_value": 0.581512287320902,
+      "adjusted_p": 1.0,
+      "reject": false,
+      "rank": 1
+    },
+    "0.3x vs 0.0x": {
+      "p_value": 0.7297577742847039,
+      "adjusted_p": 1.0,
+      "reject": false,
+      "rank": 2
+    },
+    "1.0x vs 0.0x": {
+      "p_value": 0.7329272036680015,
+      "adjusted_p": 0.7329272036680015,
+      "reject": false,
+      "rank": 3
+    }
+  },
+  "self_ownership_stats": {
+    "total_authors": 2251,
+    "n_with_self": 1398,
+    "n_without_self": 853,
+    "frac_with_self": 0.6210573078631719,
+    "self_frac_mean": 0.2610308219630102,
+    "self_frac_median": 0.13569784473739277,
+    "self_frac_std": 0.2914150536736971,
+    "self_frac_min": 0.002,
+    "self_frac_max": 1.0
+  },
+  "score_comparison": {
+    "n_with_self_test_prs": 3278,
+    "n_differing": 2287,
+    "frac_differing": 0.45951376331123167,
+    "mean_diff": -0.019163568281168202,
+    "max_decrease": 0.8236555374549218
+  },
+  "excluded_self_owned_prs": {
+    "count": 58,
+    "by_repo": {
+      "BurntSushi/ripgrep": 21,
+      "colinhacks/zod": 37
+    }
+  }
+}

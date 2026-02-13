@@ -1,0 +1,213 @@
+{
+  "analysis": {
+    "auc_results": {
+      "Full model": {
+        "auc": 0.6709393386690236,
+        "ci_lower": 0.6532092251342303,
+        "ci_upper": 0.6886694522038168,
+        "se": 0.009046142518253478,
+        "n": 4977
+      },
+      "Per-repo scaling": {
+        "auc": 0.6708815998581812,
+        "ci_lower": 0.6531516000428702,
+        "ci_upper": 0.6886115996734922,
+        "se": 0.009046084497043284,
+        "n": 4977
+      },
+      "Author-level scaling": {
+        "auc": 0.670807527726073,
+        "ci_lower": 0.6530779712707498,
+        "ci_upper": 0.6885370841813961,
+        "se": 0.009045858288811222,
+        "n": 4977
+      },
+      "Hybrid": {
+        "auc": 0.6708815998581812,
+        "ci_lower": 0.6531516000428702,
+        "ci_upper": 0.6886115996734922,
+        "se": 0.009046084497043284,
+        "n": 4977
+      },
+      "LR(GE + merge_rate)": {
+        "auc": 0.662414104744698,
+        "ci_lower": 0.6418250059352097,
+        "ci_upper": 0.6830032035541862,
+        "se": 0.01050483527855226,
+        "n": 4416
+      }
+    },
+    "delong_results": {
+      "Full model vs Per-repo scaling": {
+        "auc_a": 0.6709393386690236,
+        "auc_b": 0.6708815998581812,
+        "z_statistic": 0.372116430412826,
+        "p_value": 0.7098061636642402
+      },
+      "Full model vs Author-level scaling": {
+        "auc_a": 0.6709393386690236,
+        "auc_b": 0.670807527726073,
+        "z_statistic": 0.8541032661466957,
+        "p_value": 0.3930477743819175
+      },
+      "Full model vs Hybrid": {
+        "auc_a": 0.6709393386690236,
+        "auc_b": 0.6708815998581812,
+        "z_statistic": 0.372116430412826,
+        "p_value": 0.7098061636642402
+      },
+      "Full model vs LR(GE + merge_rate)": {
+        "auc_a": 0.666844825728895,
+        "auc_b": 0.662414104744698,
+        "z_statistic": 0.9885636813195575,
+        "p_value": 0.32287666300760764
+      },
+      "Hybrid vs LR(GE + merge_rate)": {
+        "auc_a": 0.666763564881307,
+        "auc_b": 0.662414104744698,
+        "z_statistic": 0.9690398052205694,
+        "p_value": 0.3325253291922621
+      }
+    },
+    "delong_corrections": {
+      "Full model vs LR(GE + merge_rate)": {
+        "p_value": 0.32287666300760764,
+        "adjusted_p": 1.0,
+        "reject": false,
+        "rank": 1
+      },
+      "Hybrid vs LR(GE + merge_rate)": {
+        "p_value": 0.3325253291922621,
+        "adjusted_p": 1.0,
+        "reject": false,
+        "rank": 2
+      },
+      "Full model vs Author-level scaling": {
+        "p_value": 0.3930477743819175,
+        "adjusted_p": 1.0,
+        "reject": false,
+        "rank": 3
+      },
+      "Full model vs Per-repo scaling": {
+        "p_value": 0.7098061636642402,
+        "adjusted_p": 1.0,
+        "reject": false,
+        "rank": 4
+      },
+      "Full model vs Hybrid": {
+        "p_value": 0.7098061636642402,
+        "adjusted_p": 0.7098061636642402,
+        "reject": false,
+        "rank": 5
+      }
+    },
+    "lrt_ge_merge_rate": {
+      "lr_statistic": 70.25235451963454,
+      "p_value": 5.218295640191226e-17,
+      "df": 1
+    },
+    "subgroup_high_rejection": {
+      "n": 924,
+      "Full model": {
+        "auc": 0.5528743296935346,
+        "ci_lower": 0.518717694441791,
+        "ci_upper": 0.5870309649452781,
+        "se": 0.017427174948706527,
+        "n": 924
+      },
+      "Per-repo scaling": {
+        "auc": 0.5532077463810398,
+        "ci_lower": 0.5190615239565509,
+        "ci_upper": 0.5873539688055286,
+        "se": 0.017421862184116614,
+        "n": 924
+      },
+      "Author-level scaling": {
+        "auc": 0.5528882220555139,
+        "ci_lower": 0.5187306236263087,
+        "ci_upper": 0.5870458204847191,
+        "se": 0.017427666374808876,
+        "n": 924
+      },
+      "Hybrid": {
+        "auc": 0.5532077463810398,
+        "ci_lower": 0.5190615239565509,
+        "ci_upper": 0.5873539688055286,
+        "se": 0.017421862184116614,
+        "n": 924
+      },
+      "LR(GE + merge_rate)": {
+        "auc": 0.5971742935733932,
+        "ci_lower": 0.5585006430327942,
+        "ci_upper": 0.6358479441139923,
+        "se": 0.019731816934215014,
+        "n": 924
+      }
+    },
+    "sensitivity_closed_data": {
+      "with_closed_n": 4416,
+      "without_closed_n": 561,
+      "with_closed_auc": {
+        "auc": 0.666844825728895,
+        "ci_lower": 0.6474627449141909,
+        "ci_upper": 0.6862269065435992,
+        "se": 0.009888998454863197
+      },
+      "without_closed_auc": {
+        "auc": 0.6778141281958076,
+        "ci_lower": 0.6387291020935986,
+        "ci_upper": 0.7168991542980165,
+        "se": 0.01994170628159836
+      }
+    },
+    "sensitivity_truncation": {
+      "n_authors_truncated": 44,
+      "n_prs_truncated": 151,
+      "Full model": {
+        "auc": 0.3686274509803922,
+        "ci_lower": 0.278901012865455,
+        "ci_upper": 0.45835388909532937,
+        "se": 0.04577963616815815,
+        "n": 151
+      },
+      "Per-repo scaling": {
+        "auc": 0.3686274509803922,
+        "ci_lower": 0.278901012865455,
+        "ci_upper": 0.45835388909532937,
+        "se": 0.04577963616815815,
+        "n": 151
+      },
+      "Author-level scaling": {
+        "auc": 0.3686274509803922,
+        "ci_lower": 0.278901012865455,
+        "ci_upper": 0.45835388909532937,
+        "se": 0.04577963616815815,
+        "n": 151
+      },
+      "Hybrid": {
+        "auc": 0.3686274509803922,
+        "ci_lower": 0.278901012865455,
+        "ci_upper": 0.45835388909532937,
+        "se": 0.04577963616815815,
+        "n": 151
+      },
+      "LR(GE + merge_rate)": {
+        "auc": 0.39853395061728397,
+        "ci_lower": 0.30619142802760585,
+        "ci_upper": 0.4908764732069621,
+        "se": 0.04711439767162262,
+        "n": 145
+      }
+    }
+  },
+  "coverage": {
+    "total_authors": 2251,
+    "authors_with_closed_prs": 1958,
+    "authors_without_closed_prs": 293,
+    "authors_truncated_at_cap": 44,
+    "backfill_cap": 500,
+    "total_closed_prs_loaded": 112025,
+    "prs_with_temporal_merge_rate": 4416,
+    "prs_without_temporal_merge_rate": 561
+  }
+}
