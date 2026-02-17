@@ -132,6 +132,59 @@ class TestFetchUserMergedPRs:
         assert prs[1].additions == 200
 
     @respx.mock
+    async def test_fetch_user_merged_prs_skips_null_repository(self) -> None:
+        """PRs whose repository is null (deleted/inaccessible) should be skipped."""
+        fixture = {
+            "data": {
+                "user": {
+                    "login": "testuser",
+                    "createdAt": "2020-01-01T00:00:00Z",
+                    "__typename": "User",
+                    "followers": {"totalCount": 50},
+                    "repositories": {"totalCount": 20},
+                    "pullRequests": {
+                        "totalCount": 3,
+                        "pageInfo": {"hasNextPage": False, "endCursor": None},
+                        "nodes": [
+                            {
+                                "title": "PR to deleted repo",
+                                "mergedAt": "2024-06-15T00:00:00Z",
+                                "additions": 10,
+                                "deletions": 5,
+                                "changedFiles": 1,
+                                "repository": None,
+                            },
+                            {
+                                "title": "PR to accessible repo",
+                                "mergedAt": "2024-03-10T00:00:00Z",
+                                "additions": 20,
+                                "deletions": 3,
+                                "changedFiles": 2,
+                                "repository": {
+                                    "nameWithOwner": "elixir-lang/elixir",
+                                    "stargazerCount": 23000,
+                                    "forkCount": 3200,
+                                    "primaryLanguage": {"name": "Elixir"},
+                                    "isArchived": False,
+                                    "isFork": False,
+                                },
+                            },
+                        ],
+                    },
+                }
+            }
+        }
+        respx.post(GRAPHQL_URL).mock(
+            return_value=httpx.Response(200, json=fixture)
+        )
+
+        async with _make_client() as client:
+            prs = await client.fetch_user_merged_prs("testuser")
+
+        assert len(prs) == 1
+        assert prs[0].title == "PR to accessible repo"
+
+    @respx.mock
     async def test_fetch_user_merged_prs_pagination(self) -> None:
         """Two pages of results should be fetched and concatenated."""
         page1 = {
@@ -298,6 +351,60 @@ class TestGetUserContributionData:
         assert "elixir-lang/elixir" in data.contributed_repos
         assert "phoenixframework/phoenix" in data.contributed_repos
         assert data.contributed_repos["elixir-lang/elixir"].stargazer_count == 23000
+
+    @respx.mock
+    async def test_null_repository_skipped(self) -> None:
+        """PRs with null repository (deleted/inaccessible) should be skipped."""
+        fixture = {
+            "data": {
+                "user": {
+                    "login": "testuser",
+                    "createdAt": "2020-01-01T00:00:00Z",
+                    "__typename": "User",
+                    "followers": {"totalCount": 50},
+                    "repositories": {"totalCount": 20},
+                    "pullRequests": {
+                        "totalCount": 3,
+                        "pageInfo": {"hasNextPage": False, "endCursor": None},
+                        "nodes": [
+                            {
+                                "title": "PR to deleted repo",
+                                "mergedAt": "2024-06-15T00:00:00Z",
+                                "additions": 10,
+                                "deletions": 5,
+                                "changedFiles": 1,
+                                "repository": None,
+                            },
+                            {
+                                "title": "PR to accessible repo",
+                                "mergedAt": "2024-03-10T00:00:00Z",
+                                "additions": 20,
+                                "deletions": 3,
+                                "changedFiles": 2,
+                                "repository": {
+                                    "nameWithOwner": "elixir-lang/elixir",
+                                    "stargazerCount": 23000,
+                                    "forkCount": 3200,
+                                    "primaryLanguage": {"name": "Elixir"},
+                                    "isArchived": False,
+                                    "isFork": False,
+                                },
+                            },
+                        ],
+                    },
+                }
+            }
+        }
+        respx.post(GRAPHQL_URL).mock(
+            return_value=httpx.Response(200, json=fixture)
+        )
+
+        async with _make_client() as client:
+            data = await client.get_user_contribution_data("testuser")
+
+        assert len(data.merged_prs) == 1
+        assert data.merged_prs[0].title == "PR to accessible repo"
+        assert "elixir-lang/elixir" in data.contributed_repos
 
 
 # ---------------------------------------------------------------------------

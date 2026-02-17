@@ -267,6 +267,8 @@ class GitHubClient:
                 if len(prs) >= max_prs:
                     break
                 repo = node["repository"]  # type: ignore[index]
+                if repo is None:
+                    continue
                 prs.append(
                     MergedPR(
                         repo_name_with_owner=repo["nameWithOwner"],
@@ -434,6 +436,8 @@ class GitHubClient:
             if len(prs) >= max_prs:
                 break
             repo = node["repository"]  # type: ignore[index]
+            if repo is None:
+                continue
             repo_name = repo["nameWithOwner"]
             prs.append(
                 MergedPR(
@@ -471,6 +475,8 @@ class GitHubClient:
                 if len(prs) >= max_prs:
                     break
                 repo = node["repository"]  # type: ignore[index]
+                if repo is None:
+                    continue
                 repo_name = repo["nameWithOwner"]
                 prs.append(
                     MergedPR(
