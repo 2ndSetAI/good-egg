@@ -39,12 +39,12 @@ collection:
 # PR classification (Stage 2)
 # ----------------------------------------------------------
 classification:
-  # Stale threshold = max(floor, min(multiplier * median_ttm, cap))
+  # Stale threshold = max(floor, min(percentile(ttm, pct), cap))
   stale_threshold_floor_days: 30
   stale_threshold_cap_days: 180
-  stale_threshold_multiplier: 5
+  stale_threshold_percentile: 90
   # PRs still open past threshold + buffer -> pocket veto
-  pocket_veto_buffer_days: 30
+  pocket_veto_buffer_days: 0
 
 # ----------------------------------------------------------
 # Author filtering (Stage 2)

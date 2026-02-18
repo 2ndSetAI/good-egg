@@ -30,6 +30,11 @@ normalized trust score is computed using **only** contribution data where
 information that would have been available at the time the PR was opened,
 preserving the validity of the score as a prospective predictor.
 
+Outcome classification (merged, rejected, pocket veto) uses the full observed
+lifecycle of each PR (`merged_at`, `closed_at`, or elapsed time at study execution
+date). This is standard for retrospective cohort designs: outcomes are determined
+after the fact, while predictor variables are constructed using only pre-event data.
+
 **Unit of observation:** A single pull request on a target repository.
 
 **Independent variable (primary):** GE normalized trust score (continuous,
@@ -53,7 +58,7 @@ Each collected PR is classified into exactly one of three outcome categories.
 |---|---|
 | **Merged** | PR has a non-null `merged_at` timestamp. |
 | **Explicitly rejected** | PR is closed without merging (`state = CLOSED`, `merged_at` is null) and the time from open to close is less than or equal to the repo-specific stale threshold. |
-| **Pocket veto (timeout)** | PR is closed without merging and the time from open to close exceeds the repo-specific stale threshold, **or** PR is still open and the elapsed time since opening exceeds the stale threshold plus a 30-day buffer. |
+| **Pocket veto (timeout)** | PR is closed without merging and the time from open to close exceeds the repo-specific stale threshold, **or** PR is still open and the elapsed time since opening exceeds the stale threshold. |
 
 ### 2.2 Stale Threshold Computation
 
@@ -62,16 +67,16 @@ in review cadence across projects. To prevent lookahead bias, the threshold is
 derived exclusively from PRs merged during the 2024H1 bin.
 
 Let *M* be the set of merged PRs in the target repository during 2024H1, and
-let *median_ttm* be the median time-to-merge (in days) computed over *M*.
+let *ttm* be the set of time-to-merge values (in days) computed over *M*.
 
 ```
-stale_threshold = max(30, min(5 * median_ttm, 180))
+stale_threshold = max(30, min(percentile_90(ttm), 180))
 ```
 
 | Parameter | Value | Rationale |
 |---|---|---|
 | Floor | 30 days | Prevents overly aggressive classification for fast-moving repos. |
-| Multiplier | 5x | Allows for long-tail review processes while remaining bounded. |
+| Percentile | 90th | Captures the tail of the review-time distribution without arbitrary multipliers. More statistically principled than a fixed multiplier of the median. |
 | Cap | 180 days | Prevents indefinite waiting in low-activity repos. |
 
 The stale threshold sample draws up to 100 merged PRs from 2024H1 per
@@ -87,7 +92,7 @@ elif pr.state == CLOSED and (pr.closed_at - pr.created_at) <= stale_threshold:
     outcome = EXPLICITLY_REJECTED
 elif pr.state == CLOSED and (pr.closed_at - pr.created_at) > stale_threshold:
     outcome = POCKET_VETO
-elif pr.state == OPEN and (now - pr.created_at) > stale_threshold + 30 days:
+elif pr.state == OPEN and (now - pr.created_at) > stale_threshold:
     outcome = POCKET_VETO
 else:
     outcome = EXCLUDED  # Still open within threshold; indeterminate
@@ -193,6 +198,12 @@ base GE score.
 
 ## 4. Sampling Strategy
 
+**Data completeness note:** PRs created after `today - max(stale_threshold)` may
+have unresolved outcomes for still-open PRs. The study reports per-bin
+indeterminate exclusion counts and includes a sensitivity analysis computing
+the primary AUC-ROC with and without the final temporal bin (2025H2) to
+demonstrate result stability.
+
 ### 4.1 Repository Stratification
 
 Target repositories are stratified along three axes:
@@ -215,14 +226,16 @@ For each target repository and each of the four temporal bins:
 | Class | Target count per bin | Source |
 |---|---|---|
 | Merged | Up to 25 | GitHub search: `is:pr is:merged repo:{r} merged:{bin_start}..{bin_end}` |
-| Closed (unmerged) | Up to 25 | GitHub search: `is:pr is:closed is:unmerged repo:{r} closed:{bin_start}..{bin_end}` |
+| Closed (unmerged) | Up to 25 | GitHub search: `is:pr is:closed is:unmerged repo:{r} created:{bin_start}..{bin_end}` |
+
+Each PR is assigned to exactly one temporal bin by creation
+date. Deduplication ensures no PR appears in multiple bins.
 
 **Maximum per repository:** Up to 100 merged + 100 closed/timed-out PRs across
 all four bins.
 
-**Minority class oversampling:** If the closed (non-merged) class is
-underrepresented for a given repository, additional closed PRs are drawn from
-adjacent bins until the target count is reached or the supply is exhausted.
+**Class balance note:** AUC-ROC, the primary metric, is rank-based and invariant
+to class proportions. No post-hoc resampling or oversampling is applied.
 
 ### 4.3 Target Sample Size
 
@@ -242,6 +255,12 @@ The following PRs are excluded from analysis after collection:
 |---|---|
 | **Bot authors** | Detected via GE's built-in bot detection plus additional patterns (see `study_config.yaml`, `author_filtering.extra_bot_patterns`). Bot PRs reflect automated processes, not human trust signals. |
 | **Self-owned repositories** | PRs to repos owned by the PR author. Self-merges do not represent external trust. |
+
+(Note: this exclusion applies to test PRs where the author owns the target
+repository. Separately, the scoring graph applies a configurable 0.3x penalty to
+contributions in an author's own repositories within their contribution history ---
+see Section 7, dimension #3.)
+
 | **PRs open < 1 day** | Likely accidental or immediately superseded. |
 | **PRs closed < 1 day** | Likely spam, accidental, or test PRs. |
 | **Indeterminate PRs** | PRs still open within the stale threshold period. These cannot yet be classified and are excluded to avoid censoring bias. |
@@ -353,6 +372,11 @@ statistically significant decrease in AUC-ROC (corrected p < 0.05). The
 two-way interaction variants serve as exploratory checks for redundancy between
 dimension pairs.
 
+**Efficiency note:** The current approach re-scores each PR per ablation variant.
+A future optimization could save intermediate graph components (edges, weights,
+personalization vector) once and apply ablation parameters post-hoc, avoiding
+redundant graph construction.
+
 ---
 
 ## 8. Cross-Validation
@@ -394,7 +418,10 @@ Repository metadata (star count, archived status, fork status, primary
 language) is fetched at query time, not at the time the PR was created. A
 repository that has since gained significant popularity or been archived will
 have different metadata than it did historically. This affects the repo quality
-dimension but cannot be corrected without historical snapshot data.
+dimension. Historical star counts could
+potentially be recovered using services like the star-history API. However, the
+H2 ablation shows repo quality has negligible AUC impact (ΔAUC = −0.002,
+p = 0.117), making this correction low priority.
 
 ### 9.2 Survivorship Bias in Contribution Data
 
@@ -407,10 +434,10 @@ by testing whether historical merge rate adds predictive value.
 
 ### 9.3 Pocket Veto Threshold Heuristic
 
-The stale threshold formula (`max(30, min(5 * median_ttm, 180))`) is a
-heuristic. The choice of multiplier (5x), floor (30 days), and cap (180 days)
-are informed by prior work on open-source review latency but are not
-empirically optimized. Sensitivity analysis should be conducted by varying these
+The stale threshold formula (`max(30, min(percentile_90(ttm), 180))`) uses the
+90th percentile of observed time-to-merge. The floor (30 days) and cap (180 days)
+are informed by prior work on open-source review latency but are not empirically
+optimized. Sensitivity analysis should be conducted by varying these
 parameters.
 
 ### 9.4 "Rejected" Class Contamination
@@ -464,7 +491,7 @@ All tunable study parameters are centralized in
 |---|---|
 | `temporal_bins` | Half-year bins with start/end dates. |
 | `collection` | `merged_per_bin`, `closed_per_bin`, `gh_search_delay_seconds`, `stale_sample_size`. |
-| `classification` | `stale_threshold_floor_days`, `stale_threshold_cap_days`, `stale_threshold_multiplier`, `pocket_veto_buffer_days`. |
+| `classification` | `stale_threshold_floor_days`, `stale_threshold_cap_days`, `stale_threshold_percentile`, `pocket_veto_buffer_days` (0). |
 | `author_filtering` | `extra_bot_patterns` (regex list). |
 | `scoring` | `batch_size`. |
 | `features` | `embedding_model`, `embedding_batch_size`. |

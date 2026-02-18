@@ -5,7 +5,8 @@ import re
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from statistics import median
+
+import numpy as np
 
 from experiments.validation.checkpoint import (
     append_jsonl,
@@ -106,11 +107,11 @@ def _compute_stale_threshold(
     merged_prs: list[CollectedPR],
     floor_days: int = 30,
     cap_days: int = 180,
-    multiplier: int = 5,
+    percentile: int = 90,
 ) -> float:
     """Compute stale threshold from merged PRs.
 
-    threshold = max(floor, min(multiplier * median_TTM, cap))
+    threshold = max(floor, min(percentile(TTM, pct), cap))
     """
     ttm_values: list[float] = []
     for pr in merged_prs:
@@ -122,8 +123,8 @@ def _compute_stale_threshold(
     if not ttm_values:
         return float(floor_days)
 
-    median_ttm = median(ttm_values)
-    threshold = max(floor_days, min(multiplier * median_ttm, cap_days))
+    pct_ttm = float(np.percentile(ttm_values, percentile))
+    threshold = max(floor_days, min(pct_ttm, cap_days))
     return threshold
 
 
@@ -193,8 +194,8 @@ def run_stage2(base_dir: Path, config: StudyConfig) -> None:
     stale_cfg = config.classification
     floor_days = stale_cfg.get("stale_threshold_floor_days", 30)
     cap_days = stale_cfg.get("stale_threshold_cap_days", 180)
-    multiplier = stale_cfg.get("stale_threshold_multiplier", 5)
-    buffer_days = stale_cfg.get("pocket_veto_buffer_days", 30)
+    percentile = stale_cfg.get("stale_threshold_percentile", 90)
+    buffer_days = stale_cfg.get("pocket_veto_buffer_days", 0)
 
     extra_bot_patterns = config.author_filtering.get(
         "extra_bot_patterns", [],
@@ -245,6 +246,7 @@ def run_stage2(base_dir: Path, config: StudyConfig) -> None:
     total_classified = 0
     total_excluded = 0
     total_reclassified = 0
+    indeterminate_by_bin: dict[str, int] = defaultdict(int)
 
     for jsonl_file in sorted(raw_dir.glob("*.jsonl")):
         repo_key = jsonl_file.stem  # owner__repo
@@ -259,7 +261,7 @@ def run_stage2(base_dir: Path, config: StudyConfig) -> None:
             if p.merged_at is not None and p.temporal_bin == stale_bin
         ]
         stale_threshold = _compute_stale_threshold(
-            baseline_merged, floor_days, cap_days, multiplier,
+            baseline_merged, floor_days, cap_days, percentile,
         )
         logger.info(
             "%s: stale_threshold=%.1f days (from %d merged PRs)",
@@ -285,6 +287,7 @@ def run_stage2(base_dir: Path, config: StudyConfig) -> None:
             )
             if result is None:
                 total_excluded += 1
+                indeterminate_by_bin[pr.temporal_bin] += 1
                 continue
 
             # Rec 4: Detect merge-bot false negatives
@@ -335,6 +338,13 @@ def run_stage2(base_dir: Path, config: StudyConfig) -> None:
         authors_dir / "unique_authors.json",
         {"authors": authors_list, "count": len(authors_list)},
     )
+
+    # Log per-bin indeterminate counts
+    for bin_label in sorted(indeterminate_by_bin):
+        logger.info(
+            "Indeterminate (excluded) PRs in %s: %d",
+            bin_label, indeterminate_by_bin[bin_label],
+        )
 
     logger.info(
         "Stage 2 complete: %d classified PRs, %d excluded, "

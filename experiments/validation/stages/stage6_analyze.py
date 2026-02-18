@@ -111,6 +111,79 @@ def run_stage6(base_dir: Path, config: StudyConfig) -> None:
         output_path=figures_dir / "calibration.png",
     )
 
+    # === 2025H2 completeness sensitivity (Fix C) ===
+    try:
+        sensitivity_2025h2: dict[str, Any] = {
+            "full_dataset_n": len(df),
+            "full_dataset_auc": h1_auc_ci["auc"],
+        }
+        if "temporal_bin" in df.columns:
+            excl_mask = df["temporal_bin"] != "2025H2"
+            df_excl = df[excl_mask]
+            n_2025h2 = int((~excl_mask).sum())
+            sensitivity_2025h2["n_2025h2_excluded"] = n_2025h2
+
+            if len(df_excl) > 50:
+                y_excl = df_excl["outcome"].apply(
+                    _binary_target,
+                ).values
+                s_excl = df_excl["normalized_score"].values
+                if len(set(y_excl)) >= 2:
+                    excl_auc = auc_roc_with_ci(
+                        y_excl, s_excl, alpha=alpha,
+                    )
+                    sensitivity_2025h2["excl_2025h2_n"] = len(df_excl)
+                    sensitivity_2025h2["excl_2025h2_auc"] = (
+                        excl_auc["auc"]
+                    )
+                    sensitivity_2025h2["auc_delta"] = (
+                        excl_auc["auc"] - h1_auc_ci["auc"]
+                    )
+                    logger.info(
+                        "2025H2 sensitivity: full AUC=%.4f, "
+                        "excl AUC=%.4f, delta=%.4f",
+                        h1_auc_ci["auc"],
+                        excl_auc["auc"],
+                        sensitivity_2025h2["auc_delta"],
+                    )
+        all_results["sensitivity_2025h2"] = sensitivity_2025h2
+    except Exception:
+        logger.exception("2025H2 sensitivity analysis failed")
+
+    # === Stale threshold sensitivity (Fix D) ===
+    # The primary binary AUC-ROC (merged vs not-merged) uses merged_at
+    # as ground truth, which is invariant to stale threshold choice.
+    # The stale threshold only affects the rejected/pocket_veto split
+    # within the non-merged class. Full reclassification requires raw
+    # PR data not available at this stage; results here document the
+    # invariance and note the three-class sensitivity for future runs.
+    try:
+        sensitivity_stale: dict[str, Any] = {
+            "note": (
+                "Primary binary AUC-ROC is invariant to stale "
+                "threshold choice because merged_at is the ground "
+                "truth boundary. Threshold variants (5x-median, "
+                "p75, p90) only affect the rejected/pocket_veto "
+                "split within non-merged PRs."
+            ),
+            "primary_auc_invariant": True,
+            "primary_auc": h1_auc_ci["auc"],
+            "variants": ["5x-median", "p75", "p90"],
+            "three_class_note": (
+                "Three-class analysis (H1a) is sensitive to "
+                "threshold choice. Re-run pipeline with each "
+                "variant to obtain reclassified AUC values."
+            ),
+        }
+        all_results["sensitivity_stale_threshold"] = sensitivity_stale
+        logger.info(
+            "Stale threshold sensitivity: primary AUC invariant "
+            "(%.4f); three-class analysis requires re-run",
+            h1_auc_ci["auc"],
+        )
+    except Exception:
+        logger.exception("Stale threshold sensitivity failed")
+
     # === H1a: Three-class analysis ===
     outcome_groups: dict[str, np.ndarray] = {}
     for outcome in PROutcome:

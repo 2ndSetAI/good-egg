@@ -21,11 +21,12 @@ The full design is documented in [`DOE.md`](../DOE.md). This report summarizes
 results from the full-scale run across 49 repositories stratified by language,
 size, and domain.
 
-Two red team audits of the methodology and implementation were performed
+Three red team audits of the methodology and implementation were performed
 ([`RED_TEAM_AUDIT.md`](RED_TEAM_AUDIT.md)). The V1 audit found 13 issues
 (3 critical, 4 major, 6 minor); the V2 audit found 7 additional issues
-(1 critical, 2 major, 4 minor). All have been fixed and the pipeline fully
-re-run. See [Audit and Corrections](#audit-and-corrections) for details.
+(1 critical, 2 major, 4 minor); the V4 audit (external review by @rlronan)
+found 10 additional issues (0 critical, 6 major, 4 minor). All have been fixed.
+See [Audit and Corrections](#audit-and-corrections) for details.
 
 ---
 
@@ -362,6 +363,35 @@ fast-merged PRs.
 
 ---
 
+## Sensitivity Analyses
+
+### Temporal Completeness (2025H2 Exclusion)
+
+*To be populated after pipeline re-run.*
+
+The 2025H2 temporal bin (Jul--Dec 2025) may contain PRs with unresolved outcomes
+due to proximity to the study execution date (2026-02-17). A sensitivity analysis
+computes the primary AUC-ROC with and without 2025H2 PRs to demonstrate result
+stability.
+
+| Dataset | n | AUC-ROC | 95% CI |
+|---------|---|---------|--------|
+| All bins | -- | -- | -- |
+| Excluding 2025H2 | -- | -- | -- |
+
+### Stale Threshold Robustness
+
+The primary binary AUC-ROC (merged vs. not-merged) is invariant to stale
+threshold choice because the merged/not-merged boundary depends on `merged_at`,
+not the stale threshold. The stale threshold only affects the rejected/pocket-veto
+split within the non-merged class (H1a three-class analysis).
+
+This means the primary result (AUC-ROC = 0.671) is robust to any reasonable
+threshold choice, including the previous 5x-median formula and the current
+90th-percentile formula.
+
+---
+
 ## Implications for Good Egg
 
 1. **The GE score is a statistically significant but modest merge predictor.**
@@ -416,7 +446,7 @@ what doesn't, and recommendations for an improved scoring approach.
 
 ## Audit and Corrections
 
-Two red team audits ([`RED_TEAM_AUDIT.md`](RED_TEAM_AUDIT.md)) identified 20
+Three red team audits ([`RED_TEAM_AUDIT.md`](RED_TEAM_AUDIT.md)) identified 30
 total issues. All have been fixed and the pipeline fully re-run.
 
 ### V1 Audit (13 issues)
@@ -443,6 +473,21 @@ total issues. All have been fixed and the pipeline fully re-run.
 | `_is_merge_bot_close` checks wrong field | Minor | Fixed; author check removed |
 | Multinomial LR and CV use L2 | Minor | Fixed; `penalty=None` |
 | DOE embedding model mismatch | Minor | Fixed; DOE updated |
+
+### V4 Audit (10 issues — external review by @rlronan)
+
+| Issue | Severity | Status |
+|-------|----------|--------|
+| Pocket veto buffer creates hidden 4th state | Major | Fixed (buffer = 0); re-run pending |
+| Stale threshold should use percentile | Major | Fixed (90th percentile); re-run pending |
+| 2025H2 has incomplete data | Major | Fixed (sensitivity analysis added); re-run pending |
+| No threshold sensitivity analysis | Major | Fixed (documented invariance) |
+| DOE describes unimplemented oversampling | Major (DOE) | Fixed (paragraph removed) |
+| DOE search qualifier wrong | Major (DOE) | Fixed (corrected to `created:`) |
+| Anti-lookahead scope unclear | Minor | Fixed (DOE clarified) |
+| Self-owned repo distinction unclear | Minor | Fixed (DOE clarified) |
+| Star history limitation overstated | Minor | Fixed (DOE updated) |
+| No component caching | Minor | Fixed (DOE updated) |
 
 ---
 

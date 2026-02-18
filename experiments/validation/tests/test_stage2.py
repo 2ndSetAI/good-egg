@@ -73,7 +73,7 @@ def test_stale_threshold_basic() -> None:
         )
         for d in [2, 3, 5, 7, 10]
     ]
-    # median TTM = 5 days, threshold = max(30, min(5*5, 180)) = 30
+    # p90 TTM = 8.8 days, threshold = max(30, min(8.8, 180)) = 30
     threshold = _compute_stale_threshold(prs)
     assert threshold == 30.0
 
@@ -88,9 +88,9 @@ def test_stale_threshold_long_ttm() -> None:
         )
         for d in [20, 25, 30, 35, 40]
     ]
-    # median TTM = 30 days, threshold = max(30, min(150, 180)) = 150
+    # p90 TTM = 38 days, threshold = max(30, min(38, 180)) = 38
     threshold = _compute_stale_threshold(prs)
-    assert threshold == 150.0
+    assert threshold == 38.0
 
 
 def test_stale_threshold_capped() -> None:
@@ -101,9 +101,9 @@ def test_stale_threshold_capped() -> None:
                 datetime(2024, 1, 1, tzinfo=UTC) + timedelta(days=d)
             ),
         )
-        for d in [50, 60, 70, 80, 90]
+        for d in [100, 150, 200, 250, 300]
     ]
-    # median TTM = 70 days, threshold = max(30, min(350, 180)) = 180
+    # p90 TTM = 280 days, threshold = max(30, min(280, 180)) = 180
     threshold = _compute_stale_threshold(prs)
     assert threshold == 180.0
 
@@ -143,7 +143,18 @@ def test_classify_pocket_veto_closed() -> None:
 
 
 def test_classify_pocket_veto_open() -> None:
-    # Open past threshold + buffer
+    # Open past threshold (buffer=0 default)
+    pr = _make_pr()  # No merged_at or closed_at -> OPEN
+    now = datetime(2024, 6, 1, tzinfo=UTC) + timedelta(days=61)
+    result = _classify_pr(
+        pr, stale_threshold_days=60.0, buffer_days=0, now=now,
+    )
+    assert result is not None
+    assert result.outcome == PROutcome.POCKET_VETO
+
+
+def test_classify_pocket_veto_open_with_buffer() -> None:
+    # Open past threshold + buffer (explicit buffer_days)
     pr = _make_pr()  # No merged_at or closed_at -> OPEN
     now = datetime(2024, 6, 1, tzinfo=UTC) + timedelta(days=100)
     result = _classify_pr(
@@ -154,11 +165,11 @@ def test_classify_pocket_veto_open() -> None:
 
 
 def test_classify_indeterminate() -> None:
-    # Open within threshold -> None
+    # Open within threshold (buffer=0) -> None
     pr = _make_pr()  # OPEN
     now = datetime(2024, 6, 1, tzinfo=UTC) + timedelta(days=20)
     result = _classify_pr(
-        pr, stale_threshold_days=60.0, buffer_days=30, now=now,
+        pr, stale_threshold_days=60.0, buffer_days=0, now=now,
     )
     assert result is None
 

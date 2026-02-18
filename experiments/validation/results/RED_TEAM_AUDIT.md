@@ -4,6 +4,8 @@
 **Auditor:** Automated code review (full source read of all files in experiments/validation/)
 **Status:** V1: All 13 issues resolved (pipeline re-run 2026-02-12).
 V2: 7 additional issues identified and fixed (2026-02-12).
+V3: Similarity comparison sub-study audit (see separate file).
+V4: 10 issues from external review. All fixed.
 **Impact (V1):** Sample grew from 3,005 to 4,977 PRs. H3 and H4 flipped from
 "not supported" to "supported." AUC decreased from 0.695 to 0.671.
 **Impact (V2):** H5 temporal leakage fully fixed with backfilled data
@@ -371,6 +373,143 @@ distinction, and tempered framing.
 
 ---
 
+## V4 Audit Findings
+
+**Source:** External review by @rlronan on PR #27.
+
+This audit incorporates feedback from an external reviewer who identified 10 issues
+across the study methodology, DOE documentation, and pipeline implementation. The
+review focused on the pocket veto classification, stale threshold computation,
+temporal completeness, and documentation accuracy.
+
+**Key finding:** None of the issues affect the primary AUC-ROC = 0.671 result.
+The merged/not-merged boundary is determined by `merged_at` and is unaffected
+by stale threshold or buffer changes. Fixes primarily affect the
+rejected/pocket-veto split (H1a three-class analysis) and data completeness in
+the 2025H2 temporal bin.
+
+### V4-A. Pocket veto buffer creates hidden 4th state (MAJOR)
+
+**Comment:** The 30-day buffer creates PRs that are neither classified nor excluded
+--- open longer than `stale_threshold` but less than `stale_threshold + 30`.
+
+**Fix:** Set `pocket_veto_buffer_days: 0`. PRs open past the stale threshold are
+now immediately classified as pocket veto. Simplifies the classification logic.
+
+**Impact:** Pocket veto / rejected split only. Primary AUC unaffected.
+**Status:** Fixed. Requires pipeline re-run (Stages 2--6).
+
+### V4-B. Stale threshold should use percentile, not multiplier (MAJOR)
+
+**Comment:** A percentile-based threshold (90th percentile of time-to-merge) is
+more statistically principled than an arbitrary 5x multiplier of the median.
+
+**Fix:** Replaced `stale_threshold_multiplier: 5` with
+`stale_threshold_percentile: 90`. The `_compute_stale_threshold()` function now
+uses `numpy.percentile(ttm_values, 90)` instead of `5 * median(ttm_values)`.
+Floor (30 days) and cap (180 days) retained as safety bounds.
+
+**Impact:** Pocket veto / rejected split only. Primary AUC unaffected.
+**Status:** Fixed. Requires pipeline re-run (Stages 2--6).
+
+### V4-C. 2025H2 temporal bin has incomplete data (MAJOR)
+
+**Comment:** The final temporal bin (2025H2: Jul--Dec 2025) may contain PRs
+whose outcomes are not yet determinable. With today's date of 2026-02-17 and
+stale thresholds up to 180 days, PRs from late 2025 cannot yet be classified.
+
+**Fix:** Added per-bin indeterminate exclusion count logging in Stage 2. Added
+sensitivity analysis in Stage 6 computing AUC-ROC with and without 2025H2.
+Added data completeness note to DOE Section 4.
+
+**Impact:** Potentially affects sample size. Sensitivity analysis demonstrates
+stability of primary result.
+**Status:** Fixed. Requires pipeline re-run (Stage 6).
+
+### V4-D. No stale threshold sensitivity analysis (MAJOR)
+
+**Comment:** The study should demonstrate that the primary result is robust to
+threshold choice.
+
+**Fix:** Added sensitivity analysis in Stage 6 documenting that the primary
+binary AUC-ROC (merged vs. not-merged) is invariant to stale threshold choice
+because the merged/not-merged boundary depends on `merged_at`, not the stale
+threshold. The threshold only affects the rejected/pocket-veto split within
+the non-merged class.
+
+**Impact:** Demonstrates robustness. No effect on results.
+**Status:** Fixed. Documentation added.
+
+### V4-E. DOE describes unimplemented minority class oversampling (MAJOR - DOE)
+
+**Comment:** DOE Section 4.2 describes drawing closed PRs from adjacent bins to
+address class imbalance. This is not implemented and would cause temporal leakage.
+
+**Fix:** Deleted the oversampling paragraph. Replaced with a note that AUC-ROC
+is rank-based and invariant to class proportions.
+
+**Impact:** Documentation only.
+**Status:** Fixed.
+
+### V4-F. DOE search qualifier is wrong (MAJOR - DOE)
+
+**Comment:** DOE says `closed:{bin_start}..{bin_end}` but the code uses
+`created:{date_range}`.
+
+**Fix:** Corrected DOE to say `created:` and added note about creation-date
+binning and deduplication.
+
+**Impact:** Documentation only.
+**Status:** Fixed.
+
+### V4-G. Anti-lookahead scope unclear (MINOR)
+
+**Comment:** DOE says `merged_at < T` but doesn't clarify that this applies to
+scoring inputs, not outcome labels.
+
+**Fix:** Added clarifying paragraph in DOE Section 1 explaining that outcome
+classification uses the full observed lifecycle (standard for retrospective
+cohort designs).
+
+**Impact:** Documentation only.
+**Status:** Fixed.
+
+### V4-H. Self-owned repo distinction unclear (MINOR)
+
+**Comment:** The exclusion criteria mention self-owned repos but don't distinguish
+between (1) excluding test PRs to self-owned repos and (2) the 0.3x scoring
+penalty for self-owned repos in contribution history.
+
+**Fix:** Added clarifying note in DOE Section 5 distinguishing the two concepts.
+
+**Impact:** Documentation only.
+**Status:** Fixed.
+
+### V4-I. Star history limitation is overstated (MINOR)
+
+**Comment:** DOE Section 9.1 says historical star counts "cannot be corrected
+without historical snapshot data," but star-history services exist.
+
+**Fix:** Updated to acknowledge star history is recoverable, but noted the H2
+ablation shows repo quality has negligible AUC impact, making correction low
+priority.
+
+**Impact:** Documentation only.
+**Status:** Fixed.
+
+### V4-J. No component caching for ablation efficiency (MINOR)
+
+**Comment:** Saving intermediate graph components would enable faster post-hoc
+ablation.
+
+**Fix:** Added efficiency note in DOE Section 7.4 acknowledging this as a future
+optimization.
+
+**Impact:** Documentation only.
+**Status:** Fixed.
+
+---
+
 ## Summary Table
 
 | ID | Severity | Issue | Status |
@@ -398,6 +537,17 @@ distinction, and tempered framing.
 | V2-5 | MINOR | Multinomial LR and CV use L2 | **Fixed** — `penalty=None` |
 | V2-6 | MINOR | DOE embedding model mismatch | **Fixed** — DOE updated |
 | V2-7 | MAJOR | SUMMARY.md framing issues | **Resolved** — rewritten with baselines + honest framing |
+| **V4 Audit** | | | |
+| V4-A | MAJOR | Pocket veto buffer creates hidden 4th state | **Fixed** — buffer set to 0 |
+| V4-B | MAJOR | Stale threshold should use percentile | **Fixed** — 90th percentile replaces 5x multiplier |
+| V4-C | MAJOR | 2025H2 has incomplete data | **Fixed** — sensitivity analysis added |
+| V4-D | MAJOR | No threshold sensitivity analysis | **Fixed** — documented threshold invariance |
+| V4-E | MAJOR | DOE describes unimplemented oversampling | **Fixed** — paragraph removed |
+| V4-F | MAJOR | DOE search qualifier wrong | **Fixed** — corrected to `created:` |
+| V4-G | MINOR | Anti-lookahead scope unclear | **Fixed** — clarified in DOE Section 1 |
+| V4-H | MINOR | Self-owned repo distinction unclear | **Fixed** — clarified in DOE Section 5 |
+| V4-I | MINOR | Star history limitation overstated | **Fixed** — acknowledged recoverability |
+| V4-J | MINOR | No component caching | **Fixed** — future optimization noted |
 
 ---
 
