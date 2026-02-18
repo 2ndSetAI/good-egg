@@ -6,8 +6,8 @@ This report compares text similarity methods applied to PR body / repo README
 text pairs from the H4 semantic similarity hypothesis test.
 Two scopes are analyzed:
 
-- **Gemini subset** (n=1,293): All methods including Gemini embeddings.
-- **Full dataset** (n=4,977): TF-IDF, MiniLM variants, and Jaccard (no Gemini filter).
+- **Gemini subset** (n=1,569): All methods including Gemini embeddings.
+- **Full dataset** (n=5,417): TF-IDF, MiniLM variants, and Jaccard (no Gemini filter).
 
 ## AUC Inversion: Similarity as a Negative Predictor
 
@@ -30,18 +30,18 @@ Possible explanations:
    relationship is positive. A strong negative signal is just as
    informative as a positive one for the LRT.
 
-## Gemini Subset Analysis (n=1,293)
+## Gemini Subset Analysis (n=1,569)
 
 ### Method Summary
 
 | Method | LRT Stat | Raw p | Adj. p | Standalone AUC | AUC 95% CI | Gemini r |
 |--------|----------|-------|-------|----------------|------------|----------|
-| Gemini *** | 20.818 | 5.0516e-06 | --- | 0.4162 | [0.3821, 0.4504] | --- |
-| TF-IDF | 3.435 | 6.3842e-02 | 2.5537e-01 | 0.4422 | [0.4086, 0.4757] | 0.5859 |
-| MiniLM-128 | 0.768 | 3.8078e-01 | 7.6156e-01 | 0.4691 | [0.4346, 0.5037] | 0.4382 |
-| MiniLM-256 | 2.275 | 1.3149e-01 | 3.9448e-01 | 0.4545 | [0.4200, 0.4890] | 0.5337 |
-| MiniLM-512 | 0.601 | 4.3830e-01 | 4.3830e-01 | 0.5132 | [0.4797, 0.5468] | 0.6190 |
-| Jaccard ** | 13.596 | 2.2665e-04 | 1.1332e-03 | 0.4412 | [0.4068, 0.4756] | 0.5009 |
+| Gemini *** | 35.200 | 2.9745e-09 | --- | 0.4110 | [0.3824, 0.4395] | --- |
+| TF-IDF | 1.774 | 1.8289e-01 | 5.4866e-01 | 0.4499 | [0.4212, 0.4786] | 0.5708 |
+| MiniLM-128 | 0.002 | 9.6445e-01 | 1.0000e+00 | 0.4949 | [0.4651, 0.5246] | 0.4385 |
+| MiniLM-256 | 0.056 | 8.1247e-01 | 1.0000e+00 | 0.4834 | [0.4539, 0.5129] | 0.5251 |
+| MiniLM-512 | 2.299 | 1.2948e-01 | 5.1793e-01 | 0.5238 | [0.4950, 0.5526] | 0.6103 |
+| Jaccard *** | 25.498 | 4.4281e-07 | 2.2141e-06 | 0.4241 | [0.3954, 0.4527] | 0.5054 |
 
 *Significance markers use Holm-Bonferroni corrected p-values (non-Gemini methods).*
 *\* p < 0.05, \*\* p < 0.01, \*\*\* p < 0.001*
@@ -50,56 +50,56 @@ Possible explanations:
 
 | Variant | LRT Stat | Raw p | Adj. p | Standalone AUC |
 |---------|----------|-------|-------|----------------|
-| MiniLM-128 | 0.768 | 3.8078e-01 | 7.6156e-01 | 0.4691 |
-| MiniLM-256 | 2.275 | 1.3149e-01 | 3.9448e-01 | 0.4545 |
-| MiniLM-512 | 0.601 | 4.3830e-01 | 4.3830e-01 | 0.5132 |
+| MiniLM-128 | 0.002 | 9.6445e-01 | 1.0000e+00 | 0.4949 |
+| MiniLM-256 | 0.056 | 8.1247e-01 | 1.0000e+00 | 0.4834 |
+| MiniLM-512 | 2.299 | 1.2948e-01 | 5.1793e-01 | 0.5238 |
 
 Mean README length is ~1,300 tokens after 4,000-char truncation.
 At 128 tokens, MiniLM captures ~10% of README content;
 at 256, ~20%; at 512, ~40%.
 
-### Marginal Improvement (n=1,245; 48 rows lack merge_rate or account_age)
+### Marginal Improvement (n=1,495; 74 rows lack merge_rate or account_age)
 
 | Method | Base AUC | Full AUC | AUC Diff | DeLong p | LRT p |
 |--------|----------|----------|----------|---------|-------|
-| Gemini | 0.6519 | 0.6796 | +0.0277 | 3.6734e-02 | 3.6336e-06 |
-| TF-IDF | 0.6519 | 0.6603 | +0.0084 | 2.6523e-01 | 3.7258e-02 |
-| MiniLM-128 | 0.6519 | 0.6518 | -0.0001 | 9.8735e-01 | 3.3520e-01 |
-| MiniLM-256 | 0.6519 | 0.6555 | +0.0036 | 5.5720e-01 | 1.2627e-01 |
-| MiniLM-512 | 0.6519 | 0.6523 | +0.0004 | 8.9666e-01 | 4.8769e-01 |
-| Jaccard | 0.6519 | 0.6679 | +0.0160 | 1.9878e-01 | 1.3286e-04 |
+| Gemini | 0.6272 | 0.6539 | +0.0266 | 3.1018e-02 | 3.9133e-09 |
+| TF-IDF | 0.6272 | 0.6311 | +0.0039 | 5.5072e-01 | 6.8803e-02 |
+| MiniLM-128 | 0.6272 | 0.6268 | -0.0004 | 7.1910e-01 | 8.0230e-01 |
+| MiniLM-256 | 0.6272 | 0.6261 | -0.0011 | 6.4930e-01 | 5.8457e-01 |
+| MiniLM-512 | 0.6272 | 0.6272 | -0.0000 | 9.9749e-01 | 2.1478e-01 |
+| Jaccard | 0.6272 | 0.6437 | +0.0165 | 1.7806e-01 | 4.7295e-07 |
 
 ### Pairwise DeLong Tests (Standalone AUCs)
 
 | Comparison | AUC A | AUC B | z | Raw p | Adj. p |
 |------------|-------|-------|---|-------|--------|
-| Gemini vs TF-IDF | 0.4162 | 0.4422 | -1.874 | 6.0976e-02 | 4.8781e-01 |
-| Gemini vs MiniLM-128 * | 0.4162 | 0.4691 | -2.841 | 4.4992e-03 | 4.4992e-02 |
-| Gemini vs MiniLM-256 | 0.4162 | 0.4545 | -2.284 | 2.2368e-02 | 2.0131e-01 |
-| Gemini vs MiniLM-512 *** | 0.4162 | 0.5132 | -6.186 | 6.1781e-10 | 9.2672e-09 |
-| Gemini vs Jaccard | 0.4162 | 0.4412 | -1.394 | 1.6331e-01 | 8.1655e-01 |
-| TF-IDF vs MiniLM-128 | 0.4422 | 0.4691 | -1.521 | 1.2832e-01 | 7.6995e-01 |
-| TF-IDF vs MiniLM-256 | 0.4422 | 0.4545 | -0.763 | 4.4550e-01 | 1.0000e+00 |
-| TF-IDF vs MiniLM-512 *** | 0.4422 | 0.5132 | -4.687 | 2.7778e-06 | 3.6111e-05 |
-| TF-IDF vs Jaccard | 0.4422 | 0.4412 | 0.049 | 9.6096e-01 | 9.6096e-01 |
-| MiniLM-128 vs MiniLM-256 | 0.4691 | 0.4545 | 1.742 | 8.1461e-02 | 5.7023e-01 |
-| MiniLM-128 vs MiniLM-512 * | 0.4691 | 0.5132 | -2.948 | 3.1988e-03 | 3.5187e-02 |
-| MiniLM-128 vs Jaccard | 0.4691 | 0.4412 | 1.222 | 2.2171e-01 | 8.8686e-01 |
-| MiniLM-256 vs MiniLM-512 *** | 0.4545 | 0.5132 | -4.848 | 1.2471e-06 | 1.7459e-05 |
-| MiniLM-256 vs Jaccard | 0.4545 | 0.4412 | 0.617 | 5.3749e-01 | 1.0000e+00 |
-| MiniLM-512 vs Jaccard ** | 0.5132 | 0.4412 | 3.816 | 1.3537e-04 | 1.6244e-03 |
+| Gemini vs TF-IDF ** | 0.4110 | 0.4499 | -3.235 | 1.2158e-03 | 8.8163e-03 |
+| Gemini vs MiniLM-128 *** | 0.4110 | 0.4949 | -5.308 | 1.1105e-07 | 1.3326e-06 |
+| Gemini vs MiniLM-256 *** | 0.4110 | 0.4834 | -5.004 | 5.6160e-07 | 6.1776e-06 |
+| Gemini vs MiniLM-512 *** | 0.4110 | 0.5238 | -8.611 | 7.2237e-18 | 1.0836e-16 |
+| Gemini vs Jaccard | 0.4110 | 0.4241 | -0.883 | 3.7724e-01 | 3.7724e-01 |
+| TF-IDF vs MiniLM-128 * | 0.4499 | 0.4949 | -2.953 | 3.1450e-03 | 1.8870e-02 |
+| TF-IDF vs MiniLM-256 | 0.4499 | 0.4834 | -2.419 | 1.5561e-02 | 7.7804e-02 |
+| TF-IDF vs MiniLM-512 *** | 0.4499 | 0.5238 | -5.699 | 1.2069e-08 | 1.5690e-07 |
+| TF-IDF vs Jaccard | 0.4499 | 0.4241 | 1.552 | 1.2077e-01 | 3.4783e-01 |
+| MiniLM-128 vs MiniLM-256 | 0.4949 | 0.4834 | 1.572 | 1.1594e-01 | 3.4783e-01 |
+| MiniLM-128 vs MiniLM-512 | 0.4949 | 0.5238 | -2.204 | 2.7528e-02 | 1.1011e-01 |
+| MiniLM-128 vs Jaccard ** | 0.4949 | 0.4241 | 3.693 | 2.2161e-04 | 1.9945e-03 |
+| MiniLM-256 vs MiniLM-512 ** | 0.4834 | 0.5238 | -3.750 | 1.7662e-04 | 1.7662e-03 |
+| MiniLM-256 vs Jaccard ** | 0.4834 | 0.4241 | 3.263 | 1.1020e-03 | 8.8163e-03 |
+| MiniLM-512 vs Jaccard *** | 0.5238 | 0.4241 | 6.234 | 4.5356e-10 | 6.3499e-09 |
 
-## Full Dataset Analysis (n=4,977)
+## Full Dataset Analysis (n=5,417)
 
 ### Method Summary
 
 | Method | LRT Stat | Raw p | Adj. p | Standalone AUC | AUC 95% CI |
 |--------|----------|-------|-------|----------------|------------|
-| TF-IDF *** | 44.785 | 2.1987e-11 | 8.7948e-11 | 0.4710 | [0.4528, 0.4892] |
-| MiniLM-128 *** | 33.286 | 7.9569e-09 | 1.5914e-08 | 0.4584 | [0.4399, 0.4769] |
-| MiniLM-256 *** | 34.037 | 5.4062e-09 | 1.6219e-08 | 0.4545 | [0.4361, 0.4730] |
-| MiniLM-512 *** | 30.578 | 3.2077e-08 | 3.2077e-08 | 0.4617 | [0.4435, 0.4800] |
-| Jaccard *** | 62.149 | 3.1851e-15 | 1.5925e-14 | 0.4619 | [0.4438, 0.4801] |
+| TF-IDF *** | 85.914 | 1.8792e-20 | 7.5169e-20 | 0.4373 | [0.4203, 0.4542] |
+| MiniLM-128 *** | 59.728 | 1.0894e-14 | 1.0894e-14 | 0.4486 | [0.4312, 0.4660] |
+| MiniLM-256 *** | 61.342 | 4.7983e-15 | 9.5966e-15 | 0.4416 | [0.4243, 0.4588] |
+| MiniLM-512 *** | 68.298 | 1.4056e-16 | 4.2168e-16 | 0.4400 | [0.4230, 0.4570] |
+| Jaccard *** | 204.830 | 1.8449e-46 | 9.2246e-46 | 0.4138 | [0.3967, 0.4309] |
 
 *Significance markers use Holm-Bonferroni corrected p-values (non-Gemini methods).*
 *\* p < 0.05, \*\* p < 0.01, \*\*\* p < 0.001*
@@ -108,34 +108,34 @@ at 256, ~20%; at 512, ~40%.
 
 | Variant | LRT Stat | Raw p | Adj. p | Standalone AUC |
 |---------|----------|-------|-------|----------------|
-| MiniLM-128 *** | 33.286 | 7.9569e-09 | 1.5914e-08 | 0.4584 |
-| MiniLM-256 *** | 34.037 | 5.4062e-09 | 1.6219e-08 | 0.4545 |
-| MiniLM-512 *** | 30.578 | 3.2077e-08 | 3.2077e-08 | 0.4617 |
+| MiniLM-128 *** | 59.728 | 1.0894e-14 | 1.0894e-14 | 0.4486 |
+| MiniLM-256 *** | 61.342 | 4.7983e-15 | 9.5966e-15 | 0.4416 |
+| MiniLM-512 *** | 68.298 | 1.4056e-16 | 4.2168e-16 | 0.4400 |
 
 Mean README length is ~1,300 tokens after 4,000-char truncation.
 At 128 tokens, MiniLM captures ~10% of README content;
 at 256, ~20%; at 512, ~40%.
 
-### Marginal Improvement (n=4,736; 241 rows lack merge_rate or account_age)
+### Marginal Improvement (n=5,129; 288 rows lack merge_rate or account_age)
 
 | Method | Base AUC | Full AUC | AUC Diff | DeLong p | LRT p |
 |--------|----------|----------|----------|---------|-------|
-| TF-IDF | 0.6675 | 0.6979 | +0.0304 | 3.9078e-13 | 3.2825e-12 |
-| MiniLM-128 | 0.6675 | 0.6907 | +0.0232 | 5.9584e-10 | 2.1854e-08 |
-| MiniLM-256 | 0.6675 | 0.6916 | +0.0242 | 1.7946e-10 | 5.7988e-09 |
-| MiniLM-512 | 0.6675 | 0.6891 | +0.0216 | 7.6358e-10 | 1.0037e-07 |
-| Jaccard | 0.6675 | 0.6972 | +0.0297 | 5.2229e-11 | 3.3672e-14 |
+| TF-IDF | 0.6472 | 0.6903 | +0.0431 | 3.2863e-20 | 1.0882e-20 |
+| MiniLM-128 | 0.6472 | 0.6778 | +0.0306 | 1.3312e-12 | 6.7623e-14 |
+| MiniLM-256 | 0.6472 | 0.6807 | +0.0335 | 2.3947e-14 | 6.1824e-15 |
+| MiniLM-512 | 0.6472 | 0.6816 | +0.0344 | 3.6059e-15 | 1.3785e-15 |
+| Jaccard | 0.6472 | 0.7081 | +0.0609 | 8.6667e-26 | 4.4033e-42 |
 
 ## Selection Bias Analysis
 
 The Gemini subset includes only PRs with non-empty bodies (needed
 for Gemini embedding). The full dataset also includes title-only PRs.
 
-- **Gemini subset merge rate**: 71.8%
-- **Full dataset merge rate**: 73.7%
-- **Title-only PR fraction (full)**: 74.0%
-- **Gemini subset mean GE score**: 0.7212
-- **Full dataset mean GE score**: 0.5979
+- **Gemini subset merge rate**: 62.4%
+- **Full dataset merge rate**: 71.5%
+- **Title-only PR fraction (full)**: 71.0%
+- **Gemini subset mean GE score**: 0.7147
+- **Full dataset mean GE score**: 0.6033
 
 Title-only PRs (~16 tokens) may dilute the similarity signal in the
 full dataset, as there is less textual information to compare against
@@ -166,7 +166,7 @@ Holm-Bonferroni corrected p-values.
 - TF-IDF is fitted on the full corpus, which could introduce minor data leakage in a strict train/test sense, but this is acceptable
   for a comparison study where all methods see the same data.
 - Jaccard is a bag-of-words baseline with no semantic understanding.
-- The full dataset includes ~74% title-only PRs which have very short text (~16 tokens).
+- The full dataset includes ~71% title-only PRs which have very short text (~16 tokens).
 
 ## Methodology Notes
 
