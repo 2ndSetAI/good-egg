@@ -1,10 +1,10 @@
 # GE Validation Study: Summary Report
 
-**Date:** 2026-02-12 (post-V2-audit re-run)
+**Date:** 2026-02-18 (post-V4-audit re-run)
 **Branch:** `experiments/ge-validation`
-**Sample:** 4,977 PRs across 49 repositories, 12 languages
+**Sample:** 5,417 PRs across 49 repositories, 12 languages
 **Temporal scope:** 2024-01-01 to 2025-12-31 (four half-year bins)
-**Base rate:** 73.7% merged (3,666 / 4,977)
+**Base rate:** 71.5% merged (3,874 / 5,417)
 
 ---
 
@@ -39,32 +39,32 @@ PRs above the pre-registered threshold of AUC > 0.60.
 
 | Metric | Value | Note |
 |--------|-------|------|
-| AUC-ROC | **0.671** (95% CI: 0.653--0.689) | Primary metric |
-| AUC-PR | 0.807 | |
-| Brier score | 0.251 | On uncalibrated scores; interpret with caution |
-| Log loss | 5.065 | On uncalibrated scores; interpret with caution |
+| AUC-ROC | **0.650** (95% CI: 0.634--0.667) | Primary metric |
+| AUC-PR | 0.782 | |
+| Brier score | 0.263 | On uncalibrated scores; interpret with caution |
+| Log loss | 4.987 | On uncalibrated scores; interpret with caution |
 
 Brier score and log loss are computed on the raw GE normalized score, which is
 not a calibrated probability. These values should not be compared to calibrated
 baselines. AUC-ROC and AUC-PR are rank-based and unaffected by calibration.
 
-The confidence interval [0.653, 0.689] excludes both chance (0.50) and the
+The confidence interval [0.634, 0.667] excludes both chance (0.50) and the
 pre-registered minimum threshold (0.60). Cross-validation confirms stability:
-mean AUC = 0.675 +/- 0.048 across 5 folds (grouped by repository).
+mean AUC = 0.649 +/- 0.044 across 5 folds (grouped by repository).
 
-**Base rate context:** With a 73.7% merge rate, a naive classifier that always
-predicts "merged" achieves 73.7% accuracy. At Youden's J optimal threshold
-(0.577), the GE score achieves J = 0.327 with 71.9% accuracy (3,578 / 4,977),
+**Base rate context:** With a 71.5% merge rate, a naive classifier that always
+predicts "merged" achieves 71.5% accuracy. At Youden's J optimal threshold
+(0.642), the GE score achieves J = 0.276 with 68.0% accuracy (3,686 / 5,417),
 which is *below* the naive baseline. This reflects the score's limited
 discrimination: it improves true positive identification at the cost of false
 positives that a naive classifier avoids.
 
-The binary confusion matrix at Youden's J optimal threshold (0.577):
+The binary confusion matrix at Youden's J optimal threshold (0.642):
 
 |  | Predicted Not-Merged | Predicted Merged |
 |--|-----:|-----:|
-| **Actual Not-Merged** | 716 | 595 |
-| **Actual Merged** | 804 | 2,862 |
+| **Actual Not-Merged** | 831 | 712 |
+| **Actual Merged** | 1,019 | 2,855 |
 
 ![ROC Curve](figures/h1_roc_curve.png)
 
@@ -75,22 +75,22 @@ classes.
 
 | Test | Statistic | p-value |
 |------|-----------|---------|
-| Kruskal-Wallis | H = 414.6 | p < 10^-90 |
-| Merged vs. Rejected (post-hoc) | U = 859,859 | p = 1.8 x 10^-6 (adjusted) |
-| Merged vs. Pocket Veto (post-hoc) | U = 2,364,761 | p < 10^-89 (adjusted) |
-| Rejected vs. Pocket Veto (post-hoc) | U = 239,246 | p < 10^-19 (adjusted) |
+| Kruskal-Wallis | H = 352.4 | p < 10^-77 |
+| Merged vs. Rejected (post-hoc) | U = 941,967 | p = 6.6 x 10^-6 (adjusted) |
+| Merged vs. Pocket Veto (post-hoc) | U = 2,945,217 | p < 10^-76 (adjusted) |
+| Rejected vs. Pocket Veto (post-hoc) | U = 293,184 | p < 10^-12 (adjusted) |
 
 One-vs-rest AUC (how well the GE score separates each class from the other
 two):
 
 | Class | AUC-ROC | 95% CI |
 |-------|---------|--------|
-| Merged | 0.671 | 0.653--0.689 |
-| Rejected | 0.469 | 0.440--0.499 |
-| Pocket Veto | 0.292 | 0.273--0.312 |
+| Merged | 0.650 | 0.634--0.667 |
+| Rejected | 0.472 | 0.443--0.501 |
+| Pocket Veto | 0.325 | 0.307--0.344 |
 
-The merged-vs-rest AUC mirrors H1. The pocket veto OVR AUC of 0.292
-(equivalently, 0.708 when inverted) confirms low scores strongly predict
+The merged-vs-rest AUC mirrors H1. The pocket veto OVR AUC of 0.325
+(equivalently, 0.675 when inverted) confirms low scores strongly predict
 pocket veto outcomes. The rejected class is the hardest to separate (AUC near
 0.50), consistent with rejected PRs occupying the middle of the score
 distribution.
@@ -104,13 +104,13 @@ explicitly rejected.
 
 | Test | Statistic | p-value |
 |------|-----------|---------|
-| Chi-squared | chi2 = 118.3, df = 2 | p < 10^-25 |
-| Cramer's V | 0.300 | (medium effect) |
-| Cochran-Armitage trend | z = -0.246 | p = 0.805 (not significant) |
+| Chi-squared | chi2 = 67.3, df = 2 | p < 10^-15 |
+| Cramer's V | 0.209 | (small-to-medium effect) |
+| Cochran-Armitage trend | z = -0.177 | p = 0.860 (not significant) |
 
 The chi-squared test confirms a significant association between trust level and
-outcome type among non-merged PRs (Cramer's V = 0.300, medium effect). However,
-the Cochran-Armitage trend test is not significant (p = 0.805), indicating the
+outcome type among non-merged PRs (Cramer's V = 0.209, small-to-medium effect). However,
+the Cochran-Armitage trend test is not significant (p = 0.860), indicating the
 relationship between trust level and pocket veto rate is not monotonically
 linear --- the effect is concentrated in the LOW vs. MEDIUM/HIGH contrast
 rather than a smooth gradient.
@@ -119,12 +119,12 @@ Trust-level odds ratios for merge outcome:
 
 | Comparison | Odds Ratio | 95% CI | p-value |
 |------------|-----------|--------|---------|
-| HIGH vs. LOW | 4.74 | 4.10--5.47 | p < 10^-99 |
-| MEDIUM vs. LOW | 3.45 | 2.80--4.26 | p < 10^-30 |
-| HIGH vs. MEDIUM | 1.37 | 1.12--1.68 | p = 0.002 |
+| HIGH vs. LOW | 3.88 | 3.39--4.45 | p < 10^-85 |
+| MEDIUM vs. LOW | 2.68 | 2.21--3.25 | p < 10^-23 |
+| HIGH vs. MEDIUM | 1.45 | 1.21--1.74 | p = 7.2 x 10^-5 |
 
-HIGH-trust authors are 4.7x more likely to have their PRs merged than
-LOW-trust authors. The MEDIUM-to-LOW contrast is also strong (3.5x), while
+HIGH-trust authors are 3.9x more likely to have their PRs merged than
+LOW-trust authors. The MEDIUM-to-LOW contrast is also strong (2.7x), while
 HIGH-to-MEDIUM is smaller but still significant (1.4x).
 
 ![Pocket Veto by Trust](figures/pocket_veto_by_trust.png)
@@ -138,26 +138,26 @@ ablations per DOE Section 7.4).
 
 | Variant | AUC | Delta | Adjusted p | Significant? |
 |---------|-----|-------|-----------|:------------:|
-| **Full model** | **0.671** | -- | -- | -- |
-| no_recency | 0.550 | -0.121 | < 10^-68 | Yes |
-| no_repo_quality | 0.669 | -0.002 | 0.117 | No |
-| no_language_match | 0.672 | +0.001 | 0.342 | No |
-| no_diversity_volume | 0.671 | +0.000 | 1.000 | No |
-| no_language_norm | 0.671 | +0.000 | 0.812 | No |
-| no_self_penalty | 0.671 | -0.000 | 0.582 | No |
+| **Full model** | **0.650** | -- | -- | -- |
+| no_recency | 0.551 | -0.099 | < 10^-59 | Yes |
+| no_repo_quality | 0.648 | -0.003 | 0.015 | Yes |
+| no_language_match | 0.652 | +0.002 | 0.038 | Yes |
+| no_diversity_volume | 0.650 | +0.000 | 0.969 | No |
+| no_language_norm | 0.650 | +0.000 | 0.969 | No |
+| no_self_penalty | 0.650 | +0.000 | 0.969 | No |
 
 Exploratory two-way interactions:
 
 | Variant | AUC | Delta |
 |---------|-----|-------|
-| no_recency_no_quality | 0.546 | -0.125 |
-| recursive_quality | 0.669 | -0.002 |
-| no_lang_match_no_lang_norm | 0.672 | +0.001 |
-| no_diversity_no_self_penalty | 0.671 | +0.000 |
+| no_recency_no_quality | 0.546 | -0.104 |
+| recursive_quality | 0.647 | -0.003 |
+| no_lang_match_no_lang_norm | 0.652 | +0.002 |
+| no_diversity_no_self_penalty | 0.650 | +0.000 |
 
-Removing recency drops AUC by 0.121 (from 0.671 to 0.550), close to chance.
-Repo quality shows a suggestive signal (raw p = 0.023) but does not survive
-Holm-Bonferroni correction (adjusted p = 0.117). All other dimensions have
+Removing recency drops AUC by 0.099 (from 0.650 to 0.551), close to chance.
+Repo quality now survives Holm-Bonferroni correction (adjusted p = 0.015), as
+does language match (adjusted p = 0.038). The remaining dimensions have
 negligible individual impact.
 
 **Interpretation:** The GE graph's discriminative power comes almost entirely
@@ -188,20 +188,20 @@ Bonferroni correction at alpha/3 = 0.017.
 
 | Hypothesis | Feature | LR Statistic | p-value | n (valid) | Survives Bonferroni? |
 |------------|---------|-------------|---------|-----------|:--------------------:|
-| H3 | Account age (log) | 8.64 | 0.003 | 4,977 | Yes |
-| H4 | Embedding similarity | 20.82 | 5.1 x 10^-6 | 1,293 | Yes |
-| H5 | Author merge rate | 49.8 | 1.7 x 10^-12 | 4,736 | Yes |
+| H3 | Account age (log) | 19.16 | 1.2 x 10^-5 | 5,417 | Yes |
+| H4 | Embedding similarity | 35.20 | 3.0 x 10^-9 | 1,569 | Yes |
+| H5 | Author merge rate | 51.5 | 7.2 x 10^-13 | 5,129 | Yes |
 
 **H3 (Account age):** Log-transformed account age significantly improves
-prediction (LR = 8.64, p = 0.003, n = 4,977). Account age carries modest
+prediction (LR = 19.16, p = 1.2 x 10^-5, n = 5,417). Account age carries modest
 incremental information beyond what the GE score captures.
 
 **H4 (Embedding similarity):** Cosine similarity between PR body and repo
-README embeddings significantly improves prediction (LR = 20.82, p = 5.1 x
-10^-6, n = 1,293). Note the reduced sample size (1,293 of 4,977 PRs had valid
+README embeddings significantly improves prediction (LR = 35.20, p = 3.0 x
+10^-9, n = 1,569). Note the reduced sample size (1,569 of 5,417 PRs had valid
 Gemini embeddings for both PR body and repo README).
 
-*AUC inversion:* The standalone AUC for embedding similarity is 0.416 — below
+*AUC inversion:* The standalone AUC for embedding similarity is 0.411 — below
 0.5, meaning higher PR-README similarity is associated with *lower* merge
 probability. This is consistent across every method tested in the follow-up
 robustness analysis (Gemini, TF-IDF, MiniLM, Jaccard). The LRT detects that
@@ -213,16 +213,16 @@ subsystems whose vocabulary diverges from the high-level README.
 *Robustness analysis:* A [similarity method comparison
 sub-study](similarity_comparison/comparison_report.md) tested whether the H4
 finding depends on the choice of embedding model. On the Gemini subset
-(n=1,293), 2 of 6 methods survive Holm-Bonferroni correction: Gemini (the
+(n=1,569), 2 of 6 methods survive Holm-Bonferroni correction: Gemini (the
 original) and Jaccard (a simple bag-of-words method, adj. p = 0.001). On the
-full dataset (n=4,977) — where all PRs are included using title as fallback
+full dataset (n=5,417) — where all PRs are included using title as fallback
 text — all five non-Gemini methods are highly significant (all adj. p < 10^-8).
 The finding is partially robust on the original subset and strongly robust when
 sample size limitations are removed. See the
 [comparison report](similarity_comparison/comparison_report.md) for details.
 
 **H5 (Author merge rate):** Temporally-scoped merge rate significantly improves
-prediction (LR = 49.8, p = 1.7 x 10^-12, n = 4,736). Merge rate carries
+prediction (LR = 51.5, p = 7.2 x 10^-13, n = 5,129). Merge rate carries
 meaningful incremental information beyond the graph-based trust score, though
 the effect is substantially smaller than originally reported.
 
@@ -231,7 +231,7 @@ the effect is substantially smaller than originally reported.
 included PRs merged *after* the test PR was created (temporal leakage). An
 initial fix using proportional estimation of prior closed count gave LR =
 289.3. After backfilling exact closed PR timestamps via the GitHub GraphQL API,
-the fully corrected LR = 49.8 --- an order of magnitude smaller than the
+the fully corrected LR = 51.5 --- an order of magnitude smaller than the
 original, confirming that the leakage severely inflated the result. The merge
 rate feature remains highly significant (p < 10^-12) but is no longer the
 dominant signal it appeared to be.
@@ -256,21 +256,21 @@ adds value beyond arithmetic.
 
 | Feature | AUC-ROC | 95% CI | vs. GE (DeLong p) |
 |---------|---------|--------|:-----------------:|
-| **GE Score (graph)** | **0.671** | 0.653--0.689 | -- |
-| Prior merge count | 0.608 | 0.590--0.626 | < 10^-18 |
-| Followers (log) | 0.609 | 0.591--0.627 | < 10^-9 |
-| Account age (log) | 0.560 | 0.542--0.578 | < 10^-25 |
-| Author merge rate | 0.546 | 0.528--0.565 | < 10^-22 |
-| Public repos (log) | 0.535 | 0.517--0.554 | < 10^-36 |
-| Embedding similarity | 0.416 | 0.382--0.450 | < 10^-19 |
+| **GE Score (graph)** | **0.650** | 0.634--0.667 | -- |
+| Prior merge count | 0.604 | 0.587--0.620 | < 10^-12 |
+| Followers (log) | 0.615 | 0.598--0.631 | < 10^-3 |
+| Account age (log) | 0.566 | 0.548--0.583 | < 10^-16 |
+| Author merge rate | 0.534 | 0.516--0.552 | < 10^-21 |
+| Public repos (log) | 0.542 | 0.525--0.559 | < 10^-27 |
+| Embedding similarity | 0.411 | 0.382--0.440 | < 10^-26 |
 
-Embedding similarity has a standalone AUC of 0.416 (below 0.5), meaning it is
+Embedding similarity has a standalone AUC of 0.411 (below 0.5), meaning it is
 an *inverted* predictor: higher PR-README similarity is associated with lower
 merge probability. See the H4 section above for interpretation.
 
 With proper temporal scoping, no single feature approaches the GE score's
-AUC. Author merge rate (AUC = 0.546) is now clearly inferior to the GE graph
-(DeLong p < 10^-22). Prior merge count (0.608) and follower count (0.609) are
+AUC. Author merge rate (AUC = 0.534) is now clearly inferior to the GE graph
+(DeLong p < 10^-21). Prior merge count (0.604) and follower count (0.615) are
 the strongest individual baselines but still significantly below GE.
 
 *Note on temporal leakage impact:* Before backfilling exact closed PR
@@ -283,23 +283,23 @@ leakage in the denominator.
 
 | Model | Features | AUC (in-sample) | CV Mean +/- SD | vs. GE (DeLong p) |
 |-------|----------|-----------------|---------------|:-----------------:|
-| GE Score | graph trust score | 0.671 | 0.675 +/- 0.048 | -- |
-| Model A | merge_rate + account_age | 0.561 | 0.559 +/- 0.033 | < 10^-24 |
-| Model B | merge_rate + age + embedding | 0.631 | 0.622 +/- 0.049 | 1.00 |
-| Combined | GE + merge_rate + age + emb | 0.680 | 0.671 +/- 0.036 | 0.002 |
+| GE Score | graph trust score | 0.650 | 0.649 +/- 0.044 | -- |
+| Model A | merge_rate + account_age | 0.556 | 0.551 +/- 0.017 | < 10^-19 |
+| Model B | merge_rate + age + embedding | 0.610 | 0.597 +/- 0.036 | 0.415 |
+| Combined | GE + merge_rate + age + emb | 0.654 | 0.622 +/- 0.037 | 0.026 |
 
 The GE graph significantly outperforms the "dumb baseline" models. Model A
-(merge_rate + account_age, AUC = 0.561) is far below GE (DeLong p < 10^-24).
+(merge_rate + account_age, AUC = 0.556) is far below GE (DeLong p < 10^-19).
 The graph's complexity is justified: it captures contributor reputation signal
 that simple features do not.
 
-The combined model (GE + all external features, AUC = 0.680, CV mean = 0.671)
-shows modest improvement over GE alone. However, the intermediate model
-without text dissimilarity (GE + merge_rate + age) achieves only AUC = 0.665
-on the merge-rate subset (n=4,416), not significantly different from GE alone
-(0.667, DeLong p = 0.73). The AUC improvement requires text dissimilarity;
-merge rate and account age add statistically significant information (per LRT)
-but do not improve ranking performance beyond the graph.
+The combined model (GE + all external features, AUC = 0.654, CV mean = 0.622)
+shows marginal improvement over GE alone (DeLong p = 0.026). Model B
+(merge_rate + age + embedding, AUC = 0.610) is not significantly different from
+GE (DeLong p = 0.415) on the embedding subset, but this is driven by small
+sample size (n = 1,495). Merge rate and account age add statistically
+significant information (per LRT) but produce limited ranking improvement
+beyond the graph.
 
 ![Baseline Comparison](figures/baseline_comparison.png)
 
@@ -330,12 +330,12 @@ score of 0 and cannot be discriminated by the trust score alone.
 
 | Cohort | n | AUC-ROC | Merge Rate |
 |--------|---|---------|------------|
-| Newcomer (score = 0) | 719 | 0.500 | 69.0% |
-| Established (score > 0) | 4,258 | 0.689 (CI: 0.668--0.709) | 74.4% |
+| Newcomer (score = 0) | 767 | 0.500 | 67.8% |
+| Established (score > 0) | 4,650 | 0.668 (CI: 0.649--0.687) | 72.1% |
 
-Newcomers constitute 14.4% of the sample. Among established contributors, the
-AUC improves to 0.689, confirming the GE score is most useful for authors who
-already have some contribution history. Notably, newcomers have a 69% merge
+Newcomers constitute 14.2% of the sample. Among established contributors, the
+AUC improves to 0.668, confirming the GE score is most useful for authors who
+already have some contribution history. Notably, newcomers have a 68% merge
 rate --- higher than the overall non-merged rate --- suggesting that many
 first-time contributors to a repo already have external histories that would
 produce non-zero GE scores if their other contributions were visible.
@@ -348,14 +348,14 @@ Stratified group 5-fold cross-validation (grouped by target repository):
 
 | Fold | AUC-ROC |
 |------|---------|
-| 1 | 0.596 |
-| 2 | 0.706 |
-| 3 | 0.693 |
-| 4 | 0.731 |
-| 5 | 0.647 |
-| **Mean +/- SD** | **0.675 +/- 0.048** |
+| 1 | 0.593 |
+| 2 | 0.700 |
+| 3 | 0.701 |
+| 4 | 0.623 |
+| 5 | 0.626 |
+| **Mean +/- SD** | **0.649 +/- 0.044** |
 
-Four of five folds exceed the 0.60 threshold. Fold 1 (0.596) falls just below,
+Three of five folds exceed the 0.60 threshold. Fold 1 (0.593) falls just below,
 likely reflecting a repository cluster with weaker signal. The increased
 variance compared to the pre-audit run (SD 0.048 vs. 0.027) is expected given
 the larger, more diverse sample that now includes still-open PRs and
@@ -367,17 +367,19 @@ fast-merged PRs.
 
 ### Temporal Completeness (2025H2 Exclusion)
 
-*To be populated after pipeline re-run.*
-
 The 2025H2 temporal bin (Jul--Dec 2025) may contain PRs with unresolved outcomes
-due to proximity to the study execution date (2026-02-17). A sensitivity analysis
+due to proximity to the study execution date (2026-02-18). A sensitivity analysis
 computes the primary AUC-ROC with and without 2025H2 PRs to demonstrate result
 stability.
 
 | Dataset | n | AUC-ROC | 95% CI |
 |---------|---|---------|--------|
-| All bins | -- | -- | -- |
-| Excluding 2025H2 | -- | -- | -- |
+| All bins | 5,417 | 0.650 | 0.634--0.667 |
+| Excluding 2025H2 | 4,025 | 0.675 | -- |
+
+Excluding 2025H2 (n=1,392 PRs) raises AUC by 0.025 (from 0.650 to 0.675),
+consistent with the most recent temporal bin introducing noise from unresolved
+outcomes.
 
 ### Stale Threshold Robustness
 
@@ -386,7 +388,7 @@ threshold choice because the merged/not-merged boundary depends on `merged_at`,
 not the stale threshold. The stale threshold only affects the rejected/pocket-veto
 split within the non-merged class (H1a three-class analysis).
 
-This means the primary result (AUC-ROC = 0.671) is robust to any reasonable
+This means the primary result (AUC-ROC = 0.650) is robust to any reasonable
 threshold choice, including the previous 5x-median formula and the current
 90th-percentile formula.
 
@@ -395,47 +397,48 @@ threshold choice, including the previous 5x-median formula and the current
 ## Implications for Good Egg
 
 1. **The GE score is a statistically significant but modest merge predictor.**
-   AUC-ROC of 0.671 (95% CI [0.653, 0.689]) exceeds both chance and the
+   AUC-ROC of 0.650 (95% CI [0.634, 0.667]) exceeds both chance and the
    pre-registered 0.60 threshold. However, at the optimal classification
-   threshold (Youden's J), accuracy (71.9%) is below the naive "always predict
-   merged" baseline (73.7%). The score provides ranking information, not
+   threshold (Youden's J), accuracy (68.0%) is below the naive "always predict
+   merged" baseline (71.5%). The score provides ranking information, not
    accurate classification.
 
 2. **The graph significantly outperforms simple features.** With proper
    temporal scoping, no single feature or simple feature combination matches
-   the GE score. Author merge rate alone achieves AUC = 0.546; a two-feature
-   model (merge_rate + account_age) achieves AUC = 0.561. The graph's
+   the GE score. Author merge rate alone achieves AUC = 0.534; a two-feature
+   model (merge_rate + account_age) achieves AUC = 0.556. The graph's
    recency-weighted contribution history captures reputation signal that
    simple features do not.
 
 3. **Recency is the dominant scoring dimension.** Removing recency decay drops
-   AUC by 0.121 to near chance. No other single dimension has a statistically
-   significant independent contribution, though repo quality shows a suggestive
-   trend (raw p = 0.023). The non-recency graph dimensions (language match,
-   diversity/volume, self-contribution penalty, language normalization) do not
-   contribute measurably to merge prediction.
+   AUC by 0.099 to near chance. Repo quality and language match now survive
+   Holm-Bonferroni correction (adjusted p = 0.015 and 0.038, respectively),
+   but with very small effect sizes (delta < 0.003). The remaining non-recency
+   graph dimensions (diversity/volume, self-contribution penalty, language
+   normalization) do not contribute measurably to merge prediction.
 
 4. **External features add incremental value beyond the GE score.** All three
    augmentation hypotheses are supported:
-   - Author merge rate (LR = 49.8, p < 10^-12)
-   - Embedding similarity (LR = 20.8, p = 5 x 10^-6) — note: inverted
+   - Author merge rate (LR = 51.5, p < 10^-12)
+   - Embedding similarity (LR = 35.2, p = 3 x 10^-9) — note: inverted
      predictor (higher similarity → lower merge probability); a robustness
      sub-study confirms the signal generalizes across methods and to the full
-     dataset (n=4,977)
-   - Account age (LR = 8.6, p = 0.003)
+     dataset (n=5,417)
+   - Account age (LR = 19.2, p = 1.2 x 10^-5)
 
-   A combined model (GE + externals, AUC = 0.680) shows modest improvement,
-   but only when text dissimilarity is included. Without it, GE + merge_rate
-   + age (AUC = 0.665) does not significantly differ from the graph alone.
+   A combined model (GE + externals, AUC = 0.654) shows marginal improvement
+   (DeLong p = 0.026). Merge rate and account age add statistically significant
+   information (per LRT) but produce limited ranking improvement beyond the
+   graph.
 
 5. **Pocket veto detection is a strong secondary use case.** LOW-trust authors
-   are 4.7x less likely to have PRs merged than HIGH-trust authors. The
-   association between trust and pocket veto is significant (chi2 p < 10^-25),
+   are 3.9x less likely to have PRs merged than HIGH-trust authors. The
+   association between trust and pocket veto is significant (chi2 p < 10^-15),
    though the relationship is a step function (LOW vs. rest) rather than a
-   smooth gradient (Cochran-Armitage p = 0.805).
+   smooth gradient (Cochran-Armitage p = 0.860).
 
 6. **Newcomer cold-start remains an open problem.** The score is uninformative
-   for 14.4% of PRs from first-time contributors. Account age and embedding
+   for 14.2% of PRs from first-time contributors. Account age and embedding
    similarity carry incremental signal and could help in a newcomer-specific
    model even when the graph score is zero.
 
@@ -478,9 +481,9 @@ total issues. All have been fixed and the pipeline fully re-run.
 
 | Issue | Severity | Status |
 |-------|----------|--------|
-| Pocket veto buffer creates hidden 4th state | Major | Fixed (buffer = 0); re-run pending |
-| Stale threshold should use percentile | Major | Fixed (90th percentile); re-run pending |
-| 2025H2 has incomplete data | Major | Fixed (sensitivity analysis added); re-run pending |
+| Pocket veto buffer creates hidden 4th state | Major | Fixed (buffer = 0); re-run complete |
+| Stale threshold should use percentile | Major | Fixed (90th percentile); re-run complete |
+| 2025H2 has incomplete data | Major | Fixed (sensitivity analysis added); re-run complete |
 | No threshold sensitivity analysis | Major | Fixed (documented invariance) |
 | DOE describes unimplemented oversampling | Major (DOE) | Fixed (paragraph removed) |
 | DOE search qualifier wrong | Major (DOE) | Fixed (corrected to `created:`) |
@@ -507,7 +510,7 @@ total issues. All have been fixed and the pipeline fully re-run.
 - **No causal claims**: The study evaluates predictive discrimination, not
   whether trust causes merges.
 - **Closed PR coverage**: H5 merge rate uses exact temporal filtering for
-  both merged and closed PRs. Closed PR timestamps were backfilled for 1,958
+  both merged and closed PRs. Closed PR timestamps were backfilled for 1,959
   authors (capped at 500 most recent per author). Authors with > 500 closed
   PRs may have incomplete historical data.
 

@@ -12,76 +12,76 @@ prediction.
 
 ## Data Coverage
 
-- **Total unique authors**: 2,251
-- **Authors with closed PR data**: 1,958 (87.0%)
-- **Authors without closed PR data**: 293
-- **Authors at backfill cap (500 closed PRs)**: 44
+- **Total unique authors**: 2,538
+- **Authors with closed PR data**: 1,958 (77.1%)
+- **Authors without closed PR data**: 580
+- **Authors at backfill cap (500 closed PRs)**: 47
 - **Total closed PRs loaded**: 112,025
-- **PRs with temporally-scoped merge rate**: 4,416
-- **PRs without (authors lacking closed data)**: 561
+- **PRs with temporally-scoped merge rate**: 4,467
+- **PRs without (authors lacking closed data)**: 950
 
 ## AUC Comparison
 
 | Approach | AUC | 95% CI | SE | n |
 |----------|-----|--------|----|----|
-| Full model | 0.6709 | [0.6532, 0.6887] | 0.0090 | 4,977 |
-| Per-repo scaling | 0.6708 | [0.6531, 0.6886] | 0.0090 | 4,977 |
-| Author-level scaling | 0.6708 | [0.6531, 0.6886] | 0.0090 | 4,977 |
-| LR(GE + merge_rate) | 0.6617 | [0.6411, 0.6823] | 0.0105 | 4,416 |
-| LR(GE + merge_rate + age) | 0.6653 | [0.6446, 0.6860] | 0.0106 | 4,416 |
-| Full model (merge rate subset) | 0.6668 | [0.6475, 0.6862] | 0.0099 | 4,416 |
+| Full model | 0.6503 | [0.6336, 0.6669] | 0.0085 | 5,417 |
+| Per-repo scaling | 0.6504 | [0.6337, 0.6670] | 0.0085 | 5,417 |
+| Author-level scaling | 0.6504 | [0.6338, 0.6671] | 0.0085 | 5,417 |
+| LR(GE + merge_rate) | 0.6498 | [0.6295, 0.6701] | 0.0103 | 4,467 |
+| LR(GE + merge_rate + age) | 0.6557 | [0.6354, 0.6760] | 0.0104 | 4,467 |
+| Full model (merge rate subset) | 0.6577 | [0.6387, 0.6768] | 0.0097 | 4,467 |
 
 ## Pairwise DeLong Tests
 
 | Comparison | AUC A | AUC B | z | Raw p | Adj. p |
 |------------|-------|-------|---|------|--------|
-| Full model vs Per-repo scaling | 0.6709 | 0.6708 | 0.709 | 4.7823e-01 | 1.0000e+00 |
-| Full model vs Author-level scaling | 0.6709 | 0.6708 | 0.740 | 4.5946e-01 | 1.0000e+00 |
-| Full model vs LR(GE + merge_rate) | 0.6668 | 0.6617 | 1.142 | 2.5329e-01 | 1.0000e+00 |
-| Full model vs LR(GE + merge_rate + age) | 0.6668 | 0.6653 | 0.340 | 7.3364e-01 | 1.0000e+00 |
-| LR(GE + merge_rate) vs LR(GE + merge_rate + age) | 0.6617 | 0.6653 | -2.285 | 2.2292e-02 | 1.1146e-01 |
+| Full model vs Per-repo scaling | 0.6503 | 0.6504 | -1.793 | 7.2921e-02 | 2.1876e-01 |
+| Full model vs Author-level scaling | 0.6503 | 0.6504 | -2.335 | 1.9555e-02 | 7.8218e-02 |
+| Full model vs LR(GE + merge_rate) | 0.6577 | 0.6498 | 1.744 | 8.1224e-02 | 2.1876e-01 |
+| Full model vs LR(GE + merge_rate + age) | 0.6577 | 0.6557 | 0.450 | 6.5269e-01 | 6.5269e-01 |
+| LR(GE + merge_rate) vs LR(GE + merge_rate + age) ** | 0.6498 | 0.6557 | -3.210 | 1.3280e-03 | 6.6399e-03 |
 
 ## Graph Integration vs Feature Engineering
 
 Comparing graph-integrated edge scaling against logistic
 regression that uses merge rate as a separate feature.
 
-- **LRT statistic (GE+merge_rate vs GE)**: 68.455 (cross-validated)
-- **LRT p-value**: 1.2984e-16
+- **LRT statistic (GE+merge_rate vs GE)**: 65.728 (cross-validated)
+- **LRT p-value**: 5.1775e-16
 - **LRT df**: 1
 
-Per-repo scaling AUC = 0.6708, LR(GE + merge_rate) AUC = 0.6617.
+Per-repo scaling AUC = 0.6504, LR(GE + merge_rate) AUC = 0.6498.
 
 ### Intermediate Combined Model (GE + merge_rate + age)
 
-- **AUC**: 0.6653 (95% CI: [0.6446, 0.6860], n=4,416)
-- **LRT (age increment over GE+merge_rate)**: 9.455 (p=2.1054e-03, cross-validated)
+- **AUC**: 0.6557 (95% CI: [0.6354, 0.6760], n=4,467)
+- **LRT (age increment over GE+merge_rate)**: 12.477 (p=4.1208e-04, cross-validated)
 
 ## Subgroup: High-Rejection Authors
 
-Authors with temporally-scoped merge rate < 0.5 (n=924).
+Authors with temporally-scoped merge rate < 0.5 (n=927).
 
 | Approach | AUC | 95% CI | n |
 |----------|-----|--------|---|
-| Full model | 0.5529 | [0.5187, 0.5870] | 924 |
-| Per-repo scaling | 0.5528 | [0.5186, 0.5870] | 924 |
-| Author-level scaling | 0.5530 | [0.5188, 0.5871] | 924 |
-| LR(GE + merge_rate) | 0.5809 | [0.5400, 0.6218] | 924 |
-| LR(GE + merge_rate + age) | 0.6279 | [0.5857, 0.6701] | 924 |
+| Full model | 0.5506 | [0.5165, 0.5848] | 927 |
+| Per-repo scaling | 0.5512 | [0.5170, 0.5853] | 927 |
+| Author-level scaling | 0.5515 | [0.5173, 0.5856] | 927 |
+| LR(GE + merge_rate) | 0.5843 | [0.5433, 0.6253] | 927 |
+| LR(GE + merge_rate + age) | 0.6269 | [0.5847, 0.6690] | 927 |
 
 ## Sensitivity: Missing Data
 
-- **PRs from authors with closed data**: 4,416
-- **PRs from authors without closed data**: 561
+- **PRs from authors with closed data**: 4,467
+- **PRs from authors without closed data**: 950
 
-- Full model AUC (with closed data): 0.6668 [0.6475, 0.6862]
-- Full model AUC (without closed data): 0.6778 [0.6387, 0.7169]
+- Full model AUC (with closed data): 0.6577 [0.6387, 0.6768]
+- Full model AUC (without closed data): 0.5812 [0.5455, 0.6169]
 
 ## Sensitivity: Backfill Truncation
 
 The closed PR backfill was capped at 500 closed PRs per author.
-**44** authors hit this cap,
-affecting **151** test PRs.
+**47** authors hit this cap,
+affecting **154** test PRs.
 
 For these authors, the merge rate may be biased upward (missing older
 rejections). If their true rejection rate is higher than observed,
@@ -89,18 +89,17 @@ the scaling approaches would under-penalize their scores.
 
 | Approach | AUC | 95% CI | n |
 |----------|-----|--------|---|
-| Full model | 0.3686 | [0.2789, 0.4584] | 151 |
-| Per-repo scaling | 0.3686 | [0.2789, 0.4584] | 151 |
-| Author-level scaling | 0.3686 | [0.2789, 0.4584] | 151 |
-| LR(GE + merge_rate) | 0.3972 | [0.3048, 0.4896] | 145 |
-| LR(GE + merge_rate + age) | 0.4061 | [0.3130, 0.4991] | 145 |
+| Full model | 0.3744 | [0.2853, 0.4635] | 154 |
+| Per-repo scaling | 0.3744 | [0.2853, 0.4635] | 154 |
+| Author-level scaling | 0.3744 | [0.2853, 0.4635] | 154 |
+| LR(GE + merge_rate) | 0.4011 | [0.3088, 0.4934] | 145 |
+| LR(GE + merge_rate + age) | 0.4093 | [0.3165, 0.5022] | 145 |
 
 ## Conclusions
 
-No rejection-aware approach shows a statistically significant
-improvement over the full model after Holm-Bonferroni
-correction. The survivorship bias in the trust graph does not
-appear to materially affect merge prediction in this dataset.
+At least one rejection-aware approach shows a statistically
+significant difference in AUC compared to the full model.
+Incorporating rejection data may improve merge prediction.
 
 ---
 *Generated by evaluate_rejection_awareness.py*

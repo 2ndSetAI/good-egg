@@ -23,17 +23,17 @@ should be penalized, kept at full weight, or excluded entirely.
 
 ## Self-Ownership in the Data
 
-- **Total unique authors**: 2,251
-- **Authors with self-owned repos**: 1,398 (62.1%)
-- **Authors without self-owned repos**: 853 (37.9%)
+- **Total unique authors**: 2,538
+- **Authors with self-owned repos**: 1,575 (62.1%)
+- **Authors without self-owned repos**: 963 (37.9%)
 
 ### Self-Owned PR Fraction Distribution
 
 Among authors with self-owned repos, the fraction of their merged PRs
 going to self-owned repositories:
 
-- Mean: 0.261
-- Median: 0.136
+- Mean: 0.260
+- Median: 0.135
 - Std: 0.291
 - Min: 0.002
 - Max: 1.000
@@ -42,27 +42,27 @@ going to self-owned repositories:
 
 | Variant | AUC | 95% CI | SE |
 |---------|-----|--------|----|
-| 0.3x (current) | 0.6709 | [0.6532, 0.6887] | 0.0090 |
-| 1.0x (no penalty) | 0.6709 | [0.6532, 0.6887] | 0.0090 |
-| 0.0x (excluded) | 0.6705 | [0.6527, 0.6884] | 0.0091 |
+| 0.3x (current) | 0.6503 | [0.6336, 0.6669] | 0.0085 |
+| 1.0x (no penalty) | 0.6503 | [0.6337, 0.6670] | 0.0085 |
+| 0.0x (excluded) | 0.6512 | [0.6345, 0.6680] | 0.0085 |
 
 ## Pairwise DeLong Tests
 
 | Comparison | AUC A | AUC B | z | Raw p | Adj. p |
 |------------|-------|-------|---|------|--------|
-| 0.3x vs 1.0x | 0.6709 | 0.6709 | 0.551 | 5.8151e-01 | 1.0000e+00 |
-| 0.3x vs 0.0x | 0.6709 | 0.6705 | 0.290 | 7.7160e-01 | 1.0000e+00 |
-| 1.0x vs 0.0x | 0.6709 | 0.6705 | 0.286 | 7.7484e-01 | 1.0000e+00 |
+| 0.3x vs 1.0x | 0.6503 | 0.6503 | -0.989 | 3.2288e-01 | 9.6863e-01 |
+| 0.3x vs 0.0x | 0.6503 | 0.6512 | -0.678 | 4.9770e-01 | 9.9540e-01 |
+| 1.0x vs 0.0x | 0.6503 | 0.6512 | -0.665 | 5.0607e-01 | 9.9540e-01 |
 
 *Holm-Bonferroni corrected p-values.*
 *\* p < 0.05, \*\* p < 0.01, \*\*\* p < 0.001*
 
 ## Score Distribution Comparison
 
-- **Test PRs from authors with self-owned repos**: 3,278
-- **Rows where 0.0x != 0.3x**: 2,287 (46.0%)
-- **Mean score difference (0.0x - 0.3x)**: -0.019169
-- **Max score decrease (0.3x - 0.0x)**: 0.823656
+- **Test PRs from authors with self-owned repos**: 3,568
+- **Rows where 0.0x != 0.3x**: 2,533 (46.8%)
+- **Mean score difference (0.0x - 0.3x)**: -0.019592
+- **Max score decrease (0.3x - 0.0x)**: 0.826348
 
 For authors WITHOUT self-owned repos, 0.0x = 0.3x by definition.
 

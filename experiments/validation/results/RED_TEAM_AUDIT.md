@@ -7,7 +7,8 @@ V2: 7 additional issues identified and fixed (2026-02-12).
 V3: Similarity comparison sub-study audit (see separate file).
 V4: 10 issues from external review. All fixed.
 **Impact (V1):** Sample grew from 3,005 to 4,977 PRs. H3 and H4 flipped from
-"not supported" to "supported." AUC decreased from 0.695 to 0.671.
+"not supported" to "supported." AUC decreased from 0.695 to 0.671 (post-V1),
+then to 0.650 (post-V4).
 **Impact (V2):** H5 temporal leakage fully fixed with backfilled data
 (LR: 462.4 -> 49.8). Baseline comparisons added, confirming GE graph
 outperforms all simple features. H3 missing data handling corrected.
@@ -94,8 +95,8 @@ the explicitly-rejected class.
 requires API calls (backfill).
 
 **Resolution:** Fixed. Stage 1 code updated and backfill script run. Sample
-grew from 3,005 to 4,977 PRs. Open PRs within the study period are now
-classified as pocket veto where appropriate.
+grew from 3,005 to 4,977 PRs (post-V1), then to 5,417 PRs (post-V4). Open
+PRs within the study period are now classified as pocket veto where appropriate.
 
 ---
 
@@ -122,7 +123,7 @@ regression) calibration and report calibrated Brier/log loss.
 
 **Resolution:** Fixed. Caveat added to `statistical_tests.json` and SUMMARY.md.
 Metrics retained for reference but clearly marked as uncalibrated. Current
-values: Brier = 0.251, log loss = 5.065 (post-audit re-run).
+values: Brier = 0.263, log loss = 4.987 (post-V4-audit re-run).
 
 ### M2. Holm-Bonferroni correction applied to 10 tests instead of 6
 
@@ -189,7 +190,7 @@ re-run.
 The function `cochran_armitage_trend` exists in `stats.py` but is never called
 in `stage6_analyze.py`. This is a pre-registered test.
 
-**Resolution:** Added to Stage 6. Result: z = -0.246, p = 0.805 (not
+**Resolution:** Added to Stage 6. Result: z = -0.177, p = 0.860 (not
 significant). The pocket veto rate does not follow a monotonic trend across
 trust levels — the effect is a step function (LOW vs. rest).
 
@@ -198,17 +199,17 @@ trust levels — the effect is a step function (LOW vs. rest).
 The function `odds_ratio` exists in `stats.py` but is never called. The DOE
 specifies computing odds ratios for each trust level pair with 95% CIs.
 
-**Resolution:** Added to Stage 6. HIGH vs LOW OR = 4.74 (CI: 4.10--5.47),
-MEDIUM vs LOW OR = 3.45 (CI: 2.80--4.26), HIGH vs MEDIUM OR = 1.37
-(CI: 1.12--1.68). All significant.
+**Resolution:** Added to Stage 6. HIGH vs LOW OR = 3.88 (CI: 3.39--4.45),
+MEDIUM vs LOW OR = 2.68 (CI: 2.21--3.25), HIGH vs MEDIUM OR = 1.45
+(CI: 1.21--1.74). All significant.
 
 ### m3. One-vs-rest AUC not computed (DOE Section 6.2)
 
 The DOE specifies three one-vs-rest AUC values (one per outcome class). Not
 implemented.
 
-**Resolution:** Added to Stage 6. Merged OVR AUC = 0.671, Rejected = 0.469,
-Pocket Veto = 0.292.
+**Resolution:** Added to Stage 6. Merged OVR AUC = 0.650, Rejected = 0.472,
+Pocket Veto = 0.325.
 
 ### m4. 3x3 confusion matrix not generated (DOE Section 6.2)
 
@@ -216,7 +217,7 @@ The DOE specifies a confusion matrix at Youden's J optimal threshold. Not
 implemented.
 
 **Resolution:** Added to Stage 6. Binary confusion matrix at Youden's J
-threshold (0.577), J = 0.327.
+threshold (0.642), J = 0.276.
 
 ### m5. `_MERGE_BOT_CLOSERS` defined but never used
 
@@ -382,9 +383,10 @@ across the study methodology, DOE documentation, and pipeline implementation. Th
 review focused on the pocket veto classification, stale threshold computation,
 temporal completeness, and documentation accuracy.
 
-**Key finding:** None of the issues affect the primary AUC-ROC = 0.671 result.
-The merged/not-merged boundary is determined by `merged_at` and is unaffected
-by stale threshold or buffer changes. Fixes primarily affect the
+**Key finding:** None of the issues affect the primary AUC-ROC directly (the
+merged/not-merged boundary is determined by `merged_at` and is unaffected by
+stale threshold or buffer changes). However, the pipeline re-run with expanded
+sample (5,417 PRs) produced primary AUC = 0.650. Fixes primarily affect the
 rejected/pocket-veto split (H1a three-class analysis) and data completeness in
 the 2025H2 temporal bin.
 
@@ -397,7 +399,7 @@ the 2025H2 temporal bin.
 now immediately classified as pocket veto. Simplifies the classification logic.
 
 **Impact:** Pocket veto / rejected split only. Primary AUC unaffected.
-**Status:** Fixed. Requires pipeline re-run (Stages 2--6).
+**Status:** Fixed. Pipeline re-run complete (2026-02-18). Sample: 5,417 PRs. Primary AUC: 0.650.
 
 ### V4-B. Stale threshold should use percentile, not multiplier (MAJOR)
 
@@ -410,7 +412,7 @@ uses `numpy.percentile(ttm_values, 90)` instead of `5 * median(ttm_values)`.
 Floor (30 days) and cap (180 days) retained as safety bounds.
 
 **Impact:** Pocket veto / rejected split only. Primary AUC unaffected.
-**Status:** Fixed. Requires pipeline re-run (Stages 2--6).
+**Status:** Fixed. Pipeline re-run complete (2026-02-18). Sample: 5,417 PRs. Primary AUC: 0.650.
 
 ### V4-C. 2025H2 temporal bin has incomplete data (MAJOR)
 
@@ -424,7 +426,7 @@ Added data completeness note to DOE Section 4.
 
 **Impact:** Potentially affects sample size. Sensitivity analysis demonstrates
 stability of primary result.
-**Status:** Fixed. Requires pipeline re-run (Stage 6).
+**Status:** Fixed. Pipeline re-run complete (2026-02-18). 2025H2 sensitivity: AUC delta = 0.025 (full 0.650, excl 0.675).
 
 ### V4-D. No stale threshold sensitivity analysis (MAJOR)
 
@@ -516,15 +518,15 @@ optimization.
 |----|----------|-------|--------|
 | C1 | CRITICAL | LRTs use regularized LR | **Resolved** — `penalty=None`; H3/H4 now significant |
 | C2 | CRITICAL | H4 embeddings are broken | **Resolved** — Gemini embeddings on PR bodies + READMEs |
-| C3 | CRITICAL | Open PRs not collected | **Resolved** — backfilled; sample grew to 4,977 |
+| C3 | CRITICAL | Open PRs not collected | **Resolved** — backfilled; sample grew to 4,977 (post-V1), then 5,417 (post-V4) |
 | M1 | MAJOR | Brier/log loss on uncalibrated scores | **Resolved** — caveat added |
 | M2 | MAJOR | Holm-Bonferroni over-corrects | **Resolved** — corrected to 6 primary tests |
 | M3 | MAJOR | Self-owned repos not excluded | **Resolved** — filter added in Stage 2 |
 | M4 | MAJOR | Spam filter removes fast merges | **Resolved** — filter scoped to non-merged PRs |
-| m1 | MINOR | Cochran-Armitage not run | **Resolved** — added; p = 0.805 (not significant) |
-| m2 | MINOR | Odds ratios not computed | **Resolved** — HIGH vs LOW OR = 4.74 |
+| m1 | MINOR | Cochran-Armitage not run | **Resolved** — added; p = 0.860 (not significant) |
+| m2 | MINOR | Odds ratios not computed | **Resolved** — HIGH vs LOW OR = 3.88 |
 | m3 | MINOR | One-vs-rest AUC missing | **Resolved** — 3 OVR AUCs computed |
-| m4 | MINOR | Confusion matrix missing | **Resolved** — added at Youden's J = 0.327 |
+| m4 | MINOR | Confusion matrix missing | **Resolved** — added at Youden's J = 0.276 |
 | m5 | MINOR | _MERGE_BOT_CLOSERS unused | **Partially resolved** — author check removed (was wrong field); label detection only |
 | m6 | MINOR | Feature importance regularized | **Resolved** — `penalty=None` |
 | m7 | MINOR | Self-penalty ablation override | **Not a bug** — override works correctly |
@@ -538,9 +540,9 @@ optimization.
 | V2-6 | MINOR | DOE embedding model mismatch | **Fixed** — DOE updated |
 | V2-7 | MAJOR | SUMMARY.md framing issues | **Resolved** — rewritten with baselines + honest framing |
 | **V4 Audit** | | | |
-| V4-A | MAJOR | Pocket veto buffer creates hidden 4th state | **Fixed** — buffer set to 0 |
-| V4-B | MAJOR | Stale threshold should use percentile | **Fixed** — 90th percentile replaces 5x multiplier |
-| V4-C | MAJOR | 2025H2 has incomplete data | **Fixed** — sensitivity analysis added |
+| V4-A | MAJOR | Pocket veto buffer creates hidden 4th state | **Fixed** — buffer set to 0; re-run complete (AUC 0.650) |
+| V4-B | MAJOR | Stale threshold should use percentile | **Fixed** — 90th percentile replaces 5x multiplier; re-run complete |
+| V4-C | MAJOR | 2025H2 has incomplete data | **Fixed** — sensitivity analysis: AUC delta = 0.025 (full 0.650, excl 0.675) |
 | V4-D | MAJOR | No threshold sensitivity analysis | **Fixed** — documented threshold invariance |
 | V4-E | MAJOR | DOE describes unimplemented oversampling | **Fixed** — paragraph removed |
 | V4-F | MAJOR | DOE search qualifier wrong | **Fixed** — corrected to `created:` |
