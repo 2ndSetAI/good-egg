@@ -89,9 +89,18 @@ async def run_action() -> None:
                 repo_owner, repo_name, pr_number
             )
             if existing_comment_id:
-                await client.update_pr_comment(
-                    repo_owner, repo_name, existing_comment_id, comment_body
-                )
+                try:
+                    await client.update_pr_comment(
+                        repo_owner, repo_name, existing_comment_id, comment_body
+                    )
+                except Exception:
+                    logger.warning(
+                        "Failed to update comment %d, posting new comment",
+                        existing_comment_id,
+                    )
+                    await client.post_pr_comment(
+                        repo_owner, repo_name, pr_number, comment_body
+                    )
             else:
                 await client.post_pr_comment(
                     repo_owner, repo_name, pr_number, comment_body
