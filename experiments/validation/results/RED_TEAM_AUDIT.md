@@ -10,7 +10,7 @@ V4: 10 issues from external review. All fixed.
 "not supported" to "supported." AUC decreased from 0.695 to 0.671 (post-V1),
 then to 0.650 (post-V4).
 **Impact (V2):** H5 temporal leakage fully fixed with backfilled data
-(LR: 462.4 -> 49.8). Baseline comparisons added, confirming GE graph
+(LR: 462.4 -> 51.5). Baseline comparisons added, confirming GE graph
 outperforms all simple features. H3 missing data handling corrected.
 
 ---
@@ -40,7 +40,7 @@ but the test statistic is attenuated.
 **Resolution:** Fixed. After V1 re-run: H3 LR = 8.64, p = 0.003 (now
 significant). H4 LR = 20.82, p = 5.1e-6 (now significant). H5 LR was 462.4
 at this stage but was later found to have temporal leakage (see V2-1); the
-fully corrected value is LR = 49.8, p < 10^-12.
+fully corrected value is LR = 51.5, p < 10^-12.
 
 ### C2. H4 embedding similarity is fundamentally broken
 
@@ -284,7 +284,7 @@ Falls back to proportional estimation for the 1 author whose data could not
 be fetched.
 
 **Impact:** LR dropped from 462.4 (lifetime counts) to 289.3 (proportional
-closed estimate) to 49.8 (exact closed timestamps). Author merge rate alone
+closed estimate) to 51.5 (exact closed timestamps). Author merge rate alone
 dropped from AUC 0.661 to 0.546, confirming the GE graph outperforms simple
 features when temporal leakage is fully eliminated.
 
@@ -532,7 +532,7 @@ optimization.
 | m7 | MINOR | Self-penalty ablation override | **Not a bug** — override works correctly |
 | m8 | MINOR | Redundant pilot_report.md | **Resolved** — SUMMARY.md is authoritative |
 | **V2 Audit** | | | |
-| V2-1 | CRITICAL | H5 merge rate has temporal leakage | **Fixed** — exact temporal scoping with backfilled data (LR: 462 -> 49.8) |
+| V2-1 | CRITICAL | H5 merge rate has temporal leakage | **Fixed** — exact temporal scoping with backfilled data (LR: 462 -> 51.5) |
 | V2-2 | MAJOR | No baseline comparison | **Fixed** — baselines added to Stage 6 |
 | V2-3 | MINOR | H3 imputes missing data as 0 | **Fixed** — valid mask added |
 | V2-4 | MINOR | `_is_merge_bot_close` checks wrong field | **Fixed** — author check removed |

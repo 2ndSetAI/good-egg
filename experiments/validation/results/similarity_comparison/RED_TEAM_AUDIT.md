@@ -19,7 +19,7 @@ Audit of `compare_similarity_methods.py` and its outputs. Found **9 issues** tot
 
 - **Severity**: Major
 - **Category**: Conclusion Validity
-- **Description**: All four methods produce standalone AUC < 0.5 (Gemini: 0.416, TF-IDF: 0.442, MiniLM: 0.469, Jaccard: 0.441). An AUC below 0.5 means the similarity score is *negatively* associated with merge outcome -- higher similarity predicts non-merge. This counterintuitive result is not discussed anywhere in the report.
+- **Description**: All four methods produce standalone AUC < 0.5 (Gemini: 0.411, TF-IDF: 0.450, MiniLM-128: 0.495, Jaccard: 0.424). An AUC below 0.5 means the similarity score is *negatively* associated with merge outcome -- higher similarity predicts non-merge. This counterintuitive result is not discussed anywhere in the report.
 - **Evidence**: results.json shows all standalone_auc values below 0.5. The comparison_report.md mentions the AUC values in the table but never discusses the inversion or its implications for the H4 interpretation.
 - **Impact**: The inverted AUC means that if similarity is "helping" prediction in the LRT, it does so by providing a *negative* signal (PRs more similar to the README are less likely to merge). This is an important interpretive point. It could indicate that boilerplate/template PRs match READMEs better but are lower quality, or that the similarity metric captures something other than "relevance." Without discussion, readers may assume similarity is positively associated with merge.
 - **Recommendation**: Add a section discussing the AUC inversion, noting it is consistent across all methods (not a Gemini artifact). Discuss possible explanations and note that the LRT finding means similarity adds *information* (not that high similarity predicts merge).
@@ -64,10 +64,10 @@ Audit of `compare_similarity_methods.py` and its outputs. Found **9 issues** tot
 
 - **Severity**: Minor
 - **Category**: Conclusion Validity
-- **Description**: The results.json records `n_pairs: 1293` and `n_with_extras: 1245`, meaning 48 rows lack valid `author_merge_rate` or `log_account_age_days`. The marginal improvement analysis uses the 1,245-row subset while the LRT and standalone AUC use all 1,293. This difference is not explained in the report.
-- **Evidence**: results.json shows both values. The comparison_report.md says "same 1,293 PR body / repo README text pairs" but the marginal tables silently use 1,245.
+- **Description**: The results.json records `n_pairs: 1569` and `n_with_extras: 1495`, meaning 74 rows lack valid `author_merge_rate` or `log_account_age_days`. The marginal improvement analysis uses the 1,495-row subset while the LRT and standalone AUC use all 1,569. This difference is not explained in the report.
+- **Evidence**: results.json shows both values. The comparison_report.md notes the marginal analysis uses n=1,495 but the difference could be more prominent.
 - **Impact**: Minor. The marginal analysis operates on a slightly different subset than the LRT, which is methodologically appropriate (only use rows with valid features), but the difference should be documented.
-- **Recommendation**: Note in the report that the marginal improvement analysis uses n=1,245 rows with valid merge_rate and account_age data.
+- **Recommendation**: Note in the report that the marginal improvement analysis uses n=1,495 rows with valid merge_rate and account_age data.
 
 ### Issue 8: MiniLM 128-Token Truncation Deserves Deeper Analysis
 
@@ -82,14 +82,14 @@ Audit of `compare_similarity_methods.py` and its outputs. Found **9 issues** tot
 
 - **Severity**: Informational
 - **Category**: Conclusion Validity
-- **Description**: The analysis operates on 1,293 out of 4,977 PRs (26%) -- only those with both a non-empty PR body/title AND a repo README. This selects for (a) more active/documented repos and (b) PRs with descriptive bodies, which may correlate with merge outcome.
-- **Evidence**: `n_pairs=1293` out of 4,977 total PRs (from pilot_report.md). The report's Known Limitations section does not mention the selection percentage or its implications.
-- **Impact**: The H4 finding applies only to the 26% of PRs with text pairs. The selected subset may have different merge rates, author profiles, or repo characteristics than the full dataset. This affects generalizability but not internal validity.
-- **Recommendation**: Report the selection percentage and compare merge rates between the 1,293-row subset and the full 4,977-row dataset. If they differ substantially, note the generalizability limitation.
+- **Description**: The analysis operates on 1,569 out of 5,417 PRs (29%) -- only those with both a non-empty PR body/title AND a repo README. This selects for (a) more active/documented repos and (b) PRs with descriptive bodies, which may correlate with merge outcome.
+- **Evidence**: `n_pairs=1569` out of 5,417 total PRs. The report's Known Limitations section does not mention the selection percentage or its implications.
+- **Impact**: The H4 finding applies only to the 29% of PRs with text pairs. The selected subset may have different merge rates, author profiles, or repo characteristics than the full dataset. This affects generalizability but not internal validity.
+- **Recommendation**: Report the selection percentage and compare merge rates between the 1,569-row subset and the full 5,417-row dataset. If they differ substantially, note the generalizability limitation.
 
 ## Verified Correct
 
-1. **Gemini LRT matches stage6**: The comparison script's Gemini LRT statistic (20.818, p=5.05e-6) exactly matches `statistical_tests.json`'s `H4_embedding_lrt.lr_statistic` (20.818, p=5.05e-6). The same 1,293 rows are used (both filter on `embedding_similarity.notna()`).
+1. **Gemini LRT matches stage6**: The comparison script's Gemini LRT statistic (35.200, p=2.97e-9) exactly matches `statistical_tests.json`'s `H4_embedding_lrt.lr_statistic` (35.200, p=2.97e-9). The same 1,569 rows are used (both filter on `embedding_similarity.notna()`).
 
 2. **H4 LRT base model matches stage6**: Both stage6 and the comparison script use `LR(GE_score)` as the base model and `LR(GE_score, similarity)` as the full model, with `penalty=None`, `max_iter=1000`, `random_state=42`. The `log_loss_manual` implementation is identical.
 
@@ -119,7 +119,7 @@ Audit of `compare_similarity_methods.py` and its outputs. Found **9 issues** tot
 
 ## Overall Assessment
 
-The Jaccard recommendation is **trustworthy**. Jaccard similarity retains the H4 signal (LRT p=0.0002, which survives any reasonable multiple comparison correction) with Pearson r=0.50 against Gemini. No results need to be re-run.
+The Jaccard recommendation is **trustworthy**. Jaccard similarity retains the H4 signal (LRT p=4.4e-7, which survives any reasonable multiple comparison correction) with Pearson r=0.51 against Gemini. No results need to be re-run.
 
 The two major issues (missing Bonferroni correction and undiscussed AUC inversion) affect the report's completeness and rigor but do not change the substantive conclusion. The Jaccard LRT p-value is so small (0.0002) that it passes under Bonferroni with k=3 (threshold 0.017), k=4 (threshold 0.0125), or even k=10. The AUC inversion is consistent across all methods and is an interpretive issue, not a computational one.
 

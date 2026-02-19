@@ -420,8 +420,9 @@ repository that has since gained significant popularity or been archived will
 have different metadata than it did historically. This affects the repo quality
 dimension. Historical star counts could
 potentially be recovered using services like the star-history API. However, the
-H2 ablation shows repo quality has negligible AUC impact (ΔAUC = −0.002,
-p = 0.117), making this correction low priority.
+H2 ablation shows repo quality has a small but statistically significant AUC
+impact (ΔAUC = −0.003, adjusted p = 0.015), though the effect size is minimal,
+making this correction low priority.
 
 ### 9.2 Survivorship Bias in Contribution Data
 

@@ -1,7 +1,7 @@
 # Better Egg: What the Validation Study Tells Us
 
-**Date:** 2026-02-12
-**Context:** Post-V2-audit analysis of the GE validation study results
+**Date:** 2026-02-18
+**Context:** Post-V4-audit analysis of the GE validation study results
 
 This document synthesizes findings from the GE validation study to answer:
 *What works, what doesn't, and how should the scoring approach evolve?*
@@ -13,7 +13,7 @@ This document synthesizes findings from the GE validation study to answer:
 ### Recency-weighted contribution history
 
 The ablation study (H2) shows recency is the dominant signal. Removing recency
-decay drops AUC from 0.671 to 0.550 (Delta = -0.121, p < 10^-68). No other
+decay drops AUC from 0.650 to 0.551 (Delta = -0.099, p < 10^-60). No other
 graph dimension comes close. The core insight of GE---that *recent* merged
 contributions predict future merge success---is sound.
 
@@ -25,12 +25,12 @@ because projects, maintainers, and coding practices change.
 ### Author merge rate (external to graph)
 
 With exact temporal scoping (using backfilled closed PR timestamps), author
-merge rate alone achieves AUC = 0.546 and adds LR = 49.8 (p < 10^-12) when
+merge rate alone achieves AUC = 0.534 and adds LR = 51.5 (p < 10^-12) when
 combined with the GE score. The LRT confirms merge rate carries information
 the graph misses. However, this statistical significance does not translate
-to ranking improvement: LR(GE + merge_rate + age) achieves AUC = 0.665 on
-the 4,416-PR merge-rate subset, not significantly different from the graph
-alone (0.667 on the same subset, DeLong p = 0.73). Merge rate and age add
+to ranking improvement: LR(GE + merge_rate + age) achieves AUC = 0.656 on
+the 4,467-PR merge-rate subset, not significantly different from the graph
+alone (0.658 on the same subset, DeLong p = 0.65). Merge rate and age add
 information but not discriminative power beyond what the graph already
 captures through recency weighting.
 
@@ -42,15 +42,15 @@ cautionary tale about feature leakage in retrospective studies.
 ### Account age (modest signal)
 
 Account age provides a small but statistically significant incremental signal
-(LR = 8.64, p = 0.003). However, like merge rate, it does not improve AUC
+(LR = 19.16, p = 1.2e-5). However, like merge rate, it does not improve AUC
 when combined with the graph (see Section 6.7). It is useful primarily as a
 cold-start tiebreaker when the graph score is zero.
 
 ### Embedding similarity (informative, but inverted)
 
 PR body vs. repo README embedding similarity adds significant signal (LR =
-20.82, p = 5.1e-6), but the direction is inverted: higher similarity is
-associated with *lower* merge probability (standalone AUC = 0.416). This
+35.20, p = 3.0e-9), but the direction is inverted: higher similarity is
+associated with *lower* merge probability (standalone AUC = 0.411). This
 inversion is consistent across every method tested in the robustness
 sub-study (Gemini, TF-IDF, MiniLM at three token lengths, Jaccard).
 
@@ -61,13 +61,13 @@ real---possibly PR *novelty* or *specificity* rather than "content relevance"
 in the positive sense originally hypothesized.
 
 A [robustness sub-study](similarity_comparison/comparison_report.md) confirmed
-the signal is not a Gemini artifact: on the Gemini subset (n=1,293), Jaccard
+the signal is not a Gemini artifact: on the Gemini subset (n=1,569), Jaccard
 (a simple bag-of-words method) also survives Holm-Bonferroni correction (adj.
-p = 0.001). On the full dataset (n=4,977, using title as fallback text), all
+p = 0.001). On the full dataset (n=5,417, using title as fallback text), all
 five non-Gemini methods are highly significant (all adj. p < 10^-8).
 
-**Limitation:** Gemini embeddings were available for only 1,293 of 4,977 PRs
-(26%). However, simpler methods (TF-IDF, Jaccard) work on the full dataset
+**Limitation:** Gemini embeddings were available for only 1,569 of 5,417 PRs
+(29%). However, simpler methods (TF-IDF, Jaccard) work on the full dataset
 since they only require raw text, not a separate embedding API call.
 
 ---
@@ -76,19 +76,21 @@ since they only require raw text, not a separate embedding API call.
 
 ### Graph structure beyond recency
 
-The H2 ablation is definitive: five of six graph dimensions have negligible
-impact on merge prediction (all |Delta AUC| < 0.002, none significant after
-correction). Specifically:
+The H2 ablation shows recency dominates, but repo quality and language match
+now show small, statistically significant contributions that survive
+Holm-Bonferroni correction. Three of six dimensions remain non-significant:
 
 | Dimension | Delta AUC | Assessment |
 |-----------|-----------|------------|
-| Language match | +0.001 | No signal |
-| Diversity/volume | +0.000 | No signal |
-| Language normalization | +0.000 | No signal |
-| Self-contribution penalty | -0.000 | No signal |
-| Repo quality | -0.002 | Suggestive (raw p = 0.023) but not significant |
+| Language match | +0.002 | Small but significant (raw p = 0.038, adj. p = 0.038) |
+| Diversity/volume | +0.000 | No signal (adj. p = 0.969) |
+| Language normalization | +0.000 | No signal (adj. p = 0.969) |
+| Self-contribution penalty | -0.000 | No signal (adj. p = 0.969) |
+| Repo quality | -0.003 | Significant (raw p = 0.003, adj. p = 0.015) |
 
-These dimensions may serve other purposes (interpretability, fairness, gaming
+Repo quality and language match survive correction, but their effect sizes
+are tiny compared to recency (|Delta| < 0.003 vs. -0.099). The remaining
+three dimensions may serve other purposes (interpretability, fairness, gaming
 resistance) but do not improve merge prediction.
 
 ### Self-contribution penalty
@@ -96,9 +98,9 @@ resistance) but do not improve merge prediction.
 Designed to penalize contributions to self-owned repos, this has zero measured
 impact. A [dedicated sub-study](self_penalty_evaluation/report.md) tested three
 variants: 0.3x (current), 1.0x (no penalty), and 0.0x (full exclusion from the
-graph). All three produce effectively identical AUCs (0.671, 0.671, 0.670; all
-pairwise DeLong p > 0.58). Even full exclusion changes only 46% of scores (mean
-shift -0.019) and moves AUC by -0.0005. The penalty is neither helpful nor
+graph). All three produce effectively identical AUCs (0.650, 0.650, 0.651; all
+pairwise DeLong p > 0.32). Even full exclusion changes only 46% of scores (mean
+shift -0.019) and moves AUC by +0.001. The penalty is neither helpful nor
 harmful --- it can be safely removed to simplify the model.
 
 ### The full graph vs. simple features
@@ -108,15 +110,15 @@ the GE graph significantly outperforms all simple feature baselines:
 
 | Baseline | AUC | vs. GE (p) |
 |----------|-----|-----------|
-| Author merge rate alone | 0.546 | < 10^-22 |
-| Model A (rate + age) | 0.561 | < 10^-24 |
-| Prior merge count | 0.608 | < 10^-18 |
-| Followers (log) | 0.609 | < 10^-9 |
+| Author merge rate alone | 0.534 | < 10^-21 |
+| Model A (rate + age) | 0.556 | < 10^-19 |
+| Prior merge count | 0.604 | < 10^-12 |
+| Followers (log) | 0.615 | < 10^-3 |
 
 The graph's complexity is justified by merge prediction performance. The
 initial finding that "merge rate matches GE" was entirely driven by temporal
 leakage in the merge rate denominator. With proper scoping, the graph adds
-6--12 AUC points over any simple feature.
+4--12 AUC points over any simple feature.
 
 ---
 
@@ -126,14 +128,14 @@ Is the GE score just a "recency bias engine"? Recency is the dominant
 dimension, but the graph adds more than just recency:
 
 1. **Recency accounts for most of the signal above chance**
-   (AUC 0.671 vs. 0.550 without recency; 0.550 is only 5pp above 0.500).
-2. **The graph without recency (AUC = 0.550) is barely above chance.** All
+   (AUC 0.650 vs. 0.551 without recency; 0.551 is only 5pp above 0.500).
+2. **The graph without recency (AUC = 0.551) is barely above chance.** All
    other dimensions combined add ~5pp over random.
-3. **However, prior merge count alone (AUC = 0.608) falls well short of the
-   full graph (0.671).** The graph's recency weighting and normalization
-   across the contribution network adds ~6 AUC points over a simple count.
+3. **However, prior merge count alone (AUC = 0.604) falls well short of the
+   full graph (0.650).** The graph's recency weighting and normalization
+   across the contribution network adds ~5 AUC points over a simple count.
 4. **No simple feature combination matches the graph.** Even followers +
-   prior count combined would not reach 0.671 (DeLong tests confirm
+   prior count combined would not reach 0.650 (DeLong tests confirm
    significant gaps for all baselines tested).
 
 The graph is more than just a count of recent merges. The exponential decay,
@@ -154,7 +156,7 @@ with 10 merged. The rejected PRs are invisible to the graph. This means:
 
 - A spammer who opens many low-quality PRs to many repos, getting a few merged
   by chance, builds trust indistinguishable from a careful contributor.
-- The H5 result (author merge rate adds LR = 49.8 beyond GE) confirms the
+- The H5 result (author merge rate adds LR = 51.5 beyond GE) confirms the
   graph misses rejection signal.
 
 A [rejection awareness sub-study](rejection_awareness/report.md) tested whether
@@ -162,17 +164,17 @@ graph-integrated merge-rate scaling could address this. Two approaches were
 evaluated: per-repo scaling (scale each edge by the author's merge rate at
 that repo) and author-level scaling (scale all edges by overall merge rate).
 Neither produced a statistically significant improvement (all DeLong
-p > 0.45). Notably, even among high-rejection authors (merge rate < 0.5,
-n=924), graph-integrated scaling barely moved AUC (0.553 vs. full model's
-0.553), while the LR(GE + merge_rate) feature-engineering approach achieved
-0.581 in that subgroup (cross-validated). This suggests rejection signal is
+p > 0.07). Notably, even among high-rejection authors (merge rate < 0.5,
+n=927), graph-integrated scaling barely moved AUC (0.551 vs. full model's
+0.551), while the LR(GE + merge_rate) feature-engineering approach achieved
+0.584 in that subgroup (cross-validated). This suggests rejection signal is
 better captured as a *separate feature* than through edge weight scaling in
 the graph.
 
 ### Newcomer cold-start
 
-14.4% of PRs in the study come from authors with score = 0 (AUC = 0.500, pure
-chance). These are not necessarily bad contributors---they have a 69% merge
+14.2% of PRs in the study come from authors with score = 0 (AUC = 0.500, pure
+chance). These are not necessarily bad contributors---they have a 67.8% merge
 rate---but the GE score cannot help with them at all. Any contributor's first
 PR to a new ecosystem is unscored.
 
@@ -185,16 +187,16 @@ summarizes the evidence and the disposition for v2.
 
 | Component | v1 Status | Evidence | v2 Decision |
 |-----------|-----------|----------|-------------|
-| Recency decay | Active | H2: Delta AUC = -0.121, p < 10^-68 | **Keep** |
-| Repo quality (stars, archived, fork) | Active | H2: Delta AUC = -0.002, raw p = 0.023 | **Keep** (borderline, cheap) |
-| Self-contribution penalty (0.3x) | Active | [Self-penalty study](self_penalty_evaluation/report.md): all 3 variants identical, p > 0.58 | **Drop** |
-| Language match (personalization) | Active | H2: Delta AUC = +0.001, p = 0.342 | **Drop** |
-| Diversity/volume scaling | Active | H2: Delta AUC = +0.000, p = 1.000 | **Drop** |
-| Language normalization (star multipliers) | Active | H2: Delta AUC = +0.000, p = 0.812 | **Drop** |
-| Author merge rate | Not in graph | H5: LR = 49.8, p < 10^-12 (n=4,736, proportional merge rate); [rejection study](rejection_awareness/report.md): LR = 68.5, p < 10^-16 (n=4,416, cross-validated, exact timestamps only) | **Add as feature** |
-| Account age | Not in graph | H3: LR = 8.64, p = 0.003 | **Add as feature** |
-| Text dissimilarity | Not in graph | H4: LR = 20.82, p = 5.1x10^-6 (inverted) | **Add as feature** |
-| Graph-integrated rejection scaling | Tested | [Rejection study](rejection_awareness/report.md): both approaches p > 0.45 | **Do not add** |
+| Recency decay | Active | H2: Delta AUC = -0.099, p < 10^-60 | **Keep** |
+| Repo quality (stars, archived, fork) | Active | H2: Delta AUC = -0.003, raw p = 0.003, adj. p = 0.015 | **Keep** (significant, cheap) |
+| Self-contribution penalty (0.3x) | Active | [Self-penalty study](self_penalty_evaluation/report.md): all 3 variants identical, p > 0.32 | **Drop** |
+| Language match (personalization) | Active | H2: Delta AUC = +0.002, raw p = 0.038 | **Keep** (significant, cheap) |
+| Diversity/volume scaling | Active | H2: Delta AUC = +0.000, p = 0.969 | **Drop** |
+| Language normalization (star multipliers) | Active | H2: Delta AUC = +0.000, p = 0.969 | **Drop** |
+| Author merge rate | Not in graph | H5: LR = 51.5, p < 10^-12 (n=5,129, proportional merge rate); [rejection study](rejection_awareness/report.md): LR = 65.73, p < 10^-16 (n=4,467, cross-validated, exact timestamps only) | **Add as feature** |
+| Account age | Not in graph | H3: LR = 19.16, p = 1.2e-5 | **Add as feature** |
+| Text dissimilarity | Not in graph | H4: LR = 35.20, p = 3.0x10^-9 (inverted) | **Add as feature** |
+| Graph-integrated rejection scaling | Tested | [Rejection study](rejection_awareness/report.md): both approaches adj. p > 0.07 | **Do not add** |
 
 ---
 
@@ -219,7 +221,7 @@ final_score = CombinedModel(
 ### 6.2 Layer 1: Simplified Trust Graph
 
 A bipartite directed graph (user->repo, repo->user) scored with graph scoring.
-Structurally identical to v1, but with four dimensions removed.
+Structurally identical to v1, but with three dimensions removed.
 
 #### 6.2.1 Graph Construction
 
@@ -257,7 +259,7 @@ recency_decay(days_ago) =
 
 | Parameter | Default | Type | Evidence |
 |-----------|---------|------|----------|
-| `half_life_days` | 180 | int | H2: removing recency -> AUC 0.550. Half-life not separately optimized; 180 is the v1 default. |
+| `half_life_days` | 180 | int | H2: removing recency -> AUC 0.551. Half-life not separately optimized; 180 is the v1 default. |
 | `max_age_days` | 730 | int | Contributions >2 years old decay to ~0 anyway with 180-day half-life. Hard cutoff for efficiency. |
 
 #### 6.2.3 Repo Quality
@@ -272,7 +274,7 @@ repo_quality(meta) =
 
 **What changed from v1:** The `stars * language_multiplier` term is simplified
 to just `stars`. The 28-entry language normalization table is removed
-(H2: Delta AUC = 0.000, p = 0.812). Stars alone carry the signal.
+(H2: Delta AUC = 0.000, p = 0.969). Stars alone carry the signal.
 
 | Parameter | Default | Type | Evidence |
 |-----------|---------|------|----------|
@@ -295,7 +297,7 @@ Normalized to sum to 1.0.
 **What changed from v1:** Three things removed:
 
 1. `same_language_weight` --- all non-context repos get the same weight
-   (H2: Delta AUC = +0.001 for language match)
+   (H2: Delta AUC = +0.002 for language match, now significant at p = 0.038)
 2. `diversity_scale` --- no longer adjusts `other_weight` based on unique
    repo count (H2: Delta AUC = 0.000)
 3. `volume_scale` --- no longer adjusts `other_weight` based on PR count
@@ -358,12 +360,12 @@ Where `T` = the creation time of the PR being scored.
 
 **Data requirement:** Closed PR timestamps per author. Available via GitHub
 GraphQL `pullRequests(states: CLOSED)`. The validation study backfilled data
-for 1,958 of 2,251 authors (87%), capped at 500 most recent per author.
+for 1,958 of 2,538 authors (77.1%), capped at 500 most recent per author.
 Production should fetch all available or document the cap.
 
-**Evidence:** H5 corrected LR = 49.8 (p < 10^-12). Rejection awareness study
-LRT = 68.5 (p < 10^-16, cross-validated). Among high-rejection authors (rate < 0.5, n=924),
-this feature lifts subgroup AUC from 0.553 to 0.581 (cross-validated).
+**Evidence:** H5 corrected LR = 51.5 (p < 10^-12). Rejection awareness study
+LRT = 65.73 (p < 10^-16, cross-validated). Among high-rejection authors (rate < 0.5, n=927),
+this feature lifts subgroup AUC from 0.551 to 0.584 (cross-validated).
 
 **Edge case:** If `merged_before_T + closed_before_T = 0`, merge rate is
 undefined. Use a prior or treat as missing (impute population mean, or exclude
@@ -377,9 +379,9 @@ from the feature vector and let the combined model handle it).
 log_account_age = log(account_age_days + 1)
 ```
 
-**Evidence:** H3 LR = 8.64, p = 0.003. Modest signal. Most useful as a
-cold-start discriminator when graph score is 0 (14.4% of PRs are from
-newcomers with zero graph history; these newcomers have a 69% merge rate
+**Evidence:** H3 LR = 19.16, p = 1.2e-5. Modest signal. Most useful as a
+cold-start discriminator when graph score is 0 (14.2% of PRs are from
+newcomers with zero graph history; these newcomers have a 67.8% merge rate
 but AUC = 0.500 from the graph alone).
 
 **No tunable parameters.** Computed from `UserProfile.created_at`.
@@ -398,11 +400,11 @@ Where `similarity` can be any of:
 - Gemini/MiniLM embeddings --- more expensive, validated but not required
 
 The *inverted* direction is intentional: higher PR-README similarity predicts
-*lower* merge probability (standalone AUC = 0.416). PRs that diverge from the
+*lower* merge probability (standalone AUC = 0.411). PRs that diverge from the
 README (targeting specific subsystems) merge more often than generic/template
 PRs that echo the README text.
 
-**Evidence:** H4 LR = 20.82, p = 5.1x10^-6. Robustness sub-study: Jaccard
+**Evidence:** H4 LR = 35.20, p = 3.0x10^-9. Robustness sub-study: Jaccard
 survives Holm-Bonferroni on Gemini subset (adj. p = 0.001); all 5 non-Gemini
 methods significant on full dataset (all adj. p < 10^-8).
 
@@ -436,10 +438,10 @@ P(merge) = sigmoid(
 ```
 
 **Evidence:** The combined model (GE + merge_rate + age + embedding) achieved
-AUC = 0.680 (CV mean = 0.671) vs. GE alone at 0.671. DeLong p = 0.002 for the
+AUC = 0.654 (CV mean = 0.622) vs. GE alone at 0.650. DeLong p = 0.026 for the
 improvement. However, the intermediate model *without* text dissimilarity
-(GE + merge_rate + age) achieves AUC = 0.665, which is not significantly
-different from GE alone (DeLong p = 0.73). The AUC improvement comes from
+(GE + merge_rate + age) achieves AUC = 0.656, which is not significantly
+different from GE alone (DeLong p = 0.65). The AUC improvement comes from
 text dissimilarity, not from merge rate or account age. Those features carry
 statistically significant information (per LRT) but do not improve ranking
 performance beyond what the graph already captures.
@@ -455,13 +457,13 @@ performance beyond what the graph already captures.
 **Training data:** The weights `w0..w4` must be fit on a calibration dataset.
 Options:
 
-1. Fit on the full validation study data (4,977 PRs, 49 repos) and ship fixed
+1. Fit on the full validation study data (5,417 PRs, 49 repos) and ship fixed
    weights
 2. Fit per-deployment on the target repository's historical PR data
 3. Use the validation study weights as defaults with per-repo fine-tuning
 
 The validation study used option 1 (in-sample). Cross-validation (5-fold,
-grouped by repo) showed stability: mean AUC = 0.671 +/- 0.036.
+grouped by repo) showed stability: mean AUC = 0.649 +/- 0.044.
 
 #### 6.4.3 Output and Classification
 
@@ -470,7 +472,7 @@ classified into trust levels:
 
 | Trust Level | Threshold | Evidence |
 |-------------|-----------|----------|
-| HIGH | P >= `high_trust` | v1 default; validation confirms meaningful separation (OR = 4.74 HIGH vs LOW) |
+| HIGH | P >= `high_trust` | v1 default; validation confirms meaningful separation (OR = 3.88 HIGH vs LOW, CI: 3.39--4.45) |
 | MEDIUM | `medium_trust` <= P < `high_trust` | v1 default |
 | LOW | P < `medium_trust` | v1 default |
 | UNKNOWN | No data | Newcomer with no merged PRs and no closed PRs |
@@ -511,9 +513,9 @@ classified into trust levels:
 |-----------|---------|--------|
 | `context_repo_weight` | 0.5 | Retained |
 | `other_weight` | 0.03 | Retained (now fixed, not dynamically adjusted) |
-| ~~`same_language_weight`~~ | ~~0.3~~ | **Removed** (H2: p = 0.342) |
-| ~~`diversity_scale`~~ | ~~0.5~~ | **Removed** (H2: p = 1.000) |
-| ~~`volume_scale`~~ | ~~0.3~~ | **Removed** (H2: p = 1.000) |
+| ~~`same_language_weight`~~ | ~~0.3~~ | **Removed** (H2: p = 0.038) |
+| ~~`diversity_scale`~~ | ~~0.5~~ | **Removed** (H2: p = 0.969) |
+| ~~`volume_scale`~~ | ~~0.3~~ | **Removed** (H2: p = 0.969) |
 
 #### Classification (2 parameters, unchanged)
 
@@ -536,11 +538,11 @@ classified into trust levels:
 
 | Parameter | v1 Default | Evidence for removal |
 |-----------|------------|----------------------|
-| `self_contribution_penalty` | 0.3 | [Self-penalty study](self_penalty_evaluation/report.md): 0.3x = 1.0x = 0.0x (all p > 0.58) |
-| `same_language_weight` | 0.3 | H2: Delta AUC = +0.001, p = 0.342 |
-| `diversity_scale` | 0.5 | H2: Delta AUC = 0.000, p = 1.000 |
-| `volume_scale` | 0.3 | H2: Delta AUC = 0.000, p = 1.000 |
-| `language_normalization.multipliers` | 28-entry table | H2: Delta AUC = 0.000, p = 0.812 |
+| `self_contribution_penalty` | 0.3 | [Self-penalty study](self_penalty_evaluation/report.md): 0.3x = 1.0x = 0.0x (all p > 0.32) |
+| `same_language_weight` | 0.3 | H2: Delta AUC = +0.002, p = 0.038 (now significant; retained in v2 per updated disposition) |
+| `diversity_scale` | 0.5 | H2: Delta AUC = 0.000, p = 0.969 |
+| `volume_scale` | 0.3 | H2: Delta AUC = 0.000, p = 0.969 |
+| `language_normalization.multipliers` | 28-entry table | H2: Delta AUC = 0.000, p = 0.969 |
 | `language_normalization.default` | 3.0 | Same |
 | `edge_weights.merged_pr` | 1.0 | Collapses to constant 1.0 when it is the only edge type; remove the config indirection |
 
@@ -560,8 +562,8 @@ classified into trust levels:
 | PR body text | Not used | **Optional** (text dissimilarity) | REST API or already available at PR creation |
 | Repo README text | Not used | **Optional** (text dissimilarity) | REST API `repos/{owner}/{repo}/readme` |
 
-The main new data cost is closed PR timestamps. The validation study found 87%
-of authors had this data available (1,958/2,251), with a backfill cap of 500
+The main new data cost is closed PR timestamps. The validation study found 77.1%
+of authors had this data available (1,958/2,538), with a backfill cap of 500
 most recent per author. In production, fetching closed PRs adds one GraphQL
 query per author.
 
@@ -577,25 +579,27 @@ but should not expect AUC gains from those features alone.
 
 | Model | AUC | CV | n |
 |-------|-----|----|----|
-| v1 (full graph, 14 params) | 0.671 | 0.675 +/- 0.048 | 4,977 |
-| v2 graph only (6 params, no externals) | ~0.671 | ~same | 4,977 |
-| v2 combined (graph + merge_rate + age) | 0.665 ^a | cross-validated | 4,416 ^b |
-| v2 combined + text dissimilarity | 0.680 | 0.671 +/- 0.036 | 1,245 ^c |
+| v1 (full graph, 14 params) | 0.650 | 0.649 +/- 0.044 | 5,417 |
+| v2 graph only (6 params, no externals) | ~0.650 | ~same | 5,417 |
+| v2 combined (graph + merge_rate + age) | 0.656 ^a | cross-validated | 4,467 ^b |
+| v2 combined + text dissimilarity | 0.654 | 0.622 +/- 0.037 | 1,495 ^c |
 
 ^a Cross-validated AUC from the [rejection awareness
 study](rejection_awareness/report.md). The intermediate model does not
-significantly differ from the graph alone (DeLong p = 0.73 on the same
-4,416-PR subset where the graph achieves 0.667). Adding age significantly
-improves over GE + merge_rate alone (LRT = 9.5, p = 0.002), but the
+significantly differ from the graph alone (DeLong p = 0.65 on the same
+4,467-PR subset where the graph achieves 0.658). Adding age significantly
+improves over GE + merge_rate alone (LRT = 12.5, p = 0.0004), but the
 combined model with external features roughly matches rather than exceeds
 the graph.
-^b Subset with temporally-scoped merge rate data (87% of authors).
+^b Subset with temporally-scoped merge rate data (77.1% of authors).
 ^c Subset with valid Gemini embeddings and merge rate data.
 
-The graph simplification (removing 5 inert dimensions) is expected to preserve
-AUC exactly --- the ablation data confirms removing them individually or in
-combination has no measurable effect. The improvement comes from the external
-features, primarily merge rate.
+The graph simplification (removing 3 inert dimensions: diversity/volume,
+language normalization, and self-penalty) is expected to preserve AUC exactly
+--- the ablation data confirms removing them individually or in combination
+has no measurable effect. Repo quality and language match are retained as
+they now show small but significant contributions. The improvement comes
+from the external features, primarily merge rate.
 
 ---
 

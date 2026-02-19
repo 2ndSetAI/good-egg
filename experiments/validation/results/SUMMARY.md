@@ -469,7 +469,7 @@ total issues. All have been fixed and the pipeline fully re-run.
 
 | Issue | Severity | Status |
 |-------|----------|--------|
-| H5 merge rate has temporal leakage | Critical | Fixed; exact temporal scoping with backfilled closed PR data (LR: 462 -> 49.8) |
+| H5 merge rate has temporal leakage | Critical | Fixed; exact temporal scoping with backfilled closed PR data (LR: 462 -> 51.5) |
 | No baseline comparison | Major | Fixed; 6 single-feature + 3 model baselines added |
 | SUMMARY.md framing issues | Major | Fixed; this document rewritten |
 | H3 imputes missing data as 0 | Minor | Fixed; valid mask added |
