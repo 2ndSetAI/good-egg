@@ -48,6 +48,7 @@ def _error_json(message: str) -> str:
 @asynccontextmanager
 async def _scoring_resources(
     repo: str,
+    scoring_model: str | None = None,
 ) -> AsyncGenerator[tuple[GoodEggConfig, Cache, str, str]]:
     """Set up config, cache, and parsed repo for scoring tools.
 
@@ -55,6 +56,8 @@ async def _scoring_resources(
     is closed on exit.
     """
     config = _get_config()
+    if scoring_model is not None and scoring_model in ("v1", "v2"):
+        config.scoring_model = scoring_model  # type: ignore[assignment]
     cache = _get_cache(config)
     try:
         repo_owner, repo_name = _parse_repo(repo)
@@ -77,7 +80,9 @@ async def _cache_resource() -> AsyncGenerator[Cache]:
         cache.close()
 
 
-async def score_user(username: str, repo: str) -> str:
+async def score_user(
+    username: str, repo: str, scoring_model: str | None = None
+) -> str:
     """Score a GitHub user's trustworthiness relative to a repository.
 
     Returns the full trust score with all metadata as JSON.
@@ -85,9 +90,10 @@ async def score_user(username: str, repo: str) -> str:
     Args:
         username: GitHub username to score.
         repo: Target repository in owner/repo format.
+        scoring_model: Optional scoring model override (v1 or v2).
     """
     try:
-        async with _scoring_resources(repo) as (
+        async with _scoring_resources(repo, scoring_model) as (
             config, cache, repo_owner, repo_name,
         ):
             result = await score_pr_author(
@@ -102,7 +108,9 @@ async def score_user(username: str, repo: str) -> str:
         return _error_json(str(exc))
 
 
-async def check_pr_author(username: str, repo: str) -> str:
+async def check_pr_author(
+    username: str, repo: str, scoring_model: str | None = None
+) -> str:
     """Quick check of a PR author's trust level.
 
     Returns a compact summary with trust level, score, and PR count.
@@ -110,9 +118,10 @@ async def check_pr_author(username: str, repo: str) -> str:
     Args:
         username: GitHub username to check.
         repo: Target repository in owner/repo format.
+        scoring_model: Optional scoring model override (v1 or v2).
     """
     try:
-        async with _scoring_resources(repo) as (
+        async with _scoring_resources(repo, scoring_model) as (
             config, cache, repo_owner, repo_name,
         ):
             result = await score_pr_author(
@@ -127,13 +136,18 @@ async def check_pr_author(username: str, repo: str) -> str:
                 "trust_level": result.trust_level.value,
                 "normalized_score": result.normalized_score,
                 "total_merged_prs": result.total_merged_prs,
+                "scoring_model": result.scoring_model,
             }
+            if result.component_scores:
+                summary["component_scores"] = result.component_scores
             return json.dumps(summary)
     except Exception as exc:
         return _error_json(str(exc))
 
 
-async def get_trust_details(username: str, repo: str) -> str:
+async def get_trust_details(
+    username: str, repo: str, scoring_model: str | None = None
+) -> str:
     """Get an expanded trust breakdown for a GitHub user.
 
     Returns detailed information including contributions, flags, and metadata.
@@ -141,9 +155,10 @@ async def get_trust_details(username: str, repo: str) -> str:
     Args:
         username: GitHub username to analyse.
         repo: Target repository in owner/repo format.
+        scoring_model: Optional scoring model override (v1 or v2).
     """
     try:
-        async with _scoring_resources(repo) as (
+        async with _scoring_resources(repo, scoring_model) as (
             config, cache, repo_owner, repo_name,
         ):
             result = await score_pr_author(
@@ -168,6 +183,8 @@ async def get_trust_details(username: str, repo: str) -> str:
                 ],
                 "flags": result.flags,
                 "scoring_metadata": result.scoring_metadata,
+                "scoring_model": result.scoring_model,
+                "component_scores": result.component_scores,
             }
             return json.dumps(details)
     except Exception as exc:

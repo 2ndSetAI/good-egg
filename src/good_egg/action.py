@@ -72,6 +72,12 @@ async def run_action() -> None:
 
     # Load config and score
     config = load_config(config_path)
+    scoring_model_input = (
+        os.environ.get("INPUT_SCORING_MODEL")
+        or os.environ.get("INPUT_SCORING-MODEL")
+    )
+    if scoring_model_input and scoring_model_input in ("v1", "v2"):
+        config.scoring_model = scoring_model_input  # type: ignore[assignment]
     cache = Cache(ttls=config.cache_ttl.to_seconds())
 
     async with GitHubClient(token=token, config=config, cache=cache) as client:
@@ -110,6 +116,7 @@ async def run_action() -> None:
     _set_output("score", f"{score.normalized_score:.2f}")
     _set_output("trust-level", score.trust_level.value)
     _set_output("user", score.user_login)
+    _set_output("scoring-model", score.scoring_model)
 
     # Summary
     pct = score.normalized_score * 100

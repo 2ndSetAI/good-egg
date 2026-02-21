@@ -86,6 +86,44 @@ result = await score_pr_author(
 )
 ```
 
+### v2 (Better Egg) Configuration
+
+To use the v2 scoring model, set `scoring_model` on the config:
+
+```python
+from good_egg import GoodEggConfig, score_pr_author
+
+config = GoodEggConfig(
+    scoring_model="v2",
+    v2={
+        "graph": {"alpha": 0.85, "context_repo_weight": 0.5},
+        "features": {"merge_rate": True, "account_age": True},
+        "combined_model": {
+            "intercept": -1.5,
+            "graph_weight": 3.0,
+            "merge_rate_weight": 1.2,
+            "account_age_weight": 0.4,
+        },
+    },
+)
+
+result = await score_pr_author(
+    login="octocat",
+    repo_owner="octocat",
+    repo_name="Hello-World",
+    config=config,
+)
+
+# v2 results include component scores
+if result.component_scores:
+    print(f"Graph score: {result.component_scores['graph_score']:.3f}")
+    print(f"Merge rate: {result.component_scores['merge_rate']:.3f}")
+    print(f"Log account age: {result.component_scores['log_account_age']:.3f}")
+    print(f"Combined score: {result.component_scores['combined_score']:.3f}")
+
+print(f"Scoring model: {result.scoring_model}")
+```
+
 You can also load configuration from a YAML file:
 
 ```python
@@ -120,6 +158,8 @@ the following fields:
 | `top_contributions` | `list[ContributionSummary]` | Top repositories contributed to |
 | `language_match` | `bool` | Whether the user's top language matches the context repo |
 | `flags` | `dict[str, bool]` | Flags (is_bot, is_new_account, etc.) |
+| `scoring_model` | `str` | Scoring model used: `v1` or `v2` |
+| `component_scores` | `dict[str, float] \| None` | Component breakdown (v2 only): `graph_score`, `merge_rate`, `log_account_age`, `combined_score` |
 | `scoring_metadata` | `dict[str, Any]` | Internal scoring details |
 
 `TrustScore` is a Pydantic model, so you can serialize it:

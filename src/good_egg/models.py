@@ -65,6 +65,7 @@ class UserContributionData(BaseModel):
     profile: UserProfile
     merged_prs: list[MergedPR] = []
     contributed_repos: dict[str, RepoMetadata] = {}
+    closed_pr_count: int = 0
 
 
 class ContributionSummary(BaseModel):
@@ -90,3 +91,5 @@ class TrustScore(BaseModel):
     language_match: bool = False
     flags: dict[str, bool] = {}
     scoring_metadata: dict[str, Any] = {}
+    scoring_model: str = "v1"
+    component_scores: dict[str, float] = {}

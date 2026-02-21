@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, Field
@@ -110,8 +110,44 @@ class FetchConfig(BaseModel):
     rate_limit_safety_margin: int = 100
 
 
+class V2GraphConfig(BaseModel):
+    """Simplified graph parameters for v2 scoring."""
+    half_life_days: int = 180
+    max_age_days: int = 730
+    archived_penalty: float = 0.5
+    fork_penalty: float = 0.3
+
+
+class V2FeaturesConfig(BaseModel):
+    """Feature toggles for v2 combined model."""
+    temporal_merge_rate: bool = True
+    account_age: bool = True
+
+
+class V2CombinedModelConfig(BaseModel):
+    """Logistic regression weights for the v2 combined model.
+
+    Trained on 5,129 PRs from the validation study (49 repos).
+    Features: normalized graph score, author merge rate, log(account_age_days+1).
+    """
+    intercept: float = -0.8094
+    graph_score_weight: float = 1.9138
+    merge_rate_weight: float = -0.7783
+    account_age_weight: float = 0.1493
+
+
+class V2Config(BaseModel):
+    """Configuration for the v2 (Better Egg) scoring model."""
+    graph: V2GraphConfig = Field(default_factory=V2GraphConfig)
+    features: V2FeaturesConfig = Field(default_factory=V2FeaturesConfig)
+    combined_model: V2CombinedModelConfig = Field(
+        default_factory=V2CombinedModelConfig
+    )
+
+
 class GoodEggConfig(BaseModel):
     """Top-level configuration composing all sub-configs."""
+    scoring_model: Literal["v1", "v2"] = "v1"
     graph_scoring: GraphScoringConfig = Field(default_factory=GraphScoringConfig)
     edge_weights: EdgeWeightConfig = Field(default_factory=EdgeWeightConfig)
     recency: RecencyConfig = Field(default_factory=RecencyConfig)
@@ -121,6 +157,7 @@ class GoodEggConfig(BaseModel):
         default_factory=LanguageNormalization
     )
     fetch: FetchConfig = Field(default_factory=FetchConfig)
+    v2: V2Config = Field(default_factory=V2Config)
 
 
 def load_config(path: str | Path | None = None) -> GoodEggConfig:
@@ -170,5 +207,15 @@ def load_config(path: str | Path | None = None) -> GoodEggConfig:
             if section not in config_data:
                 config_data[section] = {}
             config_data[section][key] = type_fn(value)
+
+    # Top-level env var overrides
+    scoring_model = os.environ.get("GOOD_EGG_SCORING_MODEL")
+    if scoring_model is None:
+        scoring_model = (
+            os.environ.get("INPUT_SCORING_MODEL")
+            or os.environ.get("INPUT_SCORING-MODEL")
+        )
+    if scoring_model is not None:
+        config_data["scoring_model"] = scoring_model
 
     return GoodEggConfig(**config_data)

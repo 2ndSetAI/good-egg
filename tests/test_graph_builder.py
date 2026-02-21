@@ -443,3 +443,188 @@ class TestDiversityMultiplier:
         )
         # The Python repo is "other" (not Rust), so prolific should get more weight on it
         assert pv_prolific["repo:org/python-lib"] > pv_newcomer["repo:org/python-lib"]
+
+
+class TestSimplifiedMode:
+    def test_no_self_contribution_penalty(self) -> None:
+        builder = TrustGraphBuilder(_make_config(), simplified=True)
+        pr_own = MergedPR(
+            repo_name_with_owner="testuser/my-project",
+            title="Update readme",
+            merged_at=datetime.now(UTC) - timedelta(days=5),
+        )
+        pr_external = MergedPR(
+            repo_name_with_owner="other-org/project",
+            title="Fix bug",
+            merged_at=datetime.now(UTC) - timedelta(days=5),
+        )
+        repos = {
+            "testuser/my-project": RepoMetadata(
+                name_with_owner="testuser/my-project",
+                stargazer_count=100,
+                primary_language="Python",
+            ),
+            "other-org/project": RepoMetadata(
+                name_with_owner="other-org/project",
+                stargazer_count=100,
+                primary_language="Python",
+            ),
+        }
+        data = _make_user_data(
+            login="testuser",
+            merged_prs=[pr_own, pr_external],
+            repos=repos,
+        )
+        graph = builder.build_graph(data, "ctx/repo")
+
+        own_weight = graph["user:testuser"]["repo:testuser/my-project"]["weight"]
+        ext_weight = graph["user:testuser"]["repo:other-org/project"]["weight"]
+        # In simplified mode, no 0.3 penalty on self-contributions
+        assert abs(own_weight - ext_weight) < 1e-9
+
+    def test_no_language_normalization_in_repo_quality(self) -> None:
+        config = _make_config()
+        builder_simple = TrustGraphBuilder(config, simplified=True)
+        builder_v1 = TrustGraphBuilder(config, simplified=False)
+
+        meta = RepoMetadata(
+            name_with_owner="org/repo",
+            stargazer_count=10000,
+            primary_language="Elixir",  # Has a 4.04 multiplier in v1
+        )
+
+        q_simple = builder_simple._repo_quality(meta)
+        q_v1 = builder_v1._repo_quality(meta)
+
+        # Simplified uses log1p(10000) without language multiplier
+        assert abs(q_simple - math.log1p(10000)) < 1e-9
+        # v1 uses log1p(10000 * 4.04)
+        assert abs(q_v1 - math.log1p(10000 * 4.04)) < 1e-9
+        assert q_v1 > q_simple
+
+    def test_no_same_language_weight_in_personalization(self) -> None:
+        builder = TrustGraphBuilder(_make_config(), simplified=True)
+        pr1 = MergedPR(
+            repo_name_with_owner="org/elixir-lib",
+            title="PR",
+            merged_at=datetime.now(UTC),
+        )
+        pr2 = MergedPR(
+            repo_name_with_owner="org/python-lib",
+            title="PR",
+            merged_at=datetime.now(UTC),
+        )
+        repos = {
+            "org/elixir-lib": RepoMetadata(
+                name_with_owner="org/elixir-lib",
+                stargazer_count=100,
+                primary_language="Elixir",
+            ),
+            "org/python-lib": RepoMetadata(
+                name_with_owner="org/python-lib",
+                stargazer_count=100,
+                primary_language="Python",
+            ),
+        }
+        data = _make_user_data(merged_prs=[pr1, pr2], repos=repos)
+        graph = builder.build_graph(data, "ctx/repo")
+
+        pv = builder.build_personalization_vector(graph, "ctx/repo", "Elixir")
+
+        # In simplified mode, both non-context repos get the same weight
+        # (no same_language_weight boost for Elixir)
+        elixir_weight = pv["repo:org/elixir-lib"]
+        python_weight = pv["repo:org/python-lib"]
+        assert abs(elixir_weight - python_weight) < 1e-9
+
+    def test_no_diversity_volume_adjustment(self) -> None:
+        builder = TrustGraphBuilder(_make_config(), simplified=True)
+        pr = MergedPR(
+            repo_name_with_owner="org/repo",
+            title="PR",
+            merged_at=datetime.now(UTC),
+        )
+        repos = {
+            "org/repo": RepoMetadata(
+                name_with_owner="org/repo",
+                stargazer_count=100,
+                primary_language="Python",
+            ),
+        }
+        data = _make_user_data(merged_prs=[pr], repos=repos)
+        graph = builder.build_graph(data, "ctx/repo")
+
+        pv_few = builder.build_personalization_vector(
+            graph, "ctx/repo", "Rust", total_prs=2, unique_repos=1
+        )
+        pv_many = builder.build_personalization_vector(
+            graph, "ctx/repo", "Rust", total_prs=100, unique_repos=20
+        )
+        # In simplified mode, total_prs/unique_repos don't affect other_weight
+        # Both get the same weight for the non-context repo
+        assert abs(pv_few["repo:org/repo"] - pv_many["repo:org/repo"]) < 1e-9
+
+    def test_v2_graph_config_penalties(self) -> None:
+        from good_egg.config import GoodEggConfig
+        config = GoodEggConfig(
+            v2={"graph": {"archived_penalty": 0.2, "fork_penalty": 0.1}}
+        )
+        builder = TrustGraphBuilder(config, simplified=True)
+
+        meta_archived = RepoMetadata(
+            name_with_owner="org/repo",
+            stargazer_count=1000,
+            is_archived=True,
+        )
+        meta_fork = RepoMetadata(
+            name_with_owner="org/repo",
+            stargazer_count=1000,
+            is_fork=True,
+        )
+        meta_normal = RepoMetadata(
+            name_with_owner="org/repo",
+            stargazer_count=1000,
+        )
+
+        q_normal = builder._repo_quality(meta_normal)
+        q_archived = builder._repo_quality(meta_archived)
+        q_fork = builder._repo_quality(meta_fork)
+
+        assert abs(q_archived - q_normal * 0.2) < 1e-9
+        assert abs(q_fork - q_normal * 0.1) < 1e-9
+
+    def test_v1_mode_unchanged(self) -> None:
+        """Ensure non-simplified mode still applies self-contribution penalty."""
+        builder = TrustGraphBuilder(_make_config(), simplified=False)
+        pr_own = MergedPR(
+            repo_name_with_owner="testuser/my-project",
+            title="Update readme",
+            merged_at=datetime.now(UTC) - timedelta(days=5),
+        )
+        pr_external = MergedPR(
+            repo_name_with_owner="other-org/project",
+            title="Fix bug",
+            merged_at=datetime.now(UTC) - timedelta(days=5),
+        )
+        repos = {
+            "testuser/my-project": RepoMetadata(
+                name_with_owner="testuser/my-project",
+                stargazer_count=100,
+                primary_language="Python",
+            ),
+            "other-org/project": RepoMetadata(
+                name_with_owner="other-org/project",
+                stargazer_count=100,
+                primary_language="Python",
+            ),
+        }
+        data = _make_user_data(
+            login="testuser",
+            merged_prs=[pr_own, pr_external],
+            repos=repos,
+        )
+        graph = builder.build_graph(data, "ctx/repo")
+
+        own_weight = graph["user:testuser"]["repo:testuser/my-project"]["weight"]
+        ext_weight = graph["user:testuser"]["repo:other-org/project"]["weight"]
+        assert abs(own_weight - ext_weight * 0.3) < 1e-9

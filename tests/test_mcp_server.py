@@ -167,6 +167,27 @@ class TestScoreUser:
         assert "API failure" in parsed["error"]
         mock_cache_inst.close.assert_called_once()
 
+    @pytest.mark.asyncio
+    @patch("good_egg.mcp_server._get_cache")
+    @patch("good_egg.mcp_server._get_config")
+    @patch("good_egg.mcp_server.score_pr_author", new_callable=AsyncMock)
+    async def test_scoring_model_parameter(
+        self,
+        mock_score: AsyncMock,
+        mock_config: MagicMock,
+        mock_cache: MagicMock,
+    ) -> None:
+        mock_config.return_value = MagicMock()
+        mock_cache_inst = MagicMock()
+        mock_cache.return_value = mock_cache_inst
+        trust = _make_trust_score()
+        mock_score.return_value = trust
+
+        result = await score_user("testuser", "owner/repo", scoring_model="v2")
+        parsed = json.loads(result)
+        assert parsed["user_login"] == "testuser"
+        mock_cache_inst.close.assert_called_once()
+
 
 class TestCheckPrAuthor:
     @pytest.mark.asyncio
@@ -219,6 +240,36 @@ class TestCheckPrAuthor:
         result = await check_pr_author("testuser", "owner/repo")
         parsed = json.loads(result)
         assert "error" in parsed
+        mock_cache_inst.close.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch("good_egg.mcp_server._get_cache")
+    @patch("good_egg.mcp_server._get_config")
+    @patch("good_egg.mcp_server.score_pr_author", new_callable=AsyncMock)
+    async def test_v2_fields_in_response(
+        self,
+        mock_score: AsyncMock,
+        mock_config: MagicMock,
+        mock_cache: MagicMock,
+    ) -> None:
+        mock_config.return_value = MagicMock()
+        mock_cache_inst = MagicMock()
+        mock_cache.return_value = mock_cache_inst
+        trust = TrustScore(
+            user_login="testuser",
+            context_repo="owner/repo",
+            normalized_score=0.72,
+            trust_level=TrustLevel.HIGH,
+            total_merged_prs=42,
+            scoring_model="v2",
+            component_scores={"graph_score": 0.65},
+        )
+        mock_score.return_value = trust
+
+        result = await check_pr_author("testuser", "owner/repo", scoring_model="v2")
+        parsed = json.loads(result)
+        assert parsed["scoring_model"] == "v2"
+        assert parsed["component_scores"]["graph_score"] == 0.65
         mock_cache_inst.close.assert_called_once()
 
 
@@ -279,6 +330,42 @@ class TestGetTrustDetails:
         result = await get_trust_details("testuser", "owner/repo")
         parsed = json.loads(result)
         assert "error" in parsed
+        mock_cache_inst.close.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch("good_egg.mcp_server._get_cache")
+    @patch("good_egg.mcp_server._get_config")
+    @patch("good_egg.mcp_server.score_pr_author", new_callable=AsyncMock)
+    async def test_v2_fields_in_response(
+        self,
+        mock_score: AsyncMock,
+        mock_config: MagicMock,
+        mock_cache: MagicMock,
+    ) -> None:
+        mock_config.return_value = MagicMock()
+        mock_cache_inst = MagicMock()
+        mock_cache.return_value = mock_cache_inst
+        trust = TrustScore(
+            user_login="testuser",
+            context_repo="owner/repo",
+            raw_score=0.005,
+            normalized_score=0.72,
+            trust_level=TrustLevel.HIGH,
+            account_age_days=365,
+            total_merged_prs=42,
+            unique_repos_contributed=10,
+            language_match=True,
+            flags={"is_bot": False},
+            scoring_metadata={"graph_nodes": 50},
+            scoring_model="v2",
+            component_scores={"graph_score": 0.65, "merge_rate": 0.8},
+        )
+        mock_score.return_value = trust
+
+        result = await get_trust_details("testuser", "owner/repo", scoring_model="v2")
+        parsed = json.loads(result)
+        assert parsed["scoring_model"] == "v2"
+        assert parsed["component_scores"]["graph_score"] == 0.65
         mock_cache_inst.close.assert_called_once()
 
 

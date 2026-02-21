@@ -147,6 +147,36 @@ class TestRunAction:
         assert "trust-level=HIGH" in output_content
         assert "user=testuser" in output_content
 
+    @pytest.mark.asyncio
+    async def test_scoring_model_input(self, mock_env, tmp_path):
+        """INPUT_SCORING_MODEL should be read and applied."""
+        output_file = tmp_path / "output.txt"
+        output_file.touch()
+        mock_env_v2 = {
+            **mock_env,
+            "INPUT_SCORING_MODEL": "v2",
+            "GITHUB_OUTPUT": str(output_file),
+        }
+        mock_score = _make_mock_score()
+        mock_score = TrustScore(
+            **{**mock_score.model_dump(), "scoring_model": "v2"}
+        )
+        mock_client = AsyncMock()
+        mock_client.get_user_contribution_data = AsyncMock()
+        mock_client.find_existing_comment = AsyncMock(return_value=None)
+        mock_client.post_pr_comment = AsyncMock(return_value={})
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch.dict(os.environ, mock_env_v2, clear=False), \
+             patch("good_egg.action.GitHubClient", return_value=mock_client), \
+             patch("good_egg.action.TrustScorer") as mock_scorer_cls:
+            mock_scorer_cls.return_value.score.return_value = mock_score
+            await run_action()
+
+        output_content = output_file.read_text()
+        assert "scoring-model=v2" in output_content
+
 
 class TestSetOutput:
     def test_writes_to_file(self, tmp_path):

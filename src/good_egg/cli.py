@@ -26,6 +26,12 @@ def main() -> None:
 @click.option("--config", "config_path", default=None, help="Config file path")
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed output")
 @click.option("--json", "output_json", is_flag=True, help="Output as JSON")
+@click.option(
+    "--scoring-model",
+    type=click.Choice(["v1", "v2"]),
+    default=None,
+    help="Scoring model (v1 or v2)",
+)
 def score(
     username: str,
     repo: str,
@@ -33,6 +39,7 @@ def score(
     config_path: str | None,
     verbose: bool,
     output_json: bool,
+    scoring_model: str | None,
 ) -> None:
     """Score a GitHub user's trustworthiness relative to a repository."""
     if not token:
@@ -46,6 +53,8 @@ def score(
 
     repo_owner, repo_name = parts
     config = load_config(config_path)
+    if scoring_model is not None:
+        config.scoring_model = scoring_model  # type: ignore[assignment]
     cache = Cache(ttls=config.cache_ttl.to_seconds())
 
     result = asyncio.run(

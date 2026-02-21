@@ -100,6 +100,24 @@ class TestScoreCommand:
         assert "365" in result.output
         assert "Merged PRs" in result.output
 
+    @patch("good_egg.cli.score_pr_author", new_callable=AsyncMock)
+    @patch("good_egg.cli.load_config")
+    def test_scoring_model_v2_option(
+        self, mock_load_config: MagicMock, mock_score: AsyncMock
+    ) -> None:
+        """The --scoring-model v2 flag should be accepted."""
+        mock_config = MagicMock()
+        mock_load_config.return_value = mock_config
+        trust_score = _make_trust_score()
+        mock_score.return_value = trust_score
+
+        runner = CliRunner(env={"GITHUB_TOKEN": "ghp_fake123"})
+        result = runner.invoke(
+            main,
+            ["score", "testuser", "--repo", "owner/repo", "--scoring-model", "v2"],
+        )
+        assert result.exit_code == 0
+
 
 class TestCacheCommands:
     @patch("good_egg.cli.Cache")

@@ -25,9 +25,26 @@ Configuration values are resolved in this order (highest priority first):
 3. **YAML config file**
 4. **Built-in defaults**
 
+## Scoring Model
+
+Good Egg supports two scoring models. Set the model at the top level of the
+config file:
+
+```yaml
+scoring_model: v1   # default -- graph-based scoring only
+scoring_model: v2   # Better Egg -- graph + external features via logistic regression
+```
+
+When using v2, PR comments are branded "Better Egg" instead of "Good Egg".
+See [methodology.md](methodology.md#better-egg-v2) for how the v2 model
+works.
+
 ## Full YAML Schema
 
 ```yaml
+# Scoring model selection: v1 (default) or v2
+scoring_model: v1
+
 # Graph-based scoring algorithm parameters
 graph_scoring:
   alpha: 0.85              # Damping factor (0-1)
@@ -82,9 +99,50 @@ language_normalization:
     Go: 2.30
     Rust: 2.63
     # ... see examples/.good-egg.yml for the full list
+
+# v2 (Better Egg) scoring model parameters
+# Only used when scoring_model is set to v2.
+v2:
+  graph:
+    alpha: 0.85
+    max_iterations: 100
+    tolerance: 0.000001
+    context_repo_weight: 0.5
+    other_weight: 0.03
+  features:
+    merge_rate: true           # Include merge rate feature
+    account_age: true          # Include account age feature
+  combined_model:
+    intercept: -1.5            # Logistic regression intercept
+    graph_weight: 3.0          # Weight for graph score
+    merge_rate_weight: 1.2     # Weight for merge rate
+    account_age_weight: 0.4    # Weight for log(account_age_days + 1)
 ```
 
 ## Config Sections
+
+### scoring_model
+
+Selects the scoring model. Set to `v1` (default) for graph-only scoring or
+`v2` for the Better Egg combined model. When set to `v2`, the parameters
+under the `v2:` block are used and the graph construction is simplified
+(no self-contribution penalty, no language normalization in repo quality, no
+same-language weight, no diversity/volume adjustment).
+
+### v2
+
+Configuration for the v2 (Better Egg) scoring model. This section is only
+used when `scoring_model` is set to `v2`.
+
+- **`v2.graph`** -- Graph scoring parameters for the simplified v2 graph.
+  Supports `alpha`, `max_iterations`, `tolerance`, `context_repo_weight`, and
+  `other_weight`.
+- **`v2.features`** -- Toggle external features on or off. `merge_rate`
+  (merged/(merged+closed)) and `account_age` (log-transformed days) are both
+  enabled by default.
+- **`v2.combined_model`** -- Logistic regression coefficients. The final
+  score is `sigmoid(intercept + graph_weight * graph_score + merge_rate_weight
+  * merge_rate + account_age_weight * log(account_age_days + 1))`.
 
 ### graph_scoring
 
@@ -143,6 +201,7 @@ The following environment variables override individual config values:
 | `GOOD_EGG_HIGH_TRUST` | `thresholds.high_trust` | float |
 | `GOOD_EGG_MEDIUM_TRUST` | `thresholds.medium_trust` | float |
 | `GOOD_EGG_HALF_LIFE_DAYS` | `recency.half_life_days` | int |
+| `GOOD_EGG_SCORING_MODEL` | `scoring_model` | str (`v1` or `v2`) |
 
 ## Programmatic Configuration
 
@@ -167,5 +226,5 @@ config = load_config(".good-egg.yml")
 
 The `GoodEggConfig` class is composed of the following sub-configs:
 `GraphScoringConfig`, `EdgeWeightConfig`, `RecencyConfig`,
-`ThresholdConfig`, `CacheTTLConfig`, `LanguageNormalization`, and
-`FetchConfig`.
+`ThresholdConfig`, `CacheTTLConfig`, `LanguageNormalization`,
+`FetchConfig`, and (for v2) `V2ScoringConfig`.

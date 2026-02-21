@@ -39,11 +39,13 @@ def _make_contribution_data(
     days_old: int = 500,
     merged_prs: list[MergedPR] | None = None,
     repos: dict[str, RepoMetadata] | None = None,
+    closed_pr_count: int = 0,
 ) -> UserContributionData:
     return UserContributionData(
         profile=_make_profile(login=login, is_bot=is_bot, days_old=days_old),
         merged_prs=merged_prs or [],
         contributed_repos=repos or {},
+        closed_pr_count=closed_pr_count,
     )
 
 
@@ -414,3 +416,116 @@ class TestDiversityScoring:
         assert result.normalized_score > 0.0
         assert result.total_merged_prs == 20
         assert result.unique_repos_contributed == 20
+
+
+class TestV2Scoring:
+    def test_v2_scoring_produces_nonzero_score(self) -> None:
+        config = GoodEggConfig(scoring_model="v2")
+        scorer = TrustScorer(config)
+        prs, repos = _sample_prs_and_repos()
+        data = _make_contribution_data(merged_prs=prs, repos=repos, closed_pr_count=5)
+        result = scorer.score(data, "my-org/my-elixir-app")
+
+        assert result.raw_score > 0.0
+        assert 0.0 <= result.normalized_score <= 1.0
+        assert result.scoring_model == "v2"
+
+    def test_v2_component_scores_populated(self) -> None:
+        config = GoodEggConfig(scoring_model="v2")
+        scorer = TrustScorer(config)
+        prs, repos = _sample_prs_and_repos()
+        data = _make_contribution_data(merged_prs=prs, repos=repos, closed_pr_count=5)
+        result = scorer.score(data, "my-org/my-elixir-app")
+
+        assert "graph_score" in result.component_scores
+        assert "merge_rate" in result.component_scores
+        assert "log_account_age" in result.component_scores
+        assert 0.0 <= result.component_scores["graph_score"] <= 1.0
+
+    def test_v2_merge_rate_calculation(self) -> None:
+        config = GoodEggConfig(scoring_model="v2")
+        scorer = TrustScorer(config)
+        prs, repos = _sample_prs_and_repos()
+        # 3 merged PRs + 2 closed = 5 total, merge rate = 3/5 = 0.6
+        data = _make_contribution_data(merged_prs=prs, repos=repos, closed_pr_count=2)
+        result = scorer.score(data, "my-org/my-elixir-app")
+
+        assert abs(result.component_scores["merge_rate"] - 0.6) < 1e-9
+
+    def test_v2_merge_rate_zero_denominator(self) -> None:
+        config = GoodEggConfig(scoring_model="v2")
+        scorer = TrustScorer(config)
+        prs = [
+            MergedPR(
+                repo_name_with_owner="org/repo",
+                title="PR",
+                merged_at=datetime.now(UTC) - timedelta(days=1),
+            ),
+        ]
+        repos = {
+            "org/repo": RepoMetadata(
+                name_with_owner="org/repo",
+                stargazer_count=100,
+            ),
+        }
+        # 1 merged + 0 closed = should use merged_count / (merged + closed)
+        data = _make_contribution_data(merged_prs=prs, repos=repos, closed_pr_count=0)
+        result = scorer.score(data, "org/repo")
+
+        # merge_rate = 1 / (1 + 0) = 1.0
+        assert abs(result.component_scores["merge_rate"] - 1.0) < 1e-9
+
+    def test_v2_feature_disabled_merge_rate(self) -> None:
+        config = GoodEggConfig(
+            scoring_model="v2",
+            v2={"features": {"temporal_merge_rate": False}},
+        )
+        scorer = TrustScorer(config)
+        prs, repos = _sample_prs_and_repos()
+        data = _make_contribution_data(merged_prs=prs, repos=repos, closed_pr_count=5)
+        result = scorer.score(data, "my-org/app")
+
+        # merge_rate is still in component_scores for transparency
+        assert "merge_rate" in result.component_scores
+        assert result.scoring_model == "v2"
+
+    def test_v2_bot_short_circuit(self) -> None:
+        config = GoodEggConfig(scoring_model="v2")
+        scorer = TrustScorer(config)
+        data = _make_contribution_data(is_bot=True)
+        result = scorer.score(data, "org/repo")
+
+        assert result.trust_level == TrustLevel.BOT
+        assert result.scoring_model == "v2"
+
+    def test_v2_unknown_short_circuit(self) -> None:
+        config = GoodEggConfig(scoring_model="v2")
+        scorer = TrustScorer(config)
+        data = _make_contribution_data(merged_prs=[])
+        result = scorer.score(data, "org/repo")
+
+        assert result.trust_level == TrustLevel.UNKNOWN
+        assert result.scoring_model == "v2"
+
+    def test_v1_mode_unchanged(self) -> None:
+        """Regression: v1 scoring unchanged."""
+        config = GoodEggConfig(scoring_model="v1")
+        scorer = TrustScorer(config)
+        prs, repos = _sample_prs_and_repos()
+        data = _make_contribution_data(merged_prs=prs, repos=repos)
+        result = scorer.score(data, "my-org/my-elixir-app")
+
+        assert result.scoring_model == "v1"
+        assert result.component_scores == {}
+        assert result.raw_score > 0.0
+
+    def test_v2_sigmoid_computation(self) -> None:
+        """Verify the combined model produces reasonable sigmoid output."""
+        config = GoodEggConfig(scoring_model="v2")
+        scorer = TrustScorer(config)
+        prs, repos = _sample_prs_and_repos()
+        data = _make_contribution_data(merged_prs=prs, repos=repos, closed_pr_count=5)
+        result = scorer.score(data, "my-org/my-elixir-app")
+
+        # The normalized score should be a valid probability from sigmoid
+        assert 0.0 < result.normalized_score < 1.0

@@ -16,8 +16,9 @@ class TrustGraphBuilder:
 
     MAX_PRS_PER_REPO = 20
 
-    def __init__(self, config: GoodEggConfig) -> None:
+    def __init__(self, config: GoodEggConfig, simplified: bool = False) -> None:
         self.config = config
+        self.simplified = simplified
 
     def build_graph(
         self, user_data: UserContributionData, context_repo: str
@@ -67,7 +68,7 @@ class TrustGraphBuilder:
                     * quality
                     * self.config.edge_weights.merged_pr
                 )
-                if is_self_contrib:
+                if is_self_contrib and not self.simplified:
                     weight *= 0.3
 
                 # Forward edge: user -> repo
@@ -97,9 +98,12 @@ class TrustGraphBuilder:
         get zero.
         """
         pr_config = self.config.graph_scoring
-        adjusted_other_weight = self._compute_adjusted_other_weight(
-            pr_config, total_prs, unique_repos
-        )
+        if self.simplified:
+            base_other_weight = pr_config.other_weight
+        else:
+            base_other_weight = self._compute_adjusted_other_weight(
+                pr_config, total_prs, unique_repos
+            )
         context_node = f"repo:{context_repo}"
         personalization: dict[str, float] = {}
 
@@ -110,12 +114,13 @@ class TrustGraphBuilder:
             elif node == context_node:
                 personalization[node] = pr_config.context_repo_weight
             elif (
-                context_language
+                not self.simplified
+                and context_language
                 and graph.nodes[node].get("language") == context_language
             ):
                 personalization[node] = pr_config.same_language_weight
             else:
-                personalization[node] = adjusted_other_weight
+                personalization[node] = base_other_weight
 
         # Normalize to sum=1
         total = sum(personalization.values())
@@ -130,8 +135,14 @@ class TrustGraphBuilder:
 
     def _recency_decay(self, days_ago: int) -> float:
         """Exponential decay based on half-life."""
-        half_life = self.config.recency.half_life_days
-        if days_ago > self.config.recency.max_age_days:
+        if self.simplified:
+            v2g = self.config.v2.graph
+            half_life = v2g.half_life_days
+            max_age = v2g.max_age_days
+        else:
+            half_life = self.config.recency.half_life_days
+            max_age = self.config.recency.max_age_days
+        if days_ago > max_age:
             return 0.0
         return math.exp(-0.693 * days_ago / half_life)
 
@@ -140,13 +151,20 @@ class TrustGraphBuilder:
         if meta is None:
             return 1.0
 
-        language_mult = self._get_language_multiplier(meta.primary_language)
-        quality = math.log1p(meta.stargazer_count * language_mult)
-
-        if meta.is_archived:
-            quality *= 0.5
-        if meta.is_fork:
-            quality *= 0.3
+        if self.simplified:
+            v2g = self.config.v2.graph
+            quality = math.log1p(meta.stargazer_count)
+            if meta.is_archived:
+                quality *= v2g.archived_penalty
+            if meta.is_fork:
+                quality *= v2g.fork_penalty
+        else:
+            language_mult = self._get_language_multiplier(meta.primary_language)
+            quality = math.log1p(meta.stargazer_count * language_mult)
+            if meta.is_archived:
+                quality *= 0.5
+            if meta.is_fork:
+                quality *= 0.3
 
         return quality
 

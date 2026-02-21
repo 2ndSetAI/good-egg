@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 from collections import defaultdict
 
@@ -22,7 +23,6 @@ class TrustScorer:
 
     def __init__(self, config: GoodEggConfig) -> None:
         self.config = config
-        self._graph_builder = TrustGraphBuilder(config)
 
     def score(
         self, user_data: UserContributionData, context_repo: str
@@ -38,6 +38,7 @@ class TrustScorer:
             "has_insufficient_data": False,
             "used_cached_data": False,
         }
+        model_name = self.config.scoring_model
 
         # ---- Bot short-circuit ----
         if user_data.profile.is_bot:
@@ -49,6 +50,7 @@ class TrustScorer:
                 trust_level=TrustLevel.BOT,
                 account_age_days=user_data.profile.account_age_days,
                 flags=flags,
+                scoring_model=model_name,
             )
 
         # ---- Insufficient data short-circuit ----
@@ -62,31 +64,40 @@ class TrustScorer:
                 trust_level=TrustLevel.UNKNOWN,
                 account_age_days=user_data.profile.account_age_days,
                 flags=flags,
+                scoring_model=model_name,
             )
 
         # ---- Suspected bot flag ----
         if user_data.profile.is_suspected_bot:
             flags["is_suspected_bot"] = True
 
-        # ---- Contribution stats ----
+        if model_name == "v2":
+            return self._score_v2(user_data, context_repo, flags)
+        return self._score_v1(user_data, context_repo, flags)
+
+    # ------------------------------------------------------------------
+    # v1 scoring path
+    # ------------------------------------------------------------------
+
+    def _score_v1(
+        self,
+        user_data: UserContributionData,
+        context_repo: str,
+        flags: dict[str, bool],
+    ) -> TrustScore:
+        """Original graph-based scoring pipeline."""
+        login = user_data.profile.login
+        graph_builder = TrustGraphBuilder(self.config)
         total_prs = len(user_data.merged_prs)
         unique_repos = len({pr.repo_name_with_owner for pr in user_data.merged_prs})
 
-        # ---- Build graph ----
-        graph = self._graph_builder.build_graph(user_data, context_repo)
-
-        # ---- Determine context language ----
-        context_language = self._resolve_context_language(
-            user_data, context_repo
-        )
-
-        # ---- Build personalization vector ----
-        personalization = self._graph_builder.build_personalization_vector(
+        graph = graph_builder.build_graph(user_data, context_repo)
+        context_language = self._resolve_context_language(user_data, context_repo)
+        personalization = graph_builder.build_personalization_vector(
             graph, context_repo, context_language,
             total_prs=total_prs, unique_repos=unique_repos,
         )
 
-        # ---- Run graph scoring ----
         pr_scores = nx.pagerank(
             graph,
             alpha=self.config.graph_scoring.alpha,
@@ -98,20 +109,10 @@ class TrustScorer:
 
         user_node = f"user:{login}"
         raw_score = pr_scores.get(user_node, 0.0)
-
-        # ---- Normalize ----
         normalized = self._normalize(raw_score, graph)
-
-        # ---- Classify ----
         trust_level = self._classify(normalized, flags)
-
-        # ---- Build top contributions ----
         top_contributions = self._build_top_contributions(user_data)
-
-        # ---- Language match ----
-        language_match = self._check_language_match(
-            user_data, context_language
-        )
+        language_match = self._check_language_match(user_data, context_language)
 
         return TrustScore(
             user_login=login,
@@ -120,7 +121,7 @@ class TrustScorer:
             normalized_score=normalized,
             trust_level=trust_level,
             account_age_days=user_data.profile.account_age_days,
-            total_merged_prs=len(user_data.merged_prs),
+            total_merged_prs=total_prs,
             unique_repos_contributed=unique_repos,
             top_contributions=top_contributions,
             language_match=language_match,
@@ -129,6 +130,97 @@ class TrustScorer:
                 "graph_nodes": graph.number_of_nodes(),
                 "graph_edges": graph.number_of_edges(),
             },
+        )
+
+    # ------------------------------------------------------------------
+    # v2 scoring path (Better Egg)
+    # ------------------------------------------------------------------
+
+    def _score_v2(
+        self,
+        user_data: UserContributionData,
+        context_repo: str,
+        flags: dict[str, bool],
+    ) -> TrustScore:
+        """v2 scoring: simplified graph + logistic regression combined model."""
+        login = user_data.profile.login
+        graph_builder = TrustGraphBuilder(self.config, simplified=True)
+        total_prs = len(user_data.merged_prs)
+        unique_repos = len({pr.repo_name_with_owner for pr in user_data.merged_prs})
+
+        # Step 1-2: build simplified graph
+        graph = graph_builder.build_graph(user_data, context_repo)
+        context_language = self._resolve_context_language(user_data, context_repo)
+        personalization = graph_builder.build_personalization_vector(
+            graph, context_repo, context_language,
+            total_prs=total_prs, unique_repos=unique_repos,
+        )
+
+        # Step 3: run graph scoring
+        pr_scores = nx.pagerank(
+            graph,
+            alpha=self.config.graph_scoring.alpha,
+            personalization=personalization if personalization else None,
+            weight="weight",
+            max_iter=self.config.graph_scoring.max_iterations,
+            tol=self.config.graph_scoring.tolerance,
+        )
+        user_node = f"user:{login}"
+        raw_score = pr_scores.get(user_node, 0.0)
+        graph_score = self._normalize(raw_score, graph)
+
+        # Step 4: compute external features
+        merged_count = len(user_data.merged_prs)
+        closed_count = user_data.closed_pr_count
+        total_author_prs = merged_count + closed_count
+        merge_rate: float | None = (
+            merged_count / total_author_prs if total_author_prs > 0 else None
+        )
+        log_account_age = math.log(user_data.profile.account_age_days + 1)
+
+        # Step 5: combined model
+        v2_cfg = self.config.v2
+        cm = v2_cfg.combined_model
+        logit = cm.intercept + cm.graph_score_weight * graph_score
+
+        if v2_cfg.features.temporal_merge_rate and merge_rate is not None:
+            logit += cm.merge_rate_weight * merge_rate
+        if v2_cfg.features.account_age:
+            logit += cm.account_age_weight * log_account_age
+
+        # Sigmoid: P(merge)
+        normalized = 1.0 / (1.0 + math.exp(-logit))
+
+        # Step 6-7: classify and build result
+        trust_level = self._classify(normalized, flags)
+        top_contributions = self._build_top_contributions(user_data)
+        language_match = self._check_language_match(user_data, context_language)
+
+        component_scores: dict[str, float] = {
+            "graph_score": graph_score,
+        }
+        if merge_rate is not None:
+            component_scores["merge_rate"] = merge_rate
+        component_scores["log_account_age"] = log_account_age
+
+        return TrustScore(
+            user_login=login,
+            context_repo=context_repo,
+            raw_score=raw_score,
+            normalized_score=normalized,
+            trust_level=trust_level,
+            account_age_days=user_data.profile.account_age_days,
+            total_merged_prs=total_prs,
+            unique_repos_contributed=unique_repos,
+            top_contributions=top_contributions,
+            language_match=language_match,
+            flags=flags,
+            scoring_metadata={
+                "graph_nodes": graph.number_of_nodes(),
+                "graph_edges": graph.number_of_edges(),
+            },
+            scoring_model="v2",
+            component_scores=component_scores,
         )
 
     # ------------------------------------------------------------------
