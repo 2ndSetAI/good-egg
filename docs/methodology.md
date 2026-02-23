@@ -256,7 +256,7 @@ The v2 model was trained and evaluated on 5,129 PRs (of 5,417 total,
 filtered to those with merge rate data) drawn from 49 repositories in a
 validation study.
 
-| Metric | v1 (graph only) | v2 (combined) |
+| Metric | v1 / Good Egg (graph only) | v2 / Better Egg (combined) |
 |--------|-----------------|---------------|
 | AUC | 0.647 | 0.647 |
 

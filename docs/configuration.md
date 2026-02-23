@@ -129,9 +129,9 @@ under the `v2:` block are used and the graph construction is simplified
 diversity/volume adjustment). Language match personalization weighting
 (`same_language_weight`) is retained in v2.
 
-### v2
+### v2 (Better Egg)
 
-Configuration for the v2 (Better Egg) scoring model. This section is only
+Configuration for the Better Egg (v2) scoring model. This section is only
 used when `scoring_model` is set to `v2`.
 
 - **`v2.graph`** -- Graph construction parameters for the simplified v2 graph.

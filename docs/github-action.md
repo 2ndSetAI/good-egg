@@ -37,7 +37,7 @@ This posts a trust score comment on each pull request:
 | `comment` | No | `true` | Post a PR comment with the trust score |
 | `check-run` | No | `false` | Create a check run with the trust score |
 | `fail-on-low` | No | `false` | Fail the action if trust level is LOW |
-| `scoring-model` | No | `v1` | Scoring model: `v1` (graph only) or `v2` (Better Egg) |
+| `scoring-model` | No | `v1` | Scoring model: `v1` (Good Egg) or `v2` (Better Egg) |
 
 ## Outputs
 
@@ -46,7 +46,7 @@ This posts a trust score comment on each pull request:
 | `score` | Normalized trust score (0.0 - 1.0) |
 | `trust-level` | Trust level: HIGH, MEDIUM, LOW, UNKNOWN, or BOT |
 | `user` | GitHub username that was scored |
-| `scoring-model` | Scoring model used: `v1` or `v2` |
+| `scoring-model` | Scoring model used: `v1` (Good Egg) or `v2` (Better Egg) |
 
 ## Custom Configuration
 
