@@ -114,8 +114,7 @@ class TrustGraphBuilder:
             elif node == context_node:
                 personalization[node] = pr_config.context_repo_weight
             elif (
-                not self.simplified
-                and context_language
+                context_language
                 and graph.nodes[node].get("language") == context_language
             ):
                 personalization[node] = pr_config.same_language_weight

@@ -89,8 +89,7 @@ context_repo, raw_score, normalized_score, trust_level, percentile,
 account_age_days, total_merged_prs, unique_repos_contributed,
 top_contributions, language_match, flags, scoring_model, component_scores,
 scoring_metadata). When `scoring_model` is `v2`, the response includes
-`component_scores` with graph_score, merge_rate, log_account_age, and
-combined_score.
+`component_scores` with graph_score, merge_rate, and log_account_age.
 
 ### check_pr_author
 
@@ -127,8 +126,7 @@ Returns a compact summary suitable for quick checks.
   "component_scores": {
     "graph_score": 0.78,
     "merge_rate": 0.91,
-    "log_account_age": 3.45,
-    "combined_score": 0.82
+    "log_account_age": 3.45
   }
 }
 ```
@@ -203,8 +201,7 @@ Returns an expanded breakdown with contributions, flags, and metadata.
   "component_scores": {
     "graph_score": 0.78,
     "merge_rate": 0.91,
-    "log_account_age": 3.45,
-    "combined_score": 0.82
+    "log_account_age": 3.45
   },
   "scoring_metadata": {}
 }

@@ -96,13 +96,13 @@ from good_egg import GoodEggConfig, score_pr_author
 config = GoodEggConfig(
     scoring_model="v2",
     v2={
-        "graph": {"alpha": 0.85, "context_repo_weight": 0.5},
+        "graph": {"half_life_days": 180, "max_age_days": 730},
         "features": {"merge_rate": True, "account_age": True},
         "combined_model": {
-            "intercept": -1.5,
-            "graph_weight": 3.0,
-            "merge_rate_weight": 1.2,
-            "account_age_weight": 0.4,
+            "intercept": -0.8094,
+            "graph_score_weight": 1.9138,
+            "merge_rate_weight": -0.7783,
+            "account_age_weight": 0.1493,
         },
     },
 )
@@ -119,7 +119,7 @@ if result.component_scores:
     print(f"Graph score: {result.component_scores['graph_score']:.3f}")
     print(f"Merge rate: {result.component_scores['merge_rate']:.3f}")
     print(f"Log account age: {result.component_scores['log_account_age']:.3f}")
-    print(f"Combined score: {result.component_scores['combined_score']:.3f}")
+    print(f"Normalized score: {result.normalized_score:.3f}")
 
 print(f"Scoring model: {result.scoring_model}")
 ```
@@ -159,7 +159,7 @@ the following fields:
 | `language_match` | `bool` | Whether the user's top language matches the context repo |
 | `flags` | `dict[str, bool]` | Flags (is_bot, is_new_account, etc.) |
 | `scoring_model` | `str` | Scoring model used: `v1` or `v2` |
-| `component_scores` | `dict[str, float] \| None` | Component breakdown (v2 only): `graph_score`, `merge_rate`, `log_account_age`, `combined_score` |
+| `component_scores` | `dict[str, float] \| None` | Component breakdown (v2 only): `graph_score`, `merge_rate`, `log_account_age` |
 | `scoring_metadata` | `dict[str, Any]` | Internal scoring details |
 
 `TrustScore` is a Pydantic model, so you can serialize it:

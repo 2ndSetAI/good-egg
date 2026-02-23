@@ -54,7 +54,7 @@ def score(
     repo_owner, repo_name = parts
     config = load_config(config_path)
     if scoring_model is not None:
-        config.scoring_model = scoring_model  # type: ignore[assignment]
+        config = config.model_copy(update={"scoring_model": scoring_model})
     cache = Cache(ttls=config.cache_ttl.to_seconds())
 
     result = asyncio.run(

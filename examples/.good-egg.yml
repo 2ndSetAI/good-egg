@@ -87,14 +87,14 @@ language_normalization:
 
 # v2:
 #   # Simplified graph parameters (no self-contribution penalty,
-#   # no language normalization, no same_language_weight,
-#   # no diversity/volume adjustment)
+#   # no language normalization, no diversity/volume adjustment).
+#   # Note: v2 shares graph algorithm parameters (alpha, tolerance, etc.)
+#   # with the top-level graph_scoring config.
 #   graph:
-#     alpha: 0.85
-#     max_iterations: 100
-#     tolerance: 0.000001
-#     context_repo_weight: 0.5
-#     other_weight: 0.03
+#     half_life_days: 180        # Recency decay half-life
+#     max_age_days: 730          # Ignore PRs older than this
+#     archived_penalty: 0.5      # Penalty for archived repos
+#     fork_penalty: 0.3          # Penalty for forked repos
 #
 #   # External features
 #   features:
@@ -102,11 +102,11 @@ language_normalization:
 #     account_age: true          # log(account_age_days + 1)
 #
 #   # Logistic regression coefficients
-#   # score = sigmoid(intercept + graph_weight * graph_score
+#   # score = sigmoid(intercept + graph_score_weight * graph_score
 #   #                 + merge_rate_weight * merge_rate
 #   #                 + account_age_weight * log(account_age + 1))
 #   combined_model:
-#     intercept: -1.5
-#     graph_weight: 3.0
-#     merge_rate_weight: 1.2
-#     account_age_weight: 0.4
+#     intercept: -0.8094
+#     graph_score_weight: 1.9138
+#     merge_rate_weight: -0.7783
+#     account_age_weight: 0.1493

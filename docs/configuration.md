@@ -104,19 +104,18 @@ language_normalization:
 # Only used when scoring_model is set to v2.
 v2:
   graph:
-    alpha: 0.85
-    max_iterations: 100
-    tolerance: 0.000001
-    context_repo_weight: 0.5
-    other_weight: 0.03
+    half_life_days: 180        # Recency decay half-life for v2 graph
+    max_age_days: 730          # Ignore PRs older than this
+    archived_penalty: 0.5      # Penalty multiplier for archived repos
+    fork_penalty: 0.3          # Penalty multiplier for forked repos
   features:
     merge_rate: true           # Include merge rate feature
     account_age: true          # Include account age feature
   combined_model:
-    intercept: -1.5            # Logistic regression intercept
-    graph_weight: 3.0          # Weight for graph score
-    merge_rate_weight: 1.2     # Weight for merge rate
-    account_age_weight: 0.4    # Weight for log(account_age_days + 1)
+    intercept: -0.8094         # Logistic regression intercept
+    graph_score_weight: 1.9138 # Weight for graph score
+    merge_rate_weight: -0.7783 # Weight for merge rate
+    account_age_weight: 0.1493 # Weight for log(account_age_days + 1)
 ```
 
 ## Config Sections
@@ -127,22 +126,25 @@ Selects the scoring model. Set to `v1` (default) for graph-only scoring or
 `v2` for the Better Egg combined model. When set to `v2`, the parameters
 under the `v2:` block are used and the graph construction is simplified
 (no self-contribution penalty, no language normalization in repo quality, no
-same-language weight, no diversity/volume adjustment).
+diversity/volume adjustment). Language match personalization weighting
+(`same_language_weight`) is retained in v2.
 
 ### v2
 
 Configuration for the v2 (Better Egg) scoring model. This section is only
 used when `scoring_model` is set to `v2`.
 
-- **`v2.graph`** -- Graph scoring parameters for the simplified v2 graph.
-  Supports `alpha`, `max_iterations`, `tolerance`, `context_repo_weight`, and
-  `other_weight`.
+- **`v2.graph`** -- Graph construction parameters for the simplified v2 graph.
+  Supports `half_life_days`, `max_age_days`, `archived_penalty`, and
+  `fork_penalty`. Note that v2 shares graph algorithm parameters (`alpha`,
+  `max_iterations`, `tolerance`) with the top-level `graph_scoring` config.
 - **`v2.features`** -- Toggle external features on or off. `merge_rate`
   (merged/(merged+closed)) and `account_age` (log-transformed days) are both
   enabled by default.
 - **`v2.combined_model`** -- Logistic regression coefficients. The final
-  score is `sigmoid(intercept + graph_weight * graph_score + merge_rate_weight
-  * merge_rate + account_age_weight * log(account_age_days + 1))`.
+  score is `sigmoid(intercept + graph_score_weight * graph_score +
+  merge_rate_weight * merge_rate + account_age_weight *
+  log(account_age_days + 1))`.
 
 ### graph_scoring
 
@@ -227,4 +229,4 @@ config = load_config(".good-egg.yml")
 The `GoodEggConfig` class is composed of the following sub-configs:
 `GraphScoringConfig`, `EdgeWeightConfig`, `RecencyConfig`,
 `ThresholdConfig`, `CacheTTLConfig`, `LanguageNormalization`,
-`FetchConfig`, and (for v2) `V2ScoringConfig`.
+`FetchConfig`, and (for v2) `V2Config`.

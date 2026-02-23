@@ -138,7 +138,7 @@ class TestV2Config:
         assert config.graph.max_age_days == 730
         assert config.graph.archived_penalty == 0.5
         assert config.graph.fork_penalty == 0.3
-        assert config.features.temporal_merge_rate is True
+        assert config.features.merge_rate is True
         assert config.features.account_age is True
         assert isinstance(config.combined_model.intercept, float)
         assert isinstance(config.combined_model.graph_score_weight, float)
@@ -147,11 +147,11 @@ class TestV2Config:
         from good_egg.config import V2Config
         config = V2Config(
             graph={"half_life_days": 90, "archived_penalty": 0.2},
-            features={"temporal_merge_rate": False},
+            features={"merge_rate": False},
         )
         assert config.graph.half_life_days == 90
         assert config.graph.archived_penalty == 0.2
-        assert config.features.temporal_merge_rate is False
+        assert config.features.merge_rate is False
         # Defaults preserved
         assert config.graph.max_age_days == 730
 

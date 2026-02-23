@@ -167,10 +167,12 @@ observable signals sit outside that graph:
    where few merged PRs are available.
 
 A third candidate, **text dissimilarity** (comparing PR descriptions to
-repository README content), was investigated but not implemented. The signal
-was inverted -- higher similarity correlated with lower trust -- likely
-because low-effort PRs tend to parrot project language while experienced
-contributors write more targeted descriptions.
+repository README content), was investigated and intentionally excluded.
+The signal was inverted -- higher similarity correlated with *lower* merge
+probability -- likely because low-effort PRs tend to parrot project language
+while experienced contributors write more targeted descriptions. Until this
+inverted signal is better understood, it is not included in the production
+scoring model.
 
 ### Simplified Graph
 
@@ -180,10 +182,12 @@ The v2 model uses a simplified graph construction compared to v1:
   equally.
 - **No language normalization in repo quality** -- star counts are used
   directly without ecosystem-size multipliers.
-- **No `same_language_weight`** -- the personalization vector does not boost
-  same-language repositories.
 - **No diversity/volume adjustment** -- the "other repos" weight is static,
   not dynamically adjusted.
+
+Language match personalization weighting (`same_language_weight`) is
+**retained** -- both repo quality and language match showed small but
+statistically significant effects in the validation study.
 
 These simplifications reduce the number of tunable parameters and let the
 logistic regression handle signal combination instead.
@@ -198,6 +202,14 @@ logistic regression handle signal combination instead.
 Both features are computed from data already available through the GitHub API
 at no additional cost.
 
+> **Note on merge rate scope:** The merge rate uses total lifetime counts
+> (all merged PRs divided by all merged + closed PRs), not temporally-scoped
+> counts limited to a recent window. While temporal scoping was considered in
+> the original design, the implementation uses lifetime totals as a deliberate
+> simplification -- lifetime counts are cheaper to compute, available from the
+> existing data pipeline, and showed sufficient discriminative power in the
+> validation study.
+
 ### Combined Model
 
 The three components -- graph score, merge rate, and log account age -- are
@@ -208,13 +220,41 @@ p = sigmoid(intercept + w1 * graph_score + w2 * merge_rate + w3 * log_account_ag
 ```
 
 The sigmoid function maps the linear combination to a 0-1 probability, which
-is used as the final normalized score. The model weights were trained on the
-validation dataset (see below).
+is used as the final normalized score. The trained weights are:
+
+| Coefficient | Value |
+|-------------|-------|
+| `intercept` | -0.8094 |
+| `graph_score_weight` | 1.9138 |
+| `merge_rate_weight` | -0.7783 |
+| `account_age_weight` | 0.1493 |
+
+These were trained on the validation dataset (see below).
+
+> **Why is `merge_rate_weight` negative?** The negative coefficient does not
+> mean "high merge rate is bad." In a multivariate model, each coefficient is
+> conditional on the other features. The graph score already captures
+> contribution success history -- users with many merged PRs across repos
+> naturally get high graph scores. The negative merge rate weight acts as a
+> correction for survivorship bias: users who contribute to many repos
+> (reflected in their graph score) tend to attempt more ambitious
+> cross-project contributions and consequently have lower merge rates. Given
+> an already-high graph score, a very high merge rate does not add further
+> positive signal -- the model interprets it as slight evidence of narrower
+> contribution scope.
+
+> **Reduced model for missing merge rate:** When merge rate is unavailable
+> (e.g. a user with no prior closed PRs), the model drops the merge rate
+> term, effectively using a two-feature reduced model (graph_score +
+> account_age). Since the weights were trained with all three features
+> present, the reduced model is an approximation -- the coefficients are not
+> re-estimated for the two-feature case.
 
 ### Validation
 
-The v2 model was trained and evaluated on 5,129 PRs drawn from 49
-repositories in a validation study.
+The v2 model was trained and evaluated on 5,129 PRs (of 5,417 total,
+filtered to those with merge rate data) drawn from 49 repositories in a
+validation study.
 
 | Metric | v1 (graph only) | v2 (combined) |
 |--------|-----------------|---------------|
@@ -251,9 +291,10 @@ contribution of each feature:
 | Component | Description |
 |-----------|-------------|
 | `graph_score` | Normalized graph-based trust score (same as v1 output) |
-| `merge_rate` | Fraction of PRs that were merged |
+| `merge_rate` | Fraction of PRs that were merged (omitted when unavailable) |
 | `log_account_age` | Log-transformed account age in days |
-| `combined_score` | Final logistic regression output |
 
-This transparency lets users understand which factors are driving the overall
-score.
+The final logistic regression output is available as `normalized_score` on
+the `TrustScore` result. The component scores show the individual feature
+values that fed into the combined model, letting users understand which
+factors are driving the overall score.

@@ -57,7 +57,7 @@ async def _scoring_resources(
     """
     config = _get_config()
     if scoring_model is not None and scoring_model in ("v1", "v2"):
-        config.scoring_model = scoring_model  # type: ignore[assignment]
+        config = config.model_copy(update={"scoring_model": scoring_model})
     cache = _get_cache(config)
     try:
         repo_owner, repo_name = _parse_repo(repo)

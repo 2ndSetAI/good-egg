@@ -77,7 +77,7 @@ async def run_action() -> None:
         or os.environ.get("INPUT_SCORING-MODEL")
     )
     if scoring_model_input and scoring_model_input in ("v1", "v2"):
-        config.scoring_model = scoring_model_input  # type: ignore[assignment]
+        config = config.model_copy(update={"scoring_model": scoring_model_input})
     cache = Cache(ttls=config.cache_ttl.to_seconds())
 
     async with GitHubClient(token=token, config=config, cache=cache) as client:

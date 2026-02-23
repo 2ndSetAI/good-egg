@@ -478,7 +478,7 @@ class TestV2Scoring:
     def test_v2_feature_disabled_merge_rate(self) -> None:
         config = GoodEggConfig(
             scoring_model="v2",
-            v2={"features": {"temporal_merge_rate": False}},
+            v2={"features": {"merge_rate": False}},
         )
         scorer = TrustScorer(config)
         prs, repos = _sample_prs_and_repos()
@@ -518,6 +518,117 @@ class TestV2Scoring:
         assert result.scoring_model == "v1"
         assert result.component_scores == {}
         assert result.raw_score > 0.0
+
+    def test_v2_all_features_disabled(self) -> None:
+        """With both features disabled, logit uses only intercept + graph_score."""
+        config = GoodEggConfig(
+            scoring_model="v2",
+            v2={"features": {"merge_rate": False, "account_age": False}},
+        )
+        scorer = TrustScorer(config)
+        prs, repos = _sample_prs_and_repos()
+        data = _make_contribution_data(merged_prs=prs, repos=repos, closed_pr_count=5)
+        result = scorer.score(data, "my-org/my-elixir-app")
+
+        # Should still produce a valid sigmoid score in (0, 1)
+        assert 0.0 < result.normalized_score < 1.0
+        assert result.scoring_model == "v2"
+        # Component scores should still be populated for transparency
+        assert "graph_score" in result.component_scores
+        assert "merge_rate" in result.component_scores
+        assert "log_account_age" in result.component_scores
+
+    def test_v2_negative_merge_rate_weight_behavior(self) -> None:
+        """The negative merge_rate_weight means higher merge rate lowers the logit contribution.
+
+        User with 100% merge rate vs user with 50% merge rate: the one with
+        higher merge rate gets a more negative contribution from merge_rate_weight.
+        Both should produce valid scores in (0, 1).
+        """
+        config = GoodEggConfig(scoring_model="v2")
+        scorer = TrustScorer(config)
+
+        prs = [
+            MergedPR(
+                repo_name_with_owner="org/repo",
+                title="PR",
+                merged_at=datetime.now(UTC) - timedelta(days=10),
+            )
+            for _ in range(10)
+        ]
+        repos = {
+            "org/repo": RepoMetadata(
+                name_with_owner="org/repo",
+                stargazer_count=5000,
+                primary_language="Python",
+            ),
+        }
+
+        # User A: 100% merge rate (10 merged, 0 closed)
+        data_high_mr = _make_contribution_data(
+            merged_prs=prs, repos=repos, closed_pr_count=0
+        )
+        result_high_mr = scorer.score(data_high_mr, "org/repo")
+
+        # User B: 50% merge rate (10 merged, 10 closed)
+        data_low_mr = _make_contribution_data(
+            merged_prs=prs, repos=repos, closed_pr_count=10
+        )
+        result_low_mr = scorer.score(data_low_mr, "org/repo")
+
+        # Both produce valid scores
+        assert 0.0 < result_high_mr.normalized_score < 1.0
+        assert 0.0 < result_low_mr.normalized_score < 1.0
+
+        # With negative merge_rate_weight (-0.7783), higher merge rate means
+        # more negative contribution, so the high-merge-rate user gets a LOWER score
+        assert result_high_mr.normalized_score < result_low_mr.normalized_score
+
+    def test_v2_opposing_signals(self) -> None:
+        """User with high graph score but low merge rate (many closed PRs).
+
+        The combined model should still produce a valid score in (0, 1)
+        and component_scores should be populated correctly.
+        """
+        config = GoodEggConfig(scoring_model="v2")
+        scorer = TrustScorer(config)
+
+        # Many merged PRs to popular repos -> high graph score
+        prs = [
+            MergedPR(
+                repo_name_with_owner=f"big-org/popular-{i}",
+                title=f"Major contribution {i}",
+                merged_at=datetime.now(UTC) - timedelta(days=i * 5),
+            )
+            for i in range(15)
+        ]
+        repos = {
+            f"big-org/popular-{i}": RepoMetadata(
+                name_with_owner=f"big-org/popular-{i}",
+                stargazer_count=10000 + i * 1000,
+                primary_language="Python",
+            )
+            for i in range(15)
+        }
+
+        # 15 merged + 30 closed = 33% merge rate (low)
+        data = _make_contribution_data(
+            merged_prs=prs, repos=repos, closed_pr_count=30
+        )
+        result = scorer.score(data, "big-org/popular-0")
+
+        # Valid score in (0, 1)
+        assert 0.0 < result.normalized_score < 1.0
+        assert result.scoring_model == "v2"
+
+        # Component scores are populated
+        assert "graph_score" in result.component_scores
+        assert "merge_rate" in result.component_scores
+        assert "log_account_age" in result.component_scores
+
+        # Merge rate should be 15 / (15 + 30) = 1/3
+        expected_mr = 15.0 / 45.0
+        assert abs(result.component_scores["merge_rate"] - expected_mr) < 1e-9
 
     def test_v2_sigmoid_computation(self) -> None:
         """Verify the combined model produces reasonable sigmoid output."""

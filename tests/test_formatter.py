@@ -213,7 +213,7 @@ class TestBetterEggFormatting:
             ],
             "language_match": True,
             "flags": {},
-            "scoring_metadata": {},
+            "scoring_metadata": {"closed_pr_count": 8},
             "scoring_model": "v2",
             "component_scores": {
                 "graph_score": 0.65,
@@ -238,7 +238,7 @@ class TestBetterEggFormatting:
         assert "Merge Rate" in md
         assert "Account Age" in md
         assert "65%" in md  # graph_score * 100
-        assert "85%" in md  # merge_rate * 100
+        assert "85% (42/50 PRs)" in md  # merge_rate with closed_pr_count=8
 
     def test_cli_better_egg_header(self) -> None:
         score = self._make_v2_score()

@@ -502,7 +502,7 @@ class TestSimplifiedMode:
         assert abs(q_v1 - math.log1p(10000 * 4.04)) < 1e-9
         assert q_v1 > q_simple
 
-    def test_no_same_language_weight_in_personalization(self) -> None:
+    def test_same_language_weight_retained_in_personalization(self) -> None:
         builder = TrustGraphBuilder(_make_config(), simplified=True)
         pr1 = MergedPR(
             repo_name_with_owner="org/elixir-lib",
@@ -531,11 +531,11 @@ class TestSimplifiedMode:
 
         pv = builder.build_personalization_vector(graph, "ctx/repo", "Elixir")
 
-        # In simplified mode, both non-context repos get the same weight
-        # (no same_language_weight boost for Elixir)
+        # In simplified mode, same_language_weight is now retained,
+        # so the Elixir repo should get higher weight than the Python repo
         elixir_weight = pv["repo:org/elixir-lib"]
         python_weight = pv["repo:org/python-lib"]
-        assert abs(elixir_weight - python_weight) < 1e-9
+        assert elixir_weight > python_weight
 
     def test_no_diversity_volume_adjustment(self) -> None:
         builder = TrustGraphBuilder(_make_config(), simplified=True)

@@ -120,7 +120,7 @@ class V2GraphConfig(BaseModel):
 
 class V2FeaturesConfig(BaseModel):
     """Feature toggles for v2 combined model."""
-    temporal_merge_rate: bool = True
+    merge_rate: bool = True
     account_age: bool = True
 
 

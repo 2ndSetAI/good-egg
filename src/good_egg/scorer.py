@@ -183,7 +183,7 @@ class TrustScorer:
         cm = v2_cfg.combined_model
         logit = cm.intercept + cm.graph_score_weight * graph_score
 
-        if v2_cfg.features.temporal_merge_rate and merge_rate is not None:
+        if v2_cfg.features.merge_rate and merge_rate is not None:
             logit += cm.merge_rate_weight * merge_rate
         if v2_cfg.features.account_age:
             logit += cm.account_age_weight * log_account_age
@@ -218,6 +218,7 @@ class TrustScorer:
             scoring_metadata={
                 "graph_nodes": graph.number_of_nodes(),
                 "graph_edges": graph.number_of_edges(),
+                "closed_pr_count": closed_count,
             },
             scoring_model="v2",
             component_scores=component_scores,
