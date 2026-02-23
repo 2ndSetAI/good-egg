@@ -11,6 +11,7 @@ jobs:
   score:
     runs-on: ubuntu-latest
     steps:
-      - uses: 2ndSetAI/good-egg@v0
+      - uses: 2ndSetAI/good-egg@better-egg
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          scoring-model: v2
