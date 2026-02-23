@@ -189,11 +189,6 @@ class TestScoringModelConfig:
         config = load_config()
         assert config.scoring_model == "v2"
 
-    def test_input_scoring_model_env_var(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("INPUT_SCORING_MODEL", "v2")
-        config = load_config()
-        assert config.scoring_model == "v2"
-
     def test_v2_config_ignored_when_v1(self) -> None:
         config = GoodEggConfig(scoring_model="v1")
         # v2 config is still present but not used by v1 scorer

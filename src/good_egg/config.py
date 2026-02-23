@@ -210,11 +210,6 @@ def load_config(path: str | Path | None = None) -> GoodEggConfig:
 
     # Top-level env var overrides
     scoring_model = os.environ.get("GOOD_EGG_SCORING_MODEL")
-    if scoring_model is None:
-        scoring_model = (
-            os.environ.get("INPUT_SCORING_MODEL")
-            or os.environ.get("INPUT_SCORING-MODEL")
-        )
     if scoring_model is not None:
         config_data["scoring_model"] = scoring_model
 

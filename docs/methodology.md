@@ -229,7 +229,7 @@ is used as the final normalized score. The trained weights are:
 | `merge_rate_weight` | -0.7783 |
 | `account_age_weight` | 0.1493 |
 
-These were trained on the validation dataset (see below).
+These were trained on the validation study data (see below).
 
 > **Why is `merge_rate_weight` negative?** The negative coefficient does not
 > mean "high merge rate is bad." In a multivariate model, each coefficient is
