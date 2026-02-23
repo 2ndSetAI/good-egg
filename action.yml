@@ -22,6 +22,9 @@ inputs:
     description: 'Fail the action if trust level is LOW'
     required: false
     default: 'false'
+  scoring-model:
+    description: 'Scoring model to use (v1 or v2)'
+    required: false
 
 outputs:
   score:
@@ -33,6 +36,9 @@ outputs:
   user:
     description: 'GitHub username that was scored'
     value: ${{ steps.score.outputs.user }}
+  scoring-model:
+    description: 'Scoring model that was used (v1 or v2)'
+    value: ${{ steps.score.outputs.scoring-model }}
 
 runs:
   using: 'composite'
@@ -62,6 +68,7 @@ runs:
         INPUT_COMMENT: ${{ inputs.comment }}
         INPUT_CHECK-RUN: ${{ inputs.check-run }}
         INPUT_FAIL-ON-LOW: ${{ inputs.fail-on-low }}
+        INPUT_SCORING_MODEL: ${{ inputs.scoring-model }}
       run: |
         cd ${{ github.action_path }}
         uv run python -m good_egg.action

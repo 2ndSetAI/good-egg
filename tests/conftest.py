@@ -176,3 +176,54 @@ def sample_trust_score() -> TrustScore:
         },
         scoring_metadata={"graph_nodes": 7, "graph_edges": 6},
     )
+
+
+@pytest.fixture
+def sample_v2_trust_score() -> TrustScore:
+    return TrustScore(
+        user_login="testuser",
+        context_repo="my-org/my-elixir-app",
+        raw_score=0.0045,
+        normalized_score=0.72,
+        trust_level=TrustLevel.HIGH,
+        percentile=85.0,
+        account_age_days=1800,
+        total_merged_prs=3,
+        unique_repos_contributed=3,
+        top_contributions=[
+            ContributionSummary(
+                repo_name="elixir-lang/elixir",
+                pr_count=1,
+                language="Elixir",
+                stars=23000,
+            ),
+        ],
+        language_match=True,
+        flags={
+            "is_bot": False,
+            "is_new_account": False,
+            "has_insufficient_data": False,
+            "used_cached_data": False,
+        },
+        scoring_metadata={"graph_nodes": 7, "graph_edges": 6},
+        scoring_model="v2",
+        component_scores={
+            "graph_score": 0.65,
+            "merge_rate": 0.85,
+            "log_account_age": 7.5,
+        },
+    )
+
+
+@pytest.fixture
+def sample_v2_contribution_data(
+    sample_user_profile: UserProfile,
+    sample_merged_prs: list[MergedPR],
+    sample_repos_metadata: dict[str, RepoMetadata],
+) -> UserContributionData:
+    return UserContributionData(
+        profile=sample_user_profile,
+        merged_prs=sample_merged_prs,
+        contributed_repos=sample_repos_metadata,
+        closed_pr_count=5,
+    )

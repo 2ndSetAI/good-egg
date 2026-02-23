@@ -37,6 +37,7 @@ This posts a trust score comment on each pull request:
 | `comment` | No | `true` | Post a PR comment with the trust score |
 | `check-run` | No | `false` | Create a check run with the trust score |
 | `fail-on-low` | No | `false` | Fail the action if trust level is LOW |
+| `scoring-model` | No | `v1` | Scoring model: `v1` (Good Egg) or `v2` (Better Egg) |
 
 ## Outputs
 
@@ -45,6 +46,7 @@ This posts a trust score comment on each pull request:
 | `score` | Normalized trust score (0.0 - 1.0) |
 | `trust-level` | Trust level: HIGH, MEDIUM, LOW, UNKNOWN, or BOT |
 | `user` | GitHub username that was scored |
+| `scoring-model` | Scoring model used: `v1` (Good Egg) or `v2` (Better Egg) |
 
 ## Custom Configuration
 
@@ -151,6 +153,28 @@ PRs and repository metadata. To stay within rate limits:
 - The built-in cache (SQLite-backed) avoids refetching data that has not
   changed. Cache TTLs are configurable.
 
+## Using Better Egg (v2)
+
+To use the v2 scoring model, set the `scoring-model` input:
+
+```yaml
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: 2ndSetAI/good-egg@v0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          scoring-model: v2
+```
+
+When using v2, PR comments are branded "Better Egg" and include a component
+score breakdown showing graph score, merge rate, and account age
+contributions. The `scoring-model` output reflects which model was used.
+
+You can also set `scoring-model` via the `GOOD_EGG_SCORING_MODEL` environment
+variable, but the input takes precedence.
+
 ## Example Workflows
 
 See the [examples/](../examples/) directory for complete workflow files:
@@ -159,3 +183,5 @@ See the [examples/](../examples/) directory for complete workflow files:
   that posts a PR comment
 - [strict-workflow.yml](../examples/strict-workflow.yml) -- comment, check
   run, and fail-on-low
+- [better-egg-workflow.yml](../examples/better-egg-workflow.yml) -- v2
+  scoring model with component breakdown

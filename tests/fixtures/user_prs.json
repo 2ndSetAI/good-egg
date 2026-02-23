@@ -6,6 +6,7 @@
       "__typename": "User",
       "followers": {"totalCount": 50},
       "repositories": {"totalCount": 20},
+      "closedPullRequests": {"totalCount": 5},
       "pullRequests": {
         "totalCount": 3,
         "pageInfo": {"hasNextPage": false, "endCursor": null},

@@ -406,6 +406,51 @@ class TestGetUserContributionData:
         assert data.merged_prs[0].title == "PR to accessible repo"
         assert "elixir-lang/elixir" in data.contributed_repos
 
+    @respx.mock
+    async def test_closed_pr_count_parsed(self) -> None:
+        """closedPullRequests totalCount should be parsed into closed_pr_count."""
+        fixture = {
+            "data": {
+                "user": {
+                    "login": "testuser",
+                    "createdAt": "2020-01-01T00:00:00Z",
+                    "__typename": "User",
+                    "followers": {"totalCount": 50},
+                    "repositories": {"totalCount": 20},
+                    "closedPullRequests": {"totalCount": 12},
+                    "pullRequests": {
+                        "totalCount": 3,
+                        "pageInfo": {"hasNextPage": False, "endCursor": None},
+                        "nodes": [
+                            {
+                                "title": "Fix bug",
+                                "mergedAt": "2024-06-15T00:00:00Z",
+                                "additions": 10,
+                                "deletions": 5,
+                                "changedFiles": 1,
+                                "repository": {
+                                    "nameWithOwner": "elixir-lang/elixir",
+                                    "stargazerCount": 23000,
+                                    "forkCount": 3200,
+                                    "primaryLanguage": {"name": "Elixir"},
+                                    "isArchived": False,
+                                    "isFork": False,
+                                },
+                            },
+                        ],
+                    },
+                }
+            }
+        }
+        respx.post(GRAPHQL_URL).mock(
+            return_value=httpx.Response(200, json=fixture)
+        )
+
+        async with _make_client() as client:
+            data = await client.get_user_contribution_data("testuser")
+
+        assert data.closed_pr_count == 12
+
 
 # ---------------------------------------------------------------------------
 # REST: PR comments

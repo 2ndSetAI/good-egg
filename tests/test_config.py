@@ -128,3 +128,69 @@ class TestDiversityConfig:
         monkeypatch.setenv("GOOD_EGG_VOLUME_SCALE", "0.5")
         config = load_config()
         assert config.graph_scoring.volume_scale == 0.5
+
+
+class TestV2Config:
+    def test_defaults(self) -> None:
+        from good_egg.config import V2Config
+        config = V2Config()
+        assert config.graph.half_life_days == 180
+        assert config.graph.max_age_days == 730
+        assert config.graph.archived_penalty == 0.5
+        assert config.graph.fork_penalty == 0.3
+        assert config.features.merge_rate is True
+        assert config.features.account_age is True
+        assert isinstance(config.combined_model.intercept, float)
+        assert isinstance(config.combined_model.graph_score_weight, float)
+
+    def test_custom_values(self) -> None:
+        from good_egg.config import V2Config
+        config = V2Config(
+            graph={"half_life_days": 90, "archived_penalty": 0.2},
+            features={"merge_rate": False},
+        )
+        assert config.graph.half_life_days == 90
+        assert config.graph.archived_penalty == 0.2
+        assert config.features.merge_rate is False
+        # Defaults preserved
+        assert config.graph.max_age_days == 730
+
+
+class TestScoringModelConfig:
+    def test_default_is_v1(self) -> None:
+        config = GoodEggConfig()
+        assert config.scoring_model == "v1"
+
+    def test_set_to_v2(self) -> None:
+        config = GoodEggConfig(scoring_model="v2")
+        assert config.scoring_model == "v2"
+
+    def test_v2_config_present_by_default(self) -> None:
+        config = GoodEggConfig()
+        assert config.v2 is not None
+        assert config.v2.graph.half_life_days == 180
+
+    def test_yaml_loading_with_v2(self, tmp_path: Path) -> None:
+        config_file = tmp_path / ".good-egg.yml"
+        config_file.write_text(yaml.dump({
+            "scoring_model": "v2",
+            "v2": {
+                "graph": {"half_life_days": 90},
+                "features": {"account_age": False},
+            },
+        }))
+        config = load_config(config_file)
+        assert config.scoring_model == "v2"
+        assert config.v2.graph.half_life_days == 90
+        assert config.v2.features.account_age is False
+
+    def test_env_var_scoring_model(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("GOOD_EGG_SCORING_MODEL", "v2")
+        config = load_config()
+        assert config.scoring_model == "v2"
+
+    def test_v2_config_ignored_when_v1(self) -> None:
+        config = GoodEggConfig(scoring_model="v1")
+        # v2 config is still present but not used by v1 scorer
+        assert config.v2 is not None
+        assert config.scoring_model == "v1"

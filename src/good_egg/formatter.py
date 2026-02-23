@@ -25,18 +25,51 @@ _TRUST_LEVEL_EMOJI: dict[TrustLevel, str] = {
 }
 
 
+def _brand_name(score: TrustScore) -> str:
+    """Return 'Better Egg' for v2, 'Good Egg' for v1."""
+    return "Better Egg" if score.scoring_model == "v2" else "Good Egg"
+
+
 def format_markdown_comment(score: TrustScore) -> str:
     """Format a trust score as a GitHub PR comment in Markdown."""
     emoji = _TRUST_LEVEL_EMOJI.get(score.trust_level, "\U0001f95a")
     pct = score.normalized_score * 100
+    brand = _brand_name(score)
 
     lines: list[str] = [
         COMMENT_MARKER,
-        f"## {emoji} Good Egg: **{score.trust_level.value}** Trust",
+        f"## {emoji} {brand}: **{score.trust_level.value}** Trust",
         "",
         f"**Score:** {pct:.0f}%",
         "",
     ]
+
+    # v2 component score breakdown
+    if score.scoring_model == "v2" and score.component_scores:
+        lines.append("### Score Breakdown")
+        lines.append("")
+        lines.append("| Component | Value |")
+        lines.append("|-----------|-------|")
+        if "graph_score" in score.component_scores:
+            gs = score.component_scores["graph_score"] * 100
+            lines.append(f"| Graph Score | {gs:.0f}% |")
+        if "merge_rate" in score.component_scores:
+            mr = score.component_scores["merge_rate"] * 100
+            merged = score.total_merged_prs
+            total = merged + (
+                score.scoring_metadata.get("closed_pr_count", 0)
+                if isinstance(score.scoring_metadata.get("closed_pr_count"), int)
+                else 0
+            )
+            if total > 0:
+                lines.append(f"| Merge Rate | {mr:.0f}% ({merged}/{total} PRs) |")
+            else:
+                lines.append(f"| Merge Rate | {mr:.0f}% |")
+        if "log_account_age" in score.component_scores:
+            lines.append(
+                f"| Account Age | {score.account_age_days:,} days |"
+            )
+        lines.append("")
 
     # Top contributions table
     if score.top_contributions:
@@ -79,12 +112,13 @@ def format_cli_output(score: TrustScore, verbose: bool = False) -> str:
     """Format a trust score for terminal display with color."""
     color = _TRUST_LEVEL_COLORS.get(score.trust_level, "white")
     pct = score.normalized_score * 100
+    brand = _brand_name(score)
 
     trust_styled = click.style(score.trust_level.value, fg=color, bold=True)
     pct_styled = click.style(f"{pct:.0f}%", bold=True)
 
     lines: list[str] = [
-        f"Good Egg: {trust_styled} ({pct_styled})",
+        f"{brand}: {trust_styled} ({pct_styled})",
         f"User: {score.user_login}",
         f"Context: {score.context_repo}",
     ]
@@ -96,6 +130,20 @@ def format_cli_output(score: TrustScore, verbose: bool = False) -> str:
             f"Merged PRs: {score.total_merged_prs} | "
             f"Repos: {score.unique_repos_contributed}"
         )
+
+        if score.scoring_model == "v2" and score.component_scores:
+            lines.append("")
+            lines.append("Component scores:")
+            if "graph_score" in score.component_scores:
+                gs = score.component_scores["graph_score"] * 100
+                lines.append(f"  Graph Score: {gs:.0f}%")
+            if "merge_rate" in score.component_scores:
+                mr = score.component_scores["merge_rate"] * 100
+                lines.append(f"  Merge Rate: {mr:.0f}%")
+            if "log_account_age" in score.component_scores:
+                lines.append(
+                    f"  Account Age: {score.account_age_days:,} days"
+                )
 
         if score.top_contributions:
             lines.append("")
@@ -132,7 +180,8 @@ def format_check_run_summary(score: TrustScore) -> tuple[str, str]:
         A (title, summary) tuple for the Check Run API.
     """
     pct = score.normalized_score * 100
-    title = f"Good Egg: {score.trust_level.value} ({pct:.0f}%)"
+    brand = _brand_name(score)
+    title = f"{brand}: {score.trust_level.value} ({pct:.0f}%)"
 
     summary_lines: list[str] = [
         f"**Trust Level:** {score.trust_level.value}",
@@ -143,6 +192,20 @@ def format_check_run_summary(score: TrustScore) -> tuple[str, str]:
         f"Merged PRs: {score.total_merged_prs} | "
         f"Repos contributed to: {score.unique_repos_contributed}",
     ]
+
+    if score.scoring_model == "v2" and score.component_scores:
+        summary_lines.append("")
+        summary_lines.append("**Score Breakdown:**")
+        if "graph_score" in score.component_scores:
+            gs = score.component_scores["graph_score"] * 100
+            summary_lines.append(f"- Graph Score: {gs:.0f}%")
+        if "merge_rate" in score.component_scores:
+            mr = score.component_scores["merge_rate"] * 100
+            summary_lines.append(f"- Merge Rate: {mr:.0f}%")
+        if "log_account_age" in score.component_scores:
+            summary_lines.append(
+                f"- Account Age: {score.account_age_days:,} days"
+            )
 
     if score.top_contributions:
         summary_lines.append("")

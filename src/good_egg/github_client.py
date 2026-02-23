@@ -36,6 +36,7 @@ query($login: String!, $cursor: String) {
     __typename
     followers { totalCount }
     repositories(first: 0) { totalCount }
+    closedPullRequests: pullRequests(states: CLOSED, first: 0) { totalCount }
     pullRequests(first: 100, states: MERGED,
                  orderBy: {field: CREATED_AT, direction: DESC},
                  after: $cursor) {
@@ -409,6 +410,10 @@ class GitHubClient:
         followers = user_data["followers"]["totalCount"]  # type: ignore[index]
         public_repos = user_data["repositories"]["totalCount"]  # type: ignore[index]
         created_at = datetime.fromisoformat(user_data["createdAt"])  # type: ignore[index]
+        closed_pr_count: int = (
+            user_data.get("closedPullRequests", {})  # type: ignore[union-attr]
+            .get("totalCount", 0)
+        )
 
         account_age = (datetime.now(UTC) - created_at).days
         is_suspected = (
@@ -521,6 +526,7 @@ class GitHubClient:
             profile=profile,
             merged_prs=prs,
             contributed_repos=contributed_repos,
+            closed_pr_count=closed_pr_count,
         )
 
         # Cache the full contribution data

@@ -119,6 +119,20 @@ Add to Claude Desktop (`claude_desktop_config.json`):
 
 See [docs/mcp-server.md](https://github.com/2ndSetAI/good-egg/blob/main/docs/mcp-server.md) for tool reference.
 
+## Scoring Models
+
+Good Egg supports two scoring models:
+
+| Model | Name | Description |
+|-------|------|-------------|
+| `v1` | Good Egg (default) | Graph-based scoring from contribution history |
+| `v2` | Better Egg | Graph score + merge rate + account age via logistic regression |
+
+To use v2, set `scoring_model: v2` in your `.good-egg.yml`, pass
+`--scoring-model v2` on the CLI, or set `scoring-model: v2` in the action
+input. See [Methodology](https://github.com/2ndSetAI/good-egg/blob/main/docs/methodology.md#better-egg-v2) for how the
+v2 model works.
+
 ## How It Works
 
 Good Egg builds a weighted contribution graph from a user's merged PRs and

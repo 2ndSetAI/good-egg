@@ -89,6 +89,16 @@ class TestUserContributionData:
         assert data.merged_prs == []
         assert data.contributed_repos == {}
 
+    def test_closed_pr_count_default(self, sample_user_profile: UserProfile) -> None:
+        data = UserContributionData(profile=sample_user_profile)
+        assert data.closed_pr_count == 0
+
+    def test_closed_pr_count_set(self, sample_user_profile: UserProfile) -> None:
+        data = UserContributionData(
+            profile=sample_user_profile, closed_pr_count=15
+        )
+        assert data.closed_pr_count == 15
+
 
 class TestTrustScore:
     def test_creation(self, sample_trust_score: TrustScore) -> None:
@@ -105,6 +115,46 @@ class TestTrustScore:
         assert score.raw_score == 0.0
         assert score.trust_level == TrustLevel.UNKNOWN
         assert score.flags == {}
+
+    def test_scoring_model_default(self) -> None:
+        score = TrustScore(user_login="u", context_repo="o/r")
+        assert score.scoring_model == "v1"
+        assert score.component_scores == {}
+
+    def test_scoring_model_v2(self) -> None:
+        score = TrustScore(
+            user_login="u",
+            context_repo="o/r",
+            scoring_model="v2",
+            component_scores={"graph_score": 0.65, "merge_rate": 0.8},
+        )
+        assert score.scoring_model == "v2"
+        assert score.component_scores["graph_score"] == 0.65
+
+    def test_serialization_roundtrip_v2(self) -> None:
+        import json
+        score = TrustScore(
+            user_login="u",
+            context_repo="o/r",
+            scoring_model="v2",
+            component_scores={"graph_score": 0.65},
+        )
+        data = json.loads(score.model_dump_json())
+        restored = TrustScore(**data)
+        assert restored.scoring_model == "v2"
+        assert restored.component_scores == {"graph_score": 0.65}
+
+    def test_backward_compat_no_new_fields(self) -> None:
+        # Old-style TrustScore without new fields still works
+        score = TrustScore(
+            user_login="u",
+            context_repo="o/r",
+            raw_score=0.5,
+            normalized_score=0.7,
+            trust_level=TrustLevel.HIGH,
+        )
+        assert score.scoring_model == "v1"
+        assert score.component_scores == {}
 
     def test_top_contributions(self, sample_trust_score: TrustScore) -> None:
         assert len(sample_trust_score.top_contributions) == 2

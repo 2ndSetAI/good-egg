@@ -76,3 +76,37 @@ language_normalization:
     Zig: 5.44
     "F#": 5.57
     Nim: 5.96
+
+# --------------------------------------------------------------------------
+# v2 (Better Egg) scoring model
+# --------------------------------------------------------------------------
+# Uncomment the lines below to enable the v2 combined model.
+# See docs/methodology.md for how v2 works.
+
+# scoring_model: v2
+
+# v2:
+#   # Simplified graph parameters (no self-contribution penalty,
+#   # no language normalization, no diversity/volume adjustment).
+#   # Note: v2 shares graph algorithm parameters (alpha, tolerance, etc.)
+#   # with the top-level graph_scoring config.
+#   graph:
+#     half_life_days: 180        # Recency decay half-life
+#     max_age_days: 730          # Ignore PRs older than this
+#     archived_penalty: 0.5      # Penalty for archived repos
+#     fork_penalty: 0.3          # Penalty for forked repos
+#
+#   # External features
+#   features:
+#     merge_rate: true           # merged / (merged + closed)
+#     account_age: true          # log(account_age_days + 1)
+#
+#   # Logistic regression coefficients
+#   # score = sigmoid(intercept + graph_score_weight * graph_score
+#   #                 + merge_rate_weight * merge_rate
+#   #                 + account_age_weight * log(account_age + 1))
+#   combined_model:
+#     intercept: -0.8094
+#     graph_score_weight: 1.9138
+#     merge_rate_weight: -0.7783
+#     account_age_weight: 0.1493

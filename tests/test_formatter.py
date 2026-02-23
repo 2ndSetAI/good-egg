@@ -189,3 +189,96 @@ class TestFormatCheckRunSummary:
         score = _make_score(flags={})
         _, summary = format_check_run_summary(score)
         assert "Flags" not in summary
+
+
+class TestBetterEggFormatting:
+    def _make_v2_score(self, **kwargs) -> TrustScore:
+        defaults = {
+            "user_login": "testuser",
+            "context_repo": "owner/repo",
+            "raw_score": 0.65,
+            "normalized_score": 0.72,
+            "trust_level": TrustLevel.HIGH,
+            "percentile": 85.0,
+            "account_age_days": 1825,
+            "total_merged_prs": 42,
+            "unique_repos_contributed": 10,
+            "top_contributions": [
+                ContributionSummary(
+                    repo_name="cool/project",
+                    pr_count=15,
+                    language="Python",
+                    stars=1200,
+                ),
+            ],
+            "language_match": True,
+            "flags": {},
+            "scoring_metadata": {"closed_pr_count": 8},
+            "scoring_model": "v2",
+            "component_scores": {
+                "graph_score": 0.65,
+                "merge_rate": 0.85,
+                "log_account_age": 7.5,
+            },
+        }
+        defaults.update(kwargs)
+        return TrustScore(**defaults)
+
+    def test_markdown_better_egg_header(self) -> None:
+        score = self._make_v2_score()
+        md = format_markdown_comment(score)
+        assert "Better Egg" in md
+        assert "Good Egg" not in md.split("Better Egg")[0]  # No "Good Egg" before Better Egg
+
+    def test_markdown_component_breakdown(self) -> None:
+        score = self._make_v2_score()
+        md = format_markdown_comment(score)
+        assert "Score Breakdown" in md
+        assert "Graph Score" in md
+        assert "Merge Rate" in md
+        assert "Account Age" in md
+        assert "65%" in md  # graph_score * 100
+        assert "85% (42/50 PRs)" in md  # merge_rate with closed_pr_count=8
+
+    def test_cli_better_egg_header(self) -> None:
+        score = self._make_v2_score()
+        out = format_cli_output(score)
+        assert "Better Egg" in out
+
+    def test_cli_verbose_component_scores(self) -> None:
+        score = self._make_v2_score()
+        out = format_cli_output(score, verbose=True)
+        assert "Component scores" in out
+        assert "Graph Score" in out
+        assert "Merge Rate" in out
+
+    def test_check_run_better_egg_title(self) -> None:
+        score = self._make_v2_score()
+        title, summary = format_check_run_summary(score)
+        assert "Better Egg" in title
+        assert "Score Breakdown" in summary
+
+    def test_json_includes_v2_fields(self) -> None:
+        score = self._make_v2_score()
+        result = format_json(score)
+        parsed = json.loads(result)
+        assert parsed["scoring_model"] == "v2"
+        assert "graph_score" in parsed["component_scores"]
+
+    def test_v1_format_unchanged(self) -> None:
+        score = _make_score()
+        md = format_markdown_comment(score)
+        assert "Good Egg" in md
+        assert "Better Egg" not in md
+        assert "Score Breakdown" not in md
+
+    def test_v1_cli_unchanged(self) -> None:
+        score = _make_score()
+        out = format_cli_output(score)
+        assert "Good Egg" in out
+        assert "Better Egg" not in out
+
+    def test_v1_check_run_unchanged(self) -> None:
+        score = _make_score()
+        title, _ = format_check_run_summary(score)
+        assert title == "Good Egg: HIGH (72%)"

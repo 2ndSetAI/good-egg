@@ -25,9 +25,26 @@ Configuration values are resolved in this order (highest priority first):
 3. **YAML config file**
 4. **Built-in defaults**
 
+## Scoring Model
+
+Good Egg supports two scoring models. Set the model at the top level of the
+config file:
+
+```yaml
+scoring_model: v1   # default -- graph-based scoring only
+scoring_model: v2   # Better Egg -- graph + external features via logistic regression
+```
+
+When using v2, PR comments are branded "Better Egg" instead of "Good Egg".
+See [methodology.md](methodology.md#better-egg-v2) for how the v2 model
+works.
+
 ## Full YAML Schema
 
 ```yaml
+# Scoring model selection: v1 (default) or v2
+scoring_model: v1
+
 # Graph-based scoring algorithm parameters
 graph_scoring:
   alpha: 0.85              # Damping factor (0-1)
@@ -82,9 +99,52 @@ language_normalization:
     Go: 2.30
     Rust: 2.63
     # ... see examples/.good-egg.yml for the full list
+
+# v2 (Better Egg) scoring model parameters
+# Only used when scoring_model is set to v2.
+v2:
+  graph:
+    half_life_days: 180        # Recency decay half-life for v2 graph
+    max_age_days: 730          # Ignore PRs older than this
+    archived_penalty: 0.5      # Penalty multiplier for archived repos
+    fork_penalty: 0.3          # Penalty multiplier for forked repos
+  features:
+    merge_rate: true           # Include merge rate feature
+    account_age: true          # Include account age feature
+  combined_model:
+    intercept: -0.8094         # Logistic regression intercept
+    graph_score_weight: 1.9138 # Weight for graph score
+    merge_rate_weight: -0.7783 # Weight for merge rate
+    account_age_weight: 0.1493 # Weight for log(account_age_days + 1)
 ```
 
 ## Config Sections
+
+### scoring_model
+
+Selects the scoring model. Set to `v1` (default) for graph-only scoring or
+`v2` for the Better Egg combined model. When set to `v2`, the parameters
+under the `v2:` block are used and the graph construction is simplified
+(no self-contribution penalty, no language normalization in repo quality, no
+diversity/volume adjustment). Language match personalization weighting
+(`same_language_weight`) is retained in v2.
+
+### v2 (Better Egg)
+
+Configuration for the Better Egg (v2) scoring model. This section is only
+used when `scoring_model` is set to `v2`.
+
+- **`v2.graph`** -- Graph construction parameters for the simplified v2 graph.
+  Supports `half_life_days`, `max_age_days`, `archived_penalty`, and
+  `fork_penalty`. Note that v2 shares graph algorithm parameters (`alpha`,
+  `max_iterations`, `tolerance`) with the top-level `graph_scoring` config.
+- **`v2.features`** -- Toggle external features on or off. `merge_rate`
+  (merged/(merged+closed)) and `account_age` (log-transformed days) are both
+  enabled by default.
+- **`v2.combined_model`** -- Logistic regression coefficients. The final
+  score is `sigmoid(intercept + graph_score_weight * graph_score +
+  merge_rate_weight * merge_rate + account_age_weight *
+  log(account_age_days + 1))`.
 
 ### graph_scoring
 
@@ -143,6 +203,7 @@ The following environment variables override individual config values:
 | `GOOD_EGG_HIGH_TRUST` | `thresholds.high_trust` | float |
 | `GOOD_EGG_MEDIUM_TRUST` | `thresholds.medium_trust` | float |
 | `GOOD_EGG_HALF_LIFE_DAYS` | `recency.half_life_days` | int |
+| `GOOD_EGG_SCORING_MODEL` | `scoring_model` | str (`v1` or `v2`) |
 
 ## Programmatic Configuration
 
@@ -167,5 +228,5 @@ config = load_config(".good-egg.yml")
 
 The `GoodEggConfig` class is composed of the following sub-configs:
 `GraphScoringConfig`, `EdgeWeightConfig`, `RecencyConfig`,
-`ThresholdConfig`, `CacheTTLConfig`, `LanguageNormalization`, and
-`FetchConfig`.
+`ThresholdConfig`, `CacheTTLConfig`, `LanguageNormalization`,
+`FetchConfig`, and (for v2) `V2Config`.

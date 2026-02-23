@@ -82,11 +82,14 @@ Returns the full trust score as JSON, including all fields from the
 |------|------|----------|-------------|
 | `username` | `string` | Yes | GitHub username to score |
 | `repo` | `string` | Yes | Target repository in `owner/repo` format |
+| `scoring_model` | `string` | No | Scoring model: `v1` (Good Egg, default) or `v2` (Better Egg) |
 
 **Returns:** Full `TrustScore` JSON with all fields (user_login,
 context_repo, raw_score, normalized_score, trust_level, percentile,
 account_age_days, total_merged_prs, unique_repos_contributed,
-top_contributions, language_match, flags, scoring_metadata).
+top_contributions, language_match, flags, scoring_model, component_scores,
+scoring_metadata). When `scoring_model` is `v2`, the response includes
+`component_scores` with graph_score, merge_rate, and log_account_age.
 
 ### check_pr_author
 
@@ -98,8 +101,9 @@ Returns a compact summary suitable for quick checks.
 |------|------|----------|-------------|
 | `username` | `string` | Yes | GitHub username to check |
 | `repo` | `string` | Yes | Target repository in `owner/repo` format |
+| `scoring_model` | `string` | No | Scoring model: `v1` (Good Egg, default) or `v2` (Better Egg) |
 
-**Returns:**
+**Returns (v1):**
 
 ```json
 {
@@ -107,6 +111,23 @@ Returns a compact summary suitable for quick checks.
   "trust_level": "HIGH",
   "normalized_score": 0.82,
   "total_merged_prs": 47
+}
+```
+
+**Returns (v2):**
+
+```json
+{
+  "user_login": "octocat",
+  "trust_level": "HIGH",
+  "normalized_score": 0.82,
+  "total_merged_prs": 47,
+  "scoring_model": "v2",
+  "component_scores": {
+    "graph_score": 0.78,
+    "merge_rate": 0.91,
+    "log_account_age": 3.45
+  }
 }
 ```
 
@@ -120,8 +141,9 @@ Returns an expanded breakdown with contributions, flags, and metadata.
 |------|------|----------|-------------|
 | `username` | `string` | Yes | GitHub username to analyse |
 | `repo` | `string` | Yes | Target repository in `owner/repo` format |
+| `scoring_model` | `string` | No | Scoring model: `v1` (Good Egg, default) or `v2` (Better Egg) |
 
-**Returns:**
+**Returns (v1):**
 
 ```json
 {
@@ -145,6 +167,41 @@ Returns an expanded breakdown with contributions, flags, and metadata.
   "flags": {
     "is_bot": false,
     "is_new_account": false
+  },
+  "scoring_metadata": {}
+}
+```
+
+**Returns (v2):**
+
+```json
+{
+  "user_login": "octocat",
+  "context_repo": "octocat/Hello-World",
+  "trust_level": "HIGH",
+  "normalized_score": 0.82,
+  "raw_score": 0.0045,
+  "account_age_days": 3650,
+  "total_merged_prs": 47,
+  "unique_repos_contributed": 12,
+  "language_match": true,
+  "top_contributions": [
+    {
+      "repo_name": "octocat/Hello-World",
+      "pr_count": 15,
+      "language": "Python",
+      "stars": 1200
+    }
+  ],
+  "flags": {
+    "is_bot": false,
+    "is_new_account": false
+  },
+  "scoring_model": "v2",
+  "component_scores": {
+    "graph_score": 0.78,
+    "merge_rate": 0.91,
+    "log_account_age": 3.45
   },
   "scoring_metadata": {}
 }
