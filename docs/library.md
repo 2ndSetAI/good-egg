@@ -148,7 +148,7 @@ the following fields:
 |-------|------|-------------|
 | `user_login` | `str` | GitHub username that was scored |
 | `context_repo` | `str` | Repository used as scoring context |
-| `raw_score` | `float` | Pre-normalization score: pagerank value (v1) or logit (v2) |
+| `raw_score` | `float` | Pre-normalization score: graph score (v1) or logit (v2) |
 | `normalized_score` | `float` | Normalized score (0.0 - 1.0) |
 | `trust_level` | `TrustLevel` | HIGH, MEDIUM, LOW, UNKNOWN, or BOT |
 | `percentile` | `float` | Percentile rank (0.0 - 1.0) |

@@ -101,7 +101,7 @@ These raw weights are normalized to sum to 1.0, so actual values in the random w
 
 The directed graph is scored using personalized graph-based ranking with a damping factor (alpha) of 0.85. This produces a raw score for the user node.
 
-**v1:** Normalization converts the raw pagerank score to a 0-1 range:
+**v1:** Normalization converts the raw graph score to a 0-1 range:
 
 ```
 baseline = 1 / num_nodes
