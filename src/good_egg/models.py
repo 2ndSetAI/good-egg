@@ -83,7 +83,7 @@ class TrustScore(BaseModel):
     raw_score: float = 0.0
     normalized_score: float = 0.0
     trust_level: TrustLevel = TrustLevel.UNKNOWN
-    percentile: float = 0.0
+
     account_age_days: int = 0
     total_merged_prs: int = 0
     unique_repos_contributed: int = 0

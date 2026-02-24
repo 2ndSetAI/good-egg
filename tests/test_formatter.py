@@ -22,7 +22,7 @@ def _make_score(**kwargs) -> TrustScore:
         "raw_score": 0.65,
         "normalized_score": 0.72,
         "trust_level": TrustLevel.HIGH,
-        "percentile": 85.0,
+
         "account_age_days": 365,
         "total_merged_prs": 42,
         "unique_repos_contributed": 10,
@@ -199,7 +199,7 @@ class TestBetterEggFormatting:
             "raw_score": 0.65,
             "normalized_score": 0.72,
             "trust_level": TrustLevel.HIGH,
-            "percentile": 85.0,
+
             "account_age_days": 1825,
             "total_merged_prs": 42,
             "unique_repos_contributed": 10,
