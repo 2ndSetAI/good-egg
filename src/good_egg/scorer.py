@@ -206,7 +206,7 @@ class TrustScorer:
         return TrustScore(
             user_login=login,
             context_repo=context_repo,
-            raw_score=raw_score,
+            raw_score=logit,
             normalized_score=normalized,
             trust_level=trust_level,
             account_age_days=user_data.profile.account_age_days,
