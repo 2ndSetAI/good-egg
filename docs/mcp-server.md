@@ -85,7 +85,7 @@ Returns the full trust score as JSON, including all fields from the
 | `scoring_model` | `string` | No | Scoring model: `v1` (Good Egg, default) or `v2` (Better Egg) |
 
 **Returns:** Full `TrustScore` JSON with all fields (user_login,
-context_repo, raw_score, normalized_score, trust_level, percentile,
+context_repo, raw_score, normalized_score, trust_level,
 account_age_days, total_merged_prs, unique_repos_contributed,
 top_contributions, language_match, flags, scoring_model, component_scores,
 scoring_metadata). When `scoring_model` is `v2`, the response includes

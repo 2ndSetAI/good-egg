@@ -151,7 +151,6 @@ the following fields:
 | `raw_score` | `float` | Raw graph score before normalization |
 | `normalized_score` | `float` | Normalized score (0.0 - 1.0) |
 | `trust_level` | `TrustLevel` | HIGH, MEDIUM, LOW, UNKNOWN, or BOT |
-| `percentile` | `float` | Percentile rank (0.0 - 1.0) |
 | `account_age_days` | `int` | Age of the GitHub account in days |
 | `total_merged_prs` | `int` | Total number of merged pull requests |
 | `unique_repos_contributed` | `int` | Number of distinct repositories |
