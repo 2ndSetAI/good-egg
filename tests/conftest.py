@@ -149,7 +149,7 @@ def sample_trust_score() -> TrustScore:
         raw_score=0.0045,
         normalized_score=0.72,
         trust_level=TrustLevel.HIGH,
-        percentile=85.0,
+
         account_age_days=1800,
         total_merged_prs=3,
         unique_repos_contributed=3,
@@ -186,7 +186,7 @@ def sample_v2_trust_score() -> TrustScore:
         raw_score=0.0045,
         normalized_score=0.72,
         trust_level=TrustLevel.HIGH,
-        percentile=85.0,
+
         account_age_days=1800,
         total_merged_prs=3,
         unique_repos_contributed=3,
