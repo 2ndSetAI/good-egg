@@ -101,7 +101,7 @@ These raw weights are normalized to sum to 1.0, so actual values in the random w
 
 The directed graph is scored using personalized graph-based ranking with a damping factor (alpha) of 0.85. This produces a raw score for the user node.
 
-Normalization converts the raw score to a 0-1 range:
+**v1:** Normalization converts the raw pagerank score to a 0-1 range:
 
 ```
 baseline = 1 / num_nodes
@@ -110,6 +110,18 @@ normalized = ratio / (ratio + 1)
 ```
 
 This sigmoid-like mapping means a score equal to the uniform baseline maps to 0.5, with diminishing returns above.
+
+**v2:** The normalized graph score is combined with merge rate and account age into a logit, then passed through a sigmoid:
+
+```
+logit = intercept + graph_score_weight * graph_score
+      + merge_rate_weight * merge_rate
+      + account_age_weight * log(account_age_days + 1)
+
+normalized = 1 / (1 + e^(-logit))
+```
+
+`raw_score` in the v2 output contains the pre-sigmoid logit value.
 
 ### Classification
 

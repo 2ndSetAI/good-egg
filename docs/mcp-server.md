@@ -180,7 +180,7 @@ Returns an expanded breakdown with contributions, flags, and metadata.
   "context_repo": "octocat/Hello-World",
   "trust_level": "HIGH",
   "normalized_score": 0.82,
-  "raw_score": 0.0045,
+  "raw_score": 0.2871,
   "account_age_days": 3650,
   "total_merged_prs": 47,
   "unique_repos_contributed": 12,
