@@ -45,6 +45,11 @@ works.
 # Scoring model selection: v1 (default) or v2
 scoring_model: v1
 
+# Skip scoring for authors who already have merged PRs in the target repo.
+# When true (the default), existing contributors get an EXISTING_CONTRIBUTOR
+# trust level without the full scoring pipeline running.
+skip_known_contributors: true
+
 # Graph-based scoring algorithm parameters
 graph_scoring:
   alpha: 0.85              # Damping factor (0-1)
@@ -146,6 +151,13 @@ used when `scoring_model` is set to `v2`.
   merge_rate_weight * merge_rate + account_age_weight *
   log(account_age_days + 1))`.
 
+### skip_known_contributors
+
+When `true` (the default), Good Egg performs a lightweight pre-check before
+running the full scoring pipeline. If the PR author already has merged pull
+requests in the target repository, scoring is skipped and the trust level is
+set to `EXISTING_CONTRIBUTOR`. Set to `false` to always run full scoring.
+
 ### graph_scoring
 
 Controls the graph-based scoring algorithm. The `alpha` parameter is the
@@ -204,6 +216,7 @@ The following environment variables override individual config values:
 | `GOOD_EGG_MEDIUM_TRUST` | `thresholds.medium_trust` | float |
 | `GOOD_EGG_HALF_LIFE_DAYS` | `recency.half_life_days` | int |
 | `GOOD_EGG_SCORING_MODEL` | `scoring_model` | str (`v1` or `v2`) |
+| `GOOD_EGG_SKIP_KNOWN_CONTRIBUTORS` | `skip_known_contributors` | bool (`true`/`false`) |
 
 ## Programmatic Configuration
 

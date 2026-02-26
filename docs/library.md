@@ -34,9 +34,14 @@ async def main() -> None:
     )
     print(f"User: {result.user_login}")
     print(f"Trust level: {result.trust_level}")
-    print(f"Score: {result.normalized_score:.2f}")
-    print(f"Merged PRs: {result.total_merged_prs}")
-    print(f"Unique repos: {result.unique_repos_contributed}")
+
+    if result.flags.get("scoring_skipped"):
+        pr_count = result.scoring_metadata.get("context_repo_merged_pr_count", 0)
+        print(f"Scoring skipped -- {pr_count} merged PRs in repo")
+    else:
+        print(f"Score: {result.normalized_score:.2f}")
+        print(f"Merged PRs: {result.total_merged_prs}")
+        print(f"Unique repos: {result.unique_repos_contributed}")
 
 asyncio.run(main())
 ```
@@ -64,6 +69,29 @@ async def score_pr_author(
 | `config` | `GoodEggConfig \| None` | Custom configuration; defaults are used when `None` |
 | `token` | `str \| None` | GitHub API token; falls back to `GITHUB_TOKEN` env var |
 | `cache` | `object \| None` | `Cache` instance for response caching (see [Cache Usage](#cache-usage)) |
+
+## Skipping Known Contributors
+
+By default, `score_pr_author` checks whether the user already has merged PRs
+in the target repository. If so, it returns immediately with a trust level of
+`EXISTING_CONTRIBUTOR` without running the full scoring pipeline. To force
+full scoring:
+
+```python
+from good_egg import GoodEggConfig, score_pr_author
+
+config = GoodEggConfig(skip_known_contributors=False)
+result = await score_pr_author(
+    login="octocat",
+    repo_owner="octocat",
+    repo_name="Hello-World",
+    config=config,
+)
+```
+
+When scoring is skipped, `result.flags["scoring_skipped"]` is `True` and
+`result.scoring_metadata["context_repo_merged_pr_count"]` contains the
+number of merged PRs found.
 
 ## Custom Configuration
 
@@ -150,7 +178,7 @@ the following fields:
 | `context_repo` | `str` | Repository used as scoring context |
 | `raw_score` | `float` | Raw graph score before normalization |
 | `normalized_score` | `float` | Normalized score (0.0 - 1.0) |
-| `trust_level` | `TrustLevel` | HIGH, MEDIUM, LOW, UNKNOWN, or BOT |
+| `trust_level` | `TrustLevel` | HIGH, MEDIUM, LOW, UNKNOWN, BOT, or EXISTING_CONTRIBUTOR |
 | `percentile` | `float` | Percentile rank (0.0 - 1.0) |
 | `account_age_days` | `int` | Age of the GitHub account in days |
 | `total_merged_prs` | `int` | Total number of merged pull requests |

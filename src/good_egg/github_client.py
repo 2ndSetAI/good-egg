@@ -62,6 +62,16 @@ query($login: String!, $cursor: String) {
 }
 """.strip()
 
+_EXISTING_CONTRIBUTOR_QUERY = """
+query($owner: String!, $name: String!, $login: String!) {
+  repository(owner: $owner, name: $name) {
+    pullRequests(states: MERGED, first: 0, filterBy: {createdBy: $login}) {
+      totalCount
+    }
+  }
+}
+""".strip()
+
 _REPO_METADATA_FRAGMENT = """
   nameWithOwner
   stargazerCount
@@ -538,6 +548,40 @@ class GitHubClient:
             )
 
         return contrib_data
+
+    async def check_existing_contributor(
+        self, login: str, repo_owner: str, repo_name: str
+    ) -> int:
+        """Check how many merged PRs a user has in a specific repository.
+
+        Returns 0 for bot logins or when the repository is inaccessible.
+        Uses a single lightweight GraphQL call against the repository's
+        ``pullRequests`` connection with a ``filterBy`` on the author.
+        """
+        if self._is_bot_login(login):
+            return 0
+
+        try:
+            result = await self._graphql(
+                _EXISTING_CONTRIBUTOR_QUERY,
+                {"owner": repo_owner, "name": repo_name, "login": login},
+            )
+        except (GitHubAPIError, UserNotFoundError):
+            return 0
+
+        data = result.get("data")  # type: ignore[union-attr]
+        if not isinstance(data, dict):
+            return 0
+
+        repo_data = data.get("repository")
+        if not isinstance(repo_data, dict):
+            return 0
+
+        pr_connection = repo_data.get("pullRequests")
+        if not isinstance(pr_connection, dict):
+            return 0
+
+        return int(pr_connection.get("totalCount", 0))
 
     # ------------------------------------------------------------------
     # REST helpers for PR comments, check runs, etc.

@@ -118,6 +118,28 @@ class TestScoreCommand:
         )
         assert result.exit_code == 0
 
+    @patch("good_egg.cli.score_pr_author", new_callable=AsyncMock)
+    @patch("good_egg.cli.load_config")
+    def test_force_score_disables_skip(
+        self, mock_load_config: MagicMock, mock_score: AsyncMock
+    ) -> None:
+        """--force-score should set skip_known_contributors to False."""
+        from good_egg.config import GoodEggConfig
+        mock_load_config.return_value = GoodEggConfig()
+        trust_score = _make_trust_score()
+        mock_score.return_value = trust_score
+
+        runner = CliRunner(env={"GITHUB_TOKEN": "ghp_fake123"})
+        result = runner.invoke(
+            main,
+            ["score", "testuser", "--repo", "owner/repo", "--force-score"],
+        )
+        assert result.exit_code == 0
+        # Verify the config passed to score_pr_author has skip disabled
+        call_kwargs = mock_score.call_args
+        config_passed = call_kwargs.kwargs.get("config") or call_kwargs[1].get("config")
+        assert config_passed.skip_known_contributors is False
+
 
 class TestCacheCommands:
     @patch("good_egg.cli.Cache")

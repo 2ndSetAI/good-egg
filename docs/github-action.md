@@ -38,15 +38,17 @@ This posts a trust score comment on each pull request:
 | `check-run` | No | `false` | Create a check run with the trust score |
 | `fail-on-low` | No | `false` | Fail the action if trust level is LOW |
 | `scoring-model` | No | `v1` | Scoring model: `v1` (Good Egg) or `v2` (Better Egg) |
+| `skip-known-contributors` | No | `true` | Skip scoring for authors with merged PRs in the repo |
 
 ## Outputs
 
 | Output | Description |
 |--------|-------------|
 | `score` | Normalized trust score (0.0 - 1.0) |
-| `trust-level` | Trust level: HIGH, MEDIUM, LOW, UNKNOWN, or BOT |
+| `trust-level` | Trust level: HIGH, MEDIUM, LOW, UNKNOWN, BOT, or EXISTING_CONTRIBUTOR |
 | `user` | GitHub username that was scored |
 | `scoring-model` | Scoring model used: `v1` (Good Egg) or `v2` (Better Egg) |
+| `skipped` | Whether scoring was skipped for an existing contributor (`true`/`false`) |
 
 ## Custom Configuration
 
@@ -107,9 +109,11 @@ jobs:
           echo "::warning::Low trust PR author -- manual review required"
 
       - name: Auto-approve high trust
-        if: steps.egg.outputs.trust-level == 'HIGH'
+        if: >-
+          steps.egg.outputs.trust-level == 'HIGH' ||
+          steps.egg.outputs.trust-level == 'EXISTING_CONTRIBUTOR'
         run: |
-          echo "High trust author -- consider fast-tracking review"
+          echo "Trusted author -- consider fast-tracking review"
 ```
 
 ## Strict Mode
@@ -152,6 +156,28 @@ PRs and repository metadata. To stay within rate limits:
   per user.
 - The built-in cache (SQLite-backed) avoids refetching data that has not
   changed. Cache TTLs are configurable.
+
+## Skipping Known Contributors
+
+By default, Good Egg performs a lightweight check before the full scoring
+pipeline: if the PR author already has merged PRs in the target repository,
+scoring is skipped and the trust level is reported as `EXISTING_CONTRIBUTOR`.
+This avoids unnecessary API calls for established contributors.
+
+To disable this behaviour and always run full scoring:
+
+```yaml
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: 2ndSetAI/good-egg@v0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          skip-known-contributors: 'false'
+```
+
+You can check whether scoring was skipped via the `skipped` output.
 
 ## Using Better Egg (v2)
 

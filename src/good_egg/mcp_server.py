@@ -49,6 +49,7 @@ def _error_json(message: str) -> str:
 async def _scoring_resources(
     repo: str,
     scoring_model: str | None = None,
+    force_score: bool = False,
 ) -> AsyncGenerator[tuple[GoodEggConfig, Cache, str, str]]:
     """Set up config, cache, and parsed repo for scoring tools.
 
@@ -58,6 +59,8 @@ async def _scoring_resources(
     config = _get_config()
     if scoring_model is not None and scoring_model in ("v1", "v2"):
         config = config.model_copy(update={"scoring_model": scoring_model})
+    if force_score:
+        config = config.model_copy(update={"skip_known_contributors": False})
     cache = _get_cache(config)
     try:
         repo_owner, repo_name = _parse_repo(repo)
@@ -81,7 +84,10 @@ async def _cache_resource() -> AsyncGenerator[Cache]:
 
 
 async def score_user(
-    username: str, repo: str, scoring_model: str | None = None
+    username: str,
+    repo: str,
+    scoring_model: str | None = None,
+    force_score: bool = False,
 ) -> str:
     """Score a GitHub user's trustworthiness relative to a repository.
 
@@ -91,9 +97,10 @@ async def score_user(
         username: GitHub username to score.
         repo: Target repository in owner/repo format.
         scoring_model: Optional scoring model override (v1 or v2).
+        force_score: Force full scoring even for known contributors.
     """
     try:
-        async with _scoring_resources(repo, scoring_model) as (
+        async with _scoring_resources(repo, scoring_model, force_score) as (
             config, cache, repo_owner, repo_name,
         ):
             result = await score_pr_author(
@@ -109,7 +116,10 @@ async def score_user(
 
 
 async def check_pr_author(
-    username: str, repo: str, scoring_model: str | None = None
+    username: str,
+    repo: str,
+    scoring_model: str | None = None,
+    force_score: bool = False,
 ) -> str:
     """Quick check of a PR author's trust level.
 
@@ -119,9 +129,10 @@ async def check_pr_author(
         username: GitHub username to check.
         repo: Target repository in owner/repo format.
         scoring_model: Optional scoring model override (v1 or v2).
+        force_score: Force full scoring even for known contributors.
     """
     try:
-        async with _scoring_resources(repo, scoring_model) as (
+        async with _scoring_resources(repo, scoring_model, force_score) as (
             config, cache, repo_owner, repo_name,
         ):
             result = await score_pr_author(
@@ -146,7 +157,10 @@ async def check_pr_author(
 
 
 async def get_trust_details(
-    username: str, repo: str, scoring_model: str | None = None
+    username: str,
+    repo: str,
+    scoring_model: str | None = None,
+    force_score: bool = False,
 ) -> str:
     """Get an expanded trust breakdown for a GitHub user.
 
@@ -156,9 +170,10 @@ async def get_trust_details(
         username: GitHub username to analyse.
         repo: Target repository in owner/repo format.
         scoring_model: Optional scoring model override (v1 or v2).
+        force_score: Force full scoring even for known contributors.
     """
     try:
-        async with _scoring_resources(repo, scoring_model) as (
+        async with _scoring_resources(repo, scoring_model, force_score) as (
             config, cache, repo_owner, repo_name,
         ):
             result = await score_pr_author(

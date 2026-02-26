@@ -343,6 +343,25 @@ async def score_pr_author(
     context_repo = f"{repo_owner}/{repo_name}"
 
     async with GitHubClient(token=token, config=config, cache=cache) as client:  # type: ignore[arg-type]
+        if config.skip_known_contributors:
+            merged_count = await client.check_existing_contributor(
+                login, repo_owner, repo_name,
+            )
+            if merged_count > 0:
+                return TrustScore(
+                    user_login=login,
+                    context_repo=context_repo,
+                    trust_level=TrustLevel.EXISTING_CONTRIBUTOR,
+                    flags={
+                        "is_existing_contributor": True,
+                        "scoring_skipped": True,
+                    },
+                    scoring_metadata={
+                        "context_repo_merged_pr_count": merged_count,
+                    },
+                    scoring_model=config.scoring_model,
+                )
+
         user_data = await client.get_user_contribution_data(
             login, context_repo=context_repo
         )

@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from good_egg.config import GoodEggConfig
 from good_egg.models import (
@@ -12,7 +15,7 @@ from good_egg.models import (
     UserContributionData,
     UserProfile,
 )
-from good_egg.scorer import TrustScorer
+from good_egg.scorer import TrustScorer, score_pr_author
 
 
 def _make_config(**overrides: object) -> GoodEggConfig:
@@ -640,3 +643,87 @@ class TestV2Scoring:
 
         # The normalized score should be a valid probability from sigmoid
         assert 0.0 < result.normalized_score < 1.0
+
+
+class TestExistingContributorSkip:
+    @pytest.mark.asyncio
+    @patch("good_egg.github_client.GitHubClient")
+    async def test_skip_when_contributor_exists(
+        self, mock_client_cls: AsyncMock
+    ) -> None:
+        """score_pr_author should return EXISTING_CONTRIBUTOR when user has merged PRs."""
+        mock_client = AsyncMock()
+        mock_client.check_existing_contributor = AsyncMock(return_value=3)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client_cls.return_value = mock_client
+
+        config = GoodEggConfig(skip_known_contributors=True)
+        result = await score_pr_author(
+            login="testuser",
+            repo_owner="my-org",
+            repo_name="my-repo",
+            config=config,
+            token="fake-token",
+        )
+
+        assert result.trust_level == TrustLevel.EXISTING_CONTRIBUTOR
+        assert result.flags["is_existing_contributor"] is True
+        assert result.flags["scoring_skipped"] is True
+        assert result.scoring_metadata["context_repo_merged_pr_count"] == 3
+        assert result.scoring_model == "v1"
+        mock_client.get_user_contribution_data.assert_not_called()
+
+    @pytest.mark.asyncio
+    @patch("good_egg.github_client.GitHubClient")
+    async def test_no_skip_when_count_is_zero(
+        self, mock_client_cls: AsyncMock
+    ) -> None:
+        """score_pr_author should proceed to full scoring when count is 0."""
+        mock_client = AsyncMock()
+        mock_client.check_existing_contributor = AsyncMock(return_value=0)
+        prs, repos = _sample_prs_and_repos()
+        contrib_data = _make_contribution_data(merged_prs=prs, repos=repos)
+        mock_client.get_user_contribution_data = AsyncMock(return_value=contrib_data)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client_cls.return_value = mock_client
+
+        config = GoodEggConfig(skip_known_contributors=True)
+        result = await score_pr_author(
+            login="testuser",
+            repo_owner="my-org",
+            repo_name="my-repo",
+            config=config,
+            token="fake-token",
+        )
+
+        assert result.trust_level != TrustLevel.EXISTING_CONTRIBUTOR
+        mock_client.get_user_contribution_data.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch("good_egg.github_client.GitHubClient")
+    async def test_force_score_bypasses_check(
+        self, mock_client_cls: AsyncMock
+    ) -> None:
+        """skip_known_contributors=False should bypass the existing contributor check."""
+        mock_client = AsyncMock()
+        prs, repos = _sample_prs_and_repos()
+        contrib_data = _make_contribution_data(merged_prs=prs, repos=repos)
+        mock_client.get_user_contribution_data = AsyncMock(return_value=contrib_data)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client_cls.return_value = mock_client
+
+        config = GoodEggConfig(skip_known_contributors=False)
+        result = await score_pr_author(
+            login="testuser",
+            repo_owner="my-org",
+            repo_name="my-repo",
+            config=config,
+            token="fake-token",
+        )
+
+        assert result.trust_level != TrustLevel.EXISTING_CONTRIBUTOR
+        mock_client.check_existing_contributor.assert_not_called()
+        mock_client.get_user_contribution_data.assert_called_once()

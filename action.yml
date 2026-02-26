@@ -25,13 +25,16 @@ inputs:
   scoring-model:
     description: 'Scoring model to use (v1 or v2)'
     required: false
+  skip-known-contributors:
+    description: 'Skip scoring for authors with merged PRs in the repo (true/false)'
+    required: false
 
 outputs:
   score:
     description: 'Normalized trust score (0.0 - 1.0)'
     value: ${{ steps.score.outputs.score }}
   trust-level:
-    description: 'Trust level (HIGH, MEDIUM, LOW, UNKNOWN, BOT)'
+    description: 'Trust level (HIGH, MEDIUM, LOW, UNKNOWN, BOT, EXISTING_CONTRIBUTOR)'
     value: ${{ steps.score.outputs.trust-level }}
   user:
     description: 'GitHub username that was scored'
@@ -39,6 +42,9 @@ outputs:
   scoring-model:
     description: 'Scoring model that was used (v1 or v2)'
     value: ${{ steps.score.outputs.scoring-model }}
+  skipped:
+    description: 'Whether scoring was skipped for an existing contributor (true/false)'
+    value: ${{ steps.score.outputs.skipped }}
 
 runs:
   using: 'composite'
@@ -69,6 +75,7 @@ runs:
         INPUT_CHECK-RUN: ${{ inputs.check-run }}
         INPUT_FAIL-ON-LOW: ${{ inputs.fail-on-low }}
         INPUT_SCORING_MODEL: ${{ inputs.scoring-model }}
+        INPUT_SKIP_KNOWN_CONTRIBUTORS: ${{ inputs.skip-known-contributors }}
       run: |
         cd ${{ github.action_path }}
         uv run python -m good_egg.action

@@ -16,6 +16,7 @@ class TrustLevel(StrEnum):
     LOW = "LOW"
     UNKNOWN = "UNKNOWN"
     BOT = "BOT"
+    EXISTING_CONTRIBUTOR = "EXISTING_CONTRIBUTOR"
 
 
 class UserProfile(BaseModel):

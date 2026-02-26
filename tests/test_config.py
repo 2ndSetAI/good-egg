@@ -194,3 +194,36 @@ class TestScoringModelConfig:
         # v2 config is still present but not used by v1 scorer
         assert config.v2 is not None
         assert config.scoring_model == "v1"
+
+
+class TestSkipKnownContributorsConfig:
+    def test_default_is_true(self) -> None:
+        config = GoodEggConfig()
+        assert config.skip_known_contributors is True
+
+    def test_set_to_false(self) -> None:
+        config = GoodEggConfig(skip_known_contributors=False)
+        assert config.skip_known_contributors is False
+
+    def test_yaml_override(self, tmp_path: Path) -> None:
+        config_file = tmp_path / ".good-egg.yml"
+        config_file.write_text(yaml.dump({
+            "skip_known_contributors": False,
+        }))
+        config = load_config(config_file)
+        assert config.skip_known_contributors is False
+
+    def test_env_var_override_true(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("GOOD_EGG_SKIP_KNOWN_CONTRIBUTORS", "true")
+        config = load_config()
+        assert config.skip_known_contributors is True
+
+    def test_env_var_override_false(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("GOOD_EGG_SKIP_KNOWN_CONTRIBUTORS", "false")
+        config = load_config()
+        assert config.skip_known_contributors is False
+
+    def test_env_var_override_one(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("GOOD_EGG_SKIP_KNOWN_CONTRIBUTORS", "1")
+        config = load_config()
+        assert config.skip_known_contributors is True
