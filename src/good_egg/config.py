@@ -148,6 +148,7 @@ class V2Config(BaseModel):
 class GoodEggConfig(BaseModel):
     """Top-level configuration composing all sub-configs."""
     scoring_model: Literal["v1", "v2"] = "v1"
+    skip_known_contributors: bool = True
     graph_scoring: GraphScoringConfig = Field(default_factory=GraphScoringConfig)
     edge_weights: EdgeWeightConfig = Field(default_factory=EdgeWeightConfig)
     recency: RecencyConfig = Field(default_factory=RecencyConfig)
@@ -212,5 +213,11 @@ def load_config(path: str | Path | None = None) -> GoodEggConfig:
     scoring_model = os.environ.get("GOOD_EGG_SCORING_MODEL")
     if scoring_model is not None:
         config_data["scoring_model"] = scoring_model
+
+    skip_known = os.environ.get("GOOD_EGG_SKIP_KNOWN_CONTRIBUTORS")
+    if skip_known is not None:
+        config_data["skip_known_contributors"] = skip_known.lower() in (
+            "true", "1", "yes",
+        )
 
     return GoodEggConfig(**config_data)

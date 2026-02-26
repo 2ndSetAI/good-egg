@@ -32,6 +32,12 @@ def main() -> None:
     default=None,
     help="Scoring model (v1 or v2)",
 )
+@click.option(
+    "--force-score",
+    is_flag=True,
+    default=False,
+    help="Force full scoring even for known contributors",
+)
 def score(
     username: str,
     repo: str,
@@ -40,6 +46,7 @@ def score(
     verbose: bool,
     output_json: bool,
     scoring_model: str | None,
+    force_score: bool,
 ) -> None:
     """Score a GitHub user's trustworthiness relative to a repository."""
     if not token:
@@ -55,6 +62,8 @@ def score(
     config = load_config(config_path)
     if scoring_model is not None:
         config = config.model_copy(update={"scoring_model": scoring_model})
+    if force_score:
+        config = config.model_copy(update={"skip_known_contributors": False})
     cache = Cache(ttls=config.cache_ttl.to_seconds())
 
     result = asyncio.run(

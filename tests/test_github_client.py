@@ -1155,3 +1155,94 @@ class TestRetryBehavior:
                 await client.post_pr_comment("my-org", "my-repo", 42, "Hello")
 
         assert route.call_count == 1
+
+
+class TestCheckExistingContributor:
+    @respx.mock
+    async def test_returns_count_when_merged_prs_exist(self) -> None:
+        """Should return the issueCount from the search query."""
+        respx.post(GRAPHQL_URL).mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "data": {
+                        "repository": {"name": "my-repo"},
+                        "search": {"issueCount": 5},
+                    }
+                },
+            )
+        )
+
+        async with _make_client() as client:
+            count = await client.check_existing_contributor(
+                "testuser", "my-org", "my-repo"
+            )
+
+        assert count == 5
+
+    @respx.mock
+    async def test_returns_zero_when_no_merged_prs(self) -> None:
+        """Should return 0 when search finds no matching PRs."""
+        respx.post(GRAPHQL_URL).mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "data": {
+                        "repository": {"name": "my-repo"},
+                        "search": {"issueCount": 0},
+                    }
+                },
+            )
+        )
+
+        async with _make_client() as client:
+            count = await client.check_existing_contributor(
+                "newuser", "my-org", "my-repo"
+            )
+
+        assert count == 0
+
+    async def test_returns_zero_for_bot_login(self) -> None:
+        """Bot logins should short-circuit and return 0 without API call."""
+        async with _make_client() as client:
+            count = await client.check_existing_contributor(
+                "dependabot[bot]", "my-org", "my-repo"
+            )
+
+        assert count == 0
+
+    @respx.mock
+    async def test_returns_zero_when_repo_is_null(self) -> None:
+        """Should return 0 when the repository is inaccessible (null)."""
+        respx.post(GRAPHQL_URL).mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "data": {
+                        "repository": None,
+                        "search": {"issueCount": 0},
+                    }
+                },
+            )
+        )
+
+        async with _make_client() as client:
+            count = await client.check_existing_contributor(
+                "testuser", "private-org", "secret-repo"
+            )
+
+        assert count == 0
+
+    @respx.mock
+    async def test_returns_zero_on_api_error(self) -> None:
+        """Should return 0 when the API returns an error."""
+        respx.post(GRAPHQL_URL).mock(
+            return_value=httpx.Response(500, json={"message": "Internal error"})
+        )
+
+        async with _make_client() as client:
+            count = await client.check_existing_contributor(
+                "testuser", "my-org", "my-repo"
+            )
+
+        assert count == 0

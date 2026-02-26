@@ -62,6 +62,17 @@ query($login: String!, $cursor: String) {
 }
 """.strip()
 
+_EXISTING_CONTRIBUTOR_QUERY = """
+query($owner: String!, $name: String!, $searchQuery: String!) {
+  repository(owner: $owner, name: $name) {
+    name
+  }
+  search(query: $searchQuery, type: ISSUE, first: 0) {
+    issueCount
+  }
+}
+""".strip()
+
 _REPO_METADATA_FRAGMENT = """
   nameWithOwner
   stargazerCount
@@ -538,6 +549,38 @@ class GitHubClient:
             )
 
         return contrib_data
+
+    async def check_existing_contributor(
+        self, login: str, repo_owner: str, repo_name: str
+    ) -> int:
+        """Check how many merged PRs a user has in a specific repository.
+
+        Returns 0 for bot logins or when the repository is inaccessible.
+        Uses a single lightweight GraphQL call with a search query.
+        """
+        if self._is_bot_login(login):
+            return 0
+
+        search_query = f"repo:{repo_owner}/{repo_name} author:{login} is:pr is:merged"
+        try:
+            result = await self._graphql(
+                _EXISTING_CONTRIBUTOR_QUERY,
+                {
+                    "owner": repo_owner,
+                    "name": repo_name,
+                    "searchQuery": search_query,
+                },
+            )
+        except (GitHubAPIError, UserNotFoundError):
+            return 0
+
+        data = result.get("data", {})  # type: ignore[union-attr]
+        # If repository is null, it's inaccessible
+        if data.get("repository") is None:  # type: ignore[union-attr,attr-defined]
+            return 0
+
+        search_data = data.get("search", {})  # type: ignore[union-attr,attr-defined]
+        return int(search_data.get("issueCount", 0))  # type: ignore[union-attr]
 
     # ------------------------------------------------------------------
     # REST helpers for PR comments, check runs, etc.

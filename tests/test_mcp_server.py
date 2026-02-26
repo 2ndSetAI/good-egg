@@ -473,3 +473,78 @@ class TestClearCache:
         parsed = json.loads(result)
         assert "error" in parsed
         mock_cache_inst.close.assert_called_once()
+
+
+class TestForceScoreParameter:
+    @pytest.mark.asyncio
+    @patch("good_egg.mcp_server._get_cache")
+    @patch("good_egg.mcp_server._get_config")
+    @patch("good_egg.mcp_server.score_pr_author", new_callable=AsyncMock)
+    async def test_score_user_force_score(
+        self,
+        mock_score: AsyncMock,
+        mock_config: MagicMock,
+        mock_cache: MagicMock,
+    ) -> None:
+        """force_score=True should disable skip_known_contributors."""
+        from good_egg.config import GoodEggConfig
+        mock_config.return_value = GoodEggConfig()
+        mock_cache_inst = MagicMock()
+        mock_cache.return_value = mock_cache_inst
+        mock_score.return_value = _make_trust_score()
+
+        await score_user("testuser", "owner/repo", force_score=True)
+
+        # Verify config passed to score_pr_author has skip disabled
+        call_kwargs = mock_score.call_args
+        config_passed = call_kwargs.kwargs.get("config")
+        assert config_passed.skip_known_contributors is False
+        mock_cache_inst.close.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch("good_egg.mcp_server._get_cache")
+    @patch("good_egg.mcp_server._get_config")
+    @patch("good_egg.mcp_server.score_pr_author", new_callable=AsyncMock)
+    async def test_check_pr_author_force_score(
+        self,
+        mock_score: AsyncMock,
+        mock_config: MagicMock,
+        mock_cache: MagicMock,
+    ) -> None:
+        """check_pr_author force_score should thread through."""
+        from good_egg.config import GoodEggConfig
+        mock_config.return_value = GoodEggConfig()
+        mock_cache_inst = MagicMock()
+        mock_cache.return_value = mock_cache_inst
+        mock_score.return_value = _make_trust_score()
+
+        await check_pr_author("testuser", "owner/repo", force_score=True)
+
+        call_kwargs = mock_score.call_args
+        config_passed = call_kwargs.kwargs.get("config")
+        assert config_passed.skip_known_contributors is False
+        mock_cache_inst.close.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch("good_egg.mcp_server._get_cache")
+    @patch("good_egg.mcp_server._get_config")
+    @patch("good_egg.mcp_server.score_pr_author", new_callable=AsyncMock)
+    async def test_get_trust_details_force_score(
+        self,
+        mock_score: AsyncMock,
+        mock_config: MagicMock,
+        mock_cache: MagicMock,
+    ) -> None:
+        """get_trust_details force_score should thread through."""
+        from good_egg.config import GoodEggConfig
+        mock_config.return_value = GoodEggConfig()
+        mock_cache_inst = MagicMock()
+        mock_cache.return_value = mock_cache_inst
+        mock_score.return_value = _make_trust_score()
+
+        await get_trust_details("testuser", "owner/repo", force_score=True)
+
+        call_kwargs = mock_score.call_args
+        config_passed = call_kwargs.kwargs.get("config")
+        assert config_passed.skip_known_contributors is False
+        mock_cache_inst.close.assert_called_once()

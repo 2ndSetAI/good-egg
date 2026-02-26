@@ -13,7 +13,7 @@ from good_egg.config import load_config
 from good_egg.exceptions import GoodEggError, RateLimitExhaustedError, UserNotFoundError
 from good_egg.formatter import format_check_run_summary, format_markdown_comment
 from good_egg.github_client import GitHubClient
-from good_egg.models import TrustLevel
+from good_egg.models import TrustLevel, TrustScore
 from good_egg.scorer import TrustScorer
 
 
@@ -41,6 +41,10 @@ async def run_action() -> None:
     should_comment = os.environ.get("INPUT_COMMENT", "true").lower() == "true"
     should_check_run = os.environ.get("INPUT_CHECK-RUN", "false").lower() == "true"
     fail_on_low = os.environ.get("INPUT_FAIL-ON-LOW", "false").lower() == "true"
+    skip_known_input = (
+        os.environ.get("INPUT_SKIP-KNOWN-CONTRIBUTORS")
+        or os.environ.get("INPUT_SKIP_KNOWN_CONTRIBUTORS")
+    )
 
     if not token:
         print("::error::GITHUB_TOKEN is required")
@@ -78,15 +82,41 @@ async def run_action() -> None:
     )
     if scoring_model_input and scoring_model_input in ("v1", "v2"):
         config = config.model_copy(update={"scoring_model": scoring_model_input})
+    if skip_known_input is not None:
+        config = config.model_copy(
+            update={"skip_known_contributors": skip_known_input.lower() in (
+                "true", "1", "yes",
+            )}
+        )
     cache = Cache(ttls=config.cache_ttl.to_seconds())
 
+    skipped = False
     async with GitHubClient(token=token, config=config, cache=cache) as client:
-        user_data = await client.get_user_contribution_data(
-            pr_author, context_repo=repository
-        )
+        if config.skip_known_contributors:
+            merged_count = await client.check_existing_contributor(
+                pr_author, repo_owner, repo_name,
+            )
+            if merged_count > 0:
+                skipped = True
+                score = TrustScore(
+                    user_login=pr_author,
+                    context_repo=repository,
+                    trust_level=TrustLevel.EXISTING_CONTRIBUTOR,
+                    flags={
+                        "is_existing_contributor": True,
+                        "scoring_skipped": True,
+                    },
+                    scoring_metadata={
+                        "context_repo_merged_pr_count": merged_count,
+                    },
+                )
 
-        scorer = TrustScorer(config)
-        score = scorer.score(user_data, repository)
+        if not skipped:
+            user_data = await client.get_user_contribution_data(
+                pr_author, context_repo=repository
+            )
+            scorer = TrustScorer(config)
+            score = scorer.score(user_data, repository)
 
         # Post/update PR comment
         if should_comment:
@@ -117,6 +147,7 @@ async def run_action() -> None:
     _set_output("trust-level", score.trust_level.value)
     _set_output("user", score.user_login)
     _set_output("scoring-model", score.scoring_model)
+    _set_output("skipped", "true" if skipped else "false")
 
     # Summary
     pct = score.normalized_score * 100

@@ -14,6 +14,7 @@ _TRUST_LEVEL_COLORS: dict[TrustLevel, str] = {
     TrustLevel.LOW: "red",
     TrustLevel.UNKNOWN: "white",
     TrustLevel.BOT: "blue",
+    TrustLevel.EXISTING_CONTRIBUTOR: "green",
 }
 
 _TRUST_LEVEL_EMOJI: dict[TrustLevel, str] = {
@@ -22,6 +23,7 @@ _TRUST_LEVEL_EMOJI: dict[TrustLevel, str] = {
     TrustLevel.LOW: "\u26a0\ufe0f",      # warning
     TrustLevel.UNKNOWN: "\u2753",        # question mark
     TrustLevel.BOT: "\U0001f916",        # robot
+    TrustLevel.EXISTING_CONTRIBUTOR: "\u2705",  # checkmark
 }
 
 
@@ -32,6 +34,19 @@ def _brand_name(score: TrustScore) -> str:
 
 def format_markdown_comment(score: TrustScore) -> str:
     """Format a trust score as a GitHub PR comment in Markdown."""
+    if score.trust_level == TrustLevel.EXISTING_CONTRIBUTOR:
+        pr_count = score.scoring_metadata.get("context_repo_merged_pr_count", 0)
+        return "\n".join([
+            COMMENT_MARKER,
+            "\u2705 **Existing Contributor**",
+            "",
+            f"**{score.user_login}** has {pr_count} merged"
+            f" PR{'s' if pr_count != 1 else ''} in `{score.context_repo}`.",
+            "",
+            "> Scoring skipped for known contributors.",
+            "",
+        ])
+
     emoji = _TRUST_LEVEL_EMOJI.get(score.trust_level, "\U0001f95a")
     pct = score.normalized_score * 100
     brand = _brand_name(score)
@@ -110,6 +125,16 @@ def format_markdown_comment(score: TrustScore) -> str:
 
 def format_cli_output(score: TrustScore, verbose: bool = False) -> str:
     """Format a trust score for terminal display with color."""
+    if score.trust_level == TrustLevel.EXISTING_CONTRIBUTOR:
+        pr_count = score.scoring_metadata.get("context_repo_merged_pr_count", 0)
+        label = click.style("EXISTING CONTRIBUTOR", fg="green", bold=True)
+        return "\n".join([
+            label,
+            f"User: {score.user_login}",
+            f"Context: {score.context_repo}",
+            f"Merged PRs in repo: {pr_count}",
+        ])
+
     color = _TRUST_LEVEL_COLORS.get(score.trust_level, "white")
     pct = score.normalized_score * 100
     brand = _brand_name(score)
@@ -179,6 +204,16 @@ def format_check_run_summary(score: TrustScore) -> tuple[str, str]:
     Returns:
         A (title, summary) tuple for the Check Run API.
     """
+    if score.trust_level == TrustLevel.EXISTING_CONTRIBUTOR:
+        pr_count = score.scoring_metadata.get("context_repo_merged_pr_count", 0)
+        title = f"Existing Contributor: {score.user_login}"
+        summary = (
+            f"**{score.user_login}** has {pr_count} merged"
+            f" PR{'s' if pr_count != 1 else ''}"
+            f" in `{score.context_repo}`. Scoring skipped."
+        )
+        return title, summary
+
     pct = score.normalized_score * 100
     brand = _brand_name(score)
     title = f"{brand}: {score.trust_level.value} ({pct:.0f}%)"

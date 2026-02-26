@@ -282,3 +282,53 @@ class TestBetterEggFormatting:
         score = _make_score()
         title, _ = format_check_run_summary(score)
         assert title == "Good Egg: HIGH (72%)"
+
+
+class TestExistingContributorFormatting:
+    def _make_existing_contributor_score(self, pr_count: int = 5) -> TrustScore:
+        return TrustScore(
+            user_login="knownuser",
+            context_repo="my-org/my-repo",
+            trust_level=TrustLevel.EXISTING_CONTRIBUTOR,
+            flags={"is_existing_contributor": True, "scoring_skipped": True},
+            scoring_metadata={"context_repo_merged_pr_count": pr_count},
+        )
+
+    def test_markdown_existing_contributor(self) -> None:
+        score = self._make_existing_contributor_score()
+        md = format_markdown_comment(score)
+        assert COMMENT_MARKER in md
+        assert "Existing Contributor" in md
+        assert "knownuser" in md
+        assert "5 merged PRs" in md
+        assert "my-org/my-repo" in md
+        assert "Scoring skipped" in md
+
+    def test_markdown_existing_contributor_singular(self) -> None:
+        score = self._make_existing_contributor_score(pr_count=1)
+        md = format_markdown_comment(score)
+        assert "1 merged PR " in md
+        assert "1 merged PRs" not in md
+
+    def test_cli_existing_contributor(self) -> None:
+        score = self._make_existing_contributor_score()
+        out = format_cli_output(score)
+        assert "EXISTING CONTRIBUTOR" in out
+        assert "knownuser" in out
+        assert "my-org/my-repo" in out
+        assert "5" in out
+
+    def test_check_run_existing_contributor(self) -> None:
+        score = self._make_existing_contributor_score()
+        title, summary = format_check_run_summary(score)
+        assert "Existing Contributor" in title
+        assert "knownuser" in title
+        assert "5 merged PRs" in summary
+        assert "Scoring skipped" in summary
+
+    def test_json_existing_contributor(self) -> None:
+        score = self._make_existing_contributor_score()
+        result = format_json(score)
+        parsed = json.loads(result)
+        assert parsed["trust_level"] == "EXISTING_CONTRIBUTOR"
+        assert parsed["flags"]["is_existing_contributor"] is True
