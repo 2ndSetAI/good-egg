@@ -359,6 +359,7 @@ async def score_pr_author(
                     scoring_metadata={
                         "context_repo_merged_pr_count": merged_count,
                     },
+                    scoring_model=config.scoring_model,
                 )
 
         user_data = await client.get_user_contribution_data(

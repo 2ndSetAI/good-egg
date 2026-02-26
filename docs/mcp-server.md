@@ -83,6 +83,7 @@ Returns the full trust score as JSON, including all fields from the
 | `username` | `string` | Yes | GitHub username to score |
 | `repo` | `string` | Yes | Target repository in `owner/repo` format |
 | `scoring_model` | `string` | No | Scoring model: `v1` (Good Egg, default) or `v2` (Better Egg) |
+| `force_score` | `boolean` | No | Force full scoring even for known contributors (default: `false`) |
 
 **Returns:** Full `TrustScore` JSON with all fields (user_login,
 context_repo, raw_score, normalized_score, trust_level, percentile,
@@ -102,6 +103,7 @@ Returns a compact summary suitable for quick checks.
 | `username` | `string` | Yes | GitHub username to check |
 | `repo` | `string` | Yes | Target repository in `owner/repo` format |
 | `scoring_model` | `string` | No | Scoring model: `v1` (Good Egg, default) or `v2` (Better Egg) |
+| `force_score` | `boolean` | No | Force full scoring even for known contributors (default: `false`) |
 
 **Returns (v1):**
 
@@ -142,6 +144,7 @@ Returns an expanded breakdown with contributions, flags, and metadata.
 | `username` | `string` | Yes | GitHub username to analyse |
 | `repo` | `string` | Yes | Target repository in `owner/repo` format |
 | `scoring_model` | `string` | No | Scoring model: `v1` (Good Egg, default) or `v2` (Better Egg) |
+| `force_score` | `boolean` | No | Force full scoring even for known contributors (default: `false`) |
 
 **Returns (v1):**
 

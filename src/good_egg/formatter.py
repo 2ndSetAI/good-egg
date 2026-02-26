@@ -27,6 +27,13 @@ _TRUST_LEVEL_EMOJI: dict[TrustLevel, str] = {
 }
 
 
+def _existing_contributor_context(score: TrustScore) -> tuple[int, str]:
+    """Extract PR count and plural suffix for an existing contributor score."""
+    pr_count: int = score.scoring_metadata.get("context_repo_merged_pr_count", 0)
+    suffix = "s" if pr_count != 1 else ""
+    return pr_count, suffix
+
+
 def _brand_name(score: TrustScore) -> str:
     """Return 'Better Egg' for v2, 'Good Egg' for v1."""
     return "Better Egg" if score.scoring_model == "v2" else "Good Egg"
@@ -35,13 +42,13 @@ def _brand_name(score: TrustScore) -> str:
 def format_markdown_comment(score: TrustScore) -> str:
     """Format a trust score as a GitHub PR comment in Markdown."""
     if score.trust_level == TrustLevel.EXISTING_CONTRIBUTOR:
-        pr_count = score.scoring_metadata.get("context_repo_merged_pr_count", 0)
+        pr_count, s = _existing_contributor_context(score)
         return "\n".join([
             COMMENT_MARKER,
             "\u2705 **Existing Contributor**",
             "",
             f"**{score.user_login}** has {pr_count} merged"
-            f" PR{'s' if pr_count != 1 else ''} in `{score.context_repo}`.",
+            f" PR{s} in `{score.context_repo}`.",
             "",
             "> Scoring skipped for known contributors.",
             "",
@@ -126,7 +133,7 @@ def format_markdown_comment(score: TrustScore) -> str:
 def format_cli_output(score: TrustScore, verbose: bool = False) -> str:
     """Format a trust score for terminal display with color."""
     if score.trust_level == TrustLevel.EXISTING_CONTRIBUTOR:
-        pr_count = score.scoring_metadata.get("context_repo_merged_pr_count", 0)
+        pr_count, _s = _existing_contributor_context(score)
         label = click.style("EXISTING CONTRIBUTOR", fg="green", bold=True)
         return "\n".join([
             label,
@@ -205,12 +212,11 @@ def format_check_run_summary(score: TrustScore) -> tuple[str, str]:
         A (title, summary) tuple for the Check Run API.
     """
     if score.trust_level == TrustLevel.EXISTING_CONTRIBUTOR:
-        pr_count = score.scoring_metadata.get("context_repo_merged_pr_count", 0)
+        pr_count, s = _existing_contributor_context(score)
         title = f"Existing Contributor: {score.user_login}"
         summary = (
             f"**{score.user_login}** has {pr_count} merged"
-            f" PR{'s' if pr_count != 1 else ''}"
-            f" in `{score.context_repo}`. Scoring skipped."
+            f" PR{s} in `{score.context_repo}`. Scoring skipped."
         )
         return title, summary
 

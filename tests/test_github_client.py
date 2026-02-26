@@ -1160,14 +1160,15 @@ class TestRetryBehavior:
 class TestCheckExistingContributor:
     @respx.mock
     async def test_returns_count_when_merged_prs_exist(self) -> None:
-        """Should return the issueCount from the search query."""
+        """Should return the totalCount from the repository query."""
         respx.post(GRAPHQL_URL).mock(
             return_value=httpx.Response(
                 200,
                 json={
                     "data": {
-                        "repository": {"name": "my-repo"},
-                        "search": {"issueCount": 5},
+                        "repository": {
+                            "pullRequests": {"totalCount": 5},
+                        },
                     }
                 },
             )
@@ -1182,14 +1183,15 @@ class TestCheckExistingContributor:
 
     @respx.mock
     async def test_returns_zero_when_no_merged_prs(self) -> None:
-        """Should return 0 when search finds no matching PRs."""
+        """Should return 0 when no matching PRs found."""
         respx.post(GRAPHQL_URL).mock(
             return_value=httpx.Response(
                 200,
                 json={
                     "data": {
-                        "repository": {"name": "my-repo"},
-                        "search": {"issueCount": 0},
+                        "repository": {
+                            "pullRequests": {"totalCount": 0},
+                        },
                     }
                 },
             )
@@ -1201,6 +1203,29 @@ class TestCheckExistingContributor:
             )
 
         assert count == 0
+
+    @respx.mock
+    async def test_returns_count_of_one(self) -> None:
+        """Boundary: exactly 1 merged PR should still be detected."""
+        respx.post(GRAPHQL_URL).mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "data": {
+                        "repository": {
+                            "pullRequests": {"totalCount": 1},
+                        },
+                    }
+                },
+            )
+        )
+
+        async with _make_client() as client:
+            count = await client.check_existing_contributor(
+                "testuser", "my-org", "my-repo"
+            )
+
+        assert count == 1
 
     async def test_returns_zero_for_bot_login(self) -> None:
         """Bot logins should short-circuit and return 0 without API call."""
@@ -1220,7 +1245,6 @@ class TestCheckExistingContributor:
                 json={
                     "data": {
                         "repository": None,
-                        "search": {"issueCount": 0},
                     }
                 },
             )

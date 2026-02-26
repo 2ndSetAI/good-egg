@@ -148,6 +148,7 @@ project. See [Methodology](https://github.com/2ndSetAI/good-egg/blob/main/docs/m
 | **LOW** | Little to no prior contribution history -- review manually |
 | **UNKNOWN** | Insufficient data to produce a meaningful score |
 | **BOT** | Detected bot account (e.g. dependabot, renovate) |
+| **EXISTING_CONTRIBUTOR** | Author already has merged PRs in this repo -- scoring skipped |
 
 ## Configuration
 

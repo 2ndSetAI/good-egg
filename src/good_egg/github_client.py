@@ -63,12 +63,11 @@ query($login: String!, $cursor: String) {
 """.strip()
 
 _EXISTING_CONTRIBUTOR_QUERY = """
-query($owner: String!, $name: String!, $searchQuery: String!) {
+query($owner: String!, $name: String!, $login: String!) {
   repository(owner: $owner, name: $name) {
-    name
-  }
-  search(query: $searchQuery, type: ISSUE, first: 0) {
-    issueCount
+    pullRequests(states: MERGED, first: 0, filterBy: {createdBy: $login}) {
+      totalCount
+    }
   }
 }
 """.strip()
@@ -556,31 +555,33 @@ class GitHubClient:
         """Check how many merged PRs a user has in a specific repository.
 
         Returns 0 for bot logins or when the repository is inaccessible.
-        Uses a single lightweight GraphQL call with a search query.
+        Uses a single lightweight GraphQL call against the repository's
+        ``pullRequests`` connection with a ``filterBy`` on the author.
         """
         if self._is_bot_login(login):
             return 0
 
-        search_query = f"repo:{repo_owner}/{repo_name} author:{login} is:pr is:merged"
         try:
             result = await self._graphql(
                 _EXISTING_CONTRIBUTOR_QUERY,
-                {
-                    "owner": repo_owner,
-                    "name": repo_name,
-                    "searchQuery": search_query,
-                },
+                {"owner": repo_owner, "name": repo_name, "login": login},
             )
         except (GitHubAPIError, UserNotFoundError):
             return 0
 
-        data = result.get("data", {})  # type: ignore[union-attr]
-        # If repository is null, it's inaccessible
-        if data.get("repository") is None:  # type: ignore[union-attr,attr-defined]
+        data = result.get("data")  # type: ignore[union-attr]
+        if not isinstance(data, dict):
             return 0
 
-        search_data = data.get("search", {})  # type: ignore[union-attr,attr-defined]
-        return int(search_data.get("issueCount", 0))  # type: ignore[union-attr]
+        repo_data = data.get("repository")
+        if not isinstance(repo_data, dict):
+            return 0
+
+        pr_connection = repo_data.get("pullRequests")
+        if not isinstance(pr_connection, dict):
+            return 0
+
+        return int(pr_connection.get("totalCount", 0))
 
     # ------------------------------------------------------------------
     # REST helpers for PR comments, check runs, etc.

@@ -671,6 +671,7 @@ class TestExistingContributorSkip:
         assert result.flags["is_existing_contributor"] is True
         assert result.flags["scoring_skipped"] is True
         assert result.scoring_metadata["context_repo_merged_pr_count"] == 3
+        assert result.scoring_model == "v1"
         mock_client.get_user_contribution_data.assert_not_called()
 
     @pytest.mark.asyncio

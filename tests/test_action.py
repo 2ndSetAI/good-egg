@@ -9,7 +9,6 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from good_egg.action import _set_output, run_action
-from good_egg.config import GoodEggConfig
 from good_egg.models import TrustLevel, TrustScore
 
 
@@ -66,8 +65,6 @@ class TestRunAction:
     async def test_success_with_comment(self, mock_env):
         mock_score = _make_mock_score()
         mock_client = AsyncMock()
-        mock_client.check_existing_contributor = AsyncMock(return_value=0)
-        mock_client.get_user_contribution_data = AsyncMock()
         mock_client.find_existing_comment = AsyncMock(return_value=None)
         mock_client.post_pr_comment = AsyncMock(return_value={})
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -75,8 +72,8 @@ class TestRunAction:
 
         with patch.dict(os.environ, mock_env, clear=False), \
              patch("good_egg.action.GitHubClient", return_value=mock_client), \
-             patch("good_egg.action.TrustScorer") as mock_scorer_cls:
-            mock_scorer_cls.return_value.score.return_value = mock_score
+             patch("good_egg.action.score_pr_author", new_callable=AsyncMock,
+                   return_value=mock_score):
             await run_action()
             mock_client.post_pr_comment.assert_called_once()
 
@@ -84,8 +81,6 @@ class TestRunAction:
     async def test_updates_existing_comment(self, mock_env):
         mock_score = _make_mock_score()
         mock_client = AsyncMock()
-        mock_client.check_existing_contributor = AsyncMock(return_value=0)
-        mock_client.get_user_contribution_data = AsyncMock()
         mock_client.find_existing_comment = AsyncMock(return_value=99)
         mock_client.update_pr_comment = AsyncMock(return_value={})
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -93,8 +88,8 @@ class TestRunAction:
 
         with patch.dict(os.environ, mock_env, clear=False), \
              patch("good_egg.action.GitHubClient", return_value=mock_client), \
-             patch("good_egg.action.TrustScorer") as mock_scorer_cls:
-            mock_scorer_cls.return_value.score.return_value = mock_score
+             patch("good_egg.action.score_pr_author", new_callable=AsyncMock,
+                   return_value=mock_score):
             await run_action()
             mock_client.update_pr_comment.assert_called_once()
 
@@ -111,8 +106,6 @@ class TestRunAction:
         mock_env_fail = {**mock_env, "INPUT_FAIL-ON-LOW": "true"}
         mock_score = _make_mock_score(trust_level=TrustLevel.LOW, normalized_score=0.1)
         mock_client = AsyncMock()
-        mock_client.check_existing_contributor = AsyncMock(return_value=0)
-        mock_client.get_user_contribution_data = AsyncMock()
         mock_client.find_existing_comment = AsyncMock(return_value=None)
         mock_client.post_pr_comment = AsyncMock(return_value={})
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -120,9 +113,9 @@ class TestRunAction:
 
         with patch.dict(os.environ, mock_env_fail, clear=False), \
              patch("good_egg.action.GitHubClient", return_value=mock_client), \
-             patch("good_egg.action.TrustScorer") as mock_scorer_cls, \
+             patch("good_egg.action.score_pr_author", new_callable=AsyncMock,
+                   return_value=mock_score), \
              pytest.raises(SystemExit) as exc_info:
-            mock_scorer_cls.return_value.score.return_value = mock_score
             await run_action()
         assert exc_info.value.code == 1
 
@@ -134,8 +127,6 @@ class TestRunAction:
 
         mock_score = _make_mock_score()
         mock_client = AsyncMock()
-        mock_client.check_existing_contributor = AsyncMock(return_value=0)
-        mock_client.get_user_contribution_data = AsyncMock()
         mock_client.find_existing_comment = AsyncMock(return_value=None)
         mock_client.post_pr_comment = AsyncMock(return_value={})
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -143,14 +134,15 @@ class TestRunAction:
 
         with patch.dict(os.environ, mock_env, clear=False), \
              patch("good_egg.action.GitHubClient", return_value=mock_client), \
-             patch("good_egg.action.TrustScorer") as mock_scorer_cls:
-            mock_scorer_cls.return_value.score.return_value = mock_score
+             patch("good_egg.action.score_pr_author", new_callable=AsyncMock,
+                   return_value=mock_score):
             await run_action()
 
         output_content = output_file.read_text()
         assert "score=0.72" in output_content
         assert "trust-level=HIGH" in output_content
         assert "user=testuser" in output_content
+        assert "skipped=false" in output_content
 
     @pytest.mark.asyncio
     async def test_scoring_model_input(self, mock_env, tmp_path):
@@ -162,13 +154,10 @@ class TestRunAction:
             "INPUT_SCORING_MODEL": "v2",
             "GITHUB_OUTPUT": str(output_file),
         }
-        mock_score = _make_mock_score()
         mock_score = TrustScore(
-            **{**mock_score.model_dump(), "scoring_model": "v2"}
+            **{**_make_mock_score().model_dump(), "scoring_model": "v2"}
         )
         mock_client = AsyncMock()
-        mock_client.check_existing_contributor = AsyncMock(return_value=0)
-        mock_client.get_user_contribution_data = AsyncMock()
         mock_client.find_existing_comment = AsyncMock(return_value=None)
         mock_client.post_pr_comment = AsyncMock(return_value={})
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -176,8 +165,8 @@ class TestRunAction:
 
         with patch.dict(os.environ, mock_env_v2, clear=False), \
              patch("good_egg.action.GitHubClient", return_value=mock_client), \
-             patch("good_egg.action.TrustScorer") as mock_scorer_cls:
-            mock_scorer_cls.return_value.score.return_value = mock_score
+             patch("good_egg.action.score_pr_author", new_callable=AsyncMock,
+                   return_value=mock_score):
             await run_action()
 
         output_content = output_file.read_text()
@@ -270,13 +259,19 @@ class TestMalformedInput:
 class TestExistingContributorAction:
     @pytest.mark.asyncio
     async def test_skips_scoring_for_existing_contributor(self, mock_env, tmp_path):
-        """Action should skip scoring when author has merged PRs in repo."""
+        """Action should report skipped when score_pr_author returns EXISTING_CONTRIBUTOR."""
         output_file = tmp_path / "output.txt"
         output_file.touch()
         mock_env["GITHUB_OUTPUT"] = str(output_file)
 
+        mock_score = TrustScore(
+            user_login="testuser",
+            context_repo="my-org/my-repo",
+            trust_level=TrustLevel.EXISTING_CONTRIBUTOR,
+            flags={"is_existing_contributor": True, "scoring_skipped": True},
+            scoring_metadata={"context_repo_merged_pr_count": 7},
+        )
         mock_client = AsyncMock()
-        mock_client.check_existing_contributor = AsyncMock(return_value=7)
         mock_client.find_existing_comment = AsyncMock(return_value=None)
         mock_client.post_pr_comment = AsyncMock(return_value={})
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -284,11 +279,9 @@ class TestExistingContributorAction:
 
         with patch.dict(os.environ, mock_env, clear=False), \
              patch("good_egg.action.GitHubClient", return_value=mock_client), \
-             patch("good_egg.action.load_config", return_value=GoodEggConfig()):
+             patch("good_egg.action.score_pr_author", new_callable=AsyncMock,
+                   return_value=mock_score):
             await run_action()
-
-        # get_user_contribution_data should NOT have been called
-        mock_client.get_user_contribution_data.assert_not_called()
 
         output_content = output_file.read_text()
         assert "trust-level=EXISTING_CONTRIBUTOR" in output_content
@@ -296,7 +289,7 @@ class TestExistingContributorAction:
 
     @pytest.mark.asyncio
     async def test_respects_skip_known_contributors_false(self, mock_env, tmp_path):
-        """When INPUT_SKIP_KNOWN_CONTRIBUTORS=false, full scoring should run."""
+        """When INPUT_SKIP_KNOWN_CONTRIBUTORS=false, config should propagate."""
         output_file = tmp_path / "output.txt"
         output_file.touch()
         mock_env_override = {
@@ -307,8 +300,6 @@ class TestExistingContributorAction:
 
         mock_score = _make_mock_score()
         mock_client = AsyncMock()
-        mock_client.check_existing_contributor = AsyncMock(return_value=0)
-        mock_client.get_user_contribution_data = AsyncMock()
         mock_client.find_existing_comment = AsyncMock(return_value=None)
         mock_client.post_pr_comment = AsyncMock(return_value={})
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -316,14 +307,14 @@ class TestExistingContributorAction:
 
         with patch.dict(os.environ, mock_env_override, clear=False), \
              patch("good_egg.action.GitHubClient", return_value=mock_client), \
-             patch("good_egg.action.TrustScorer") as mock_scorer_cls, \
-             patch("good_egg.action.load_config", return_value=GoodEggConfig()):
-            mock_scorer_cls.return_value.score.return_value = mock_score
+             patch("good_egg.action.score_pr_author", new_callable=AsyncMock,
+                   return_value=mock_score) as mock_score_fn:
             await run_action()
 
-        # check_existing_contributor should NOT have been called
-        mock_client.check_existing_contributor.assert_not_called()
-        mock_client.get_user_contribution_data.assert_called_once()
+        # Verify config passed has skip disabled
+        call_kwargs = mock_score_fn.call_args
+        config_passed = call_kwargs.kwargs.get("config")
+        assert config_passed.skip_known_contributors is False
 
         output_content = output_file.read_text()
         assert "skipped=false" in output_content

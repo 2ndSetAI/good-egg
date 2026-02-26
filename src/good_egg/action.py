@@ -13,8 +13,8 @@ from good_egg.config import load_config
 from good_egg.exceptions import GoodEggError, RateLimitExhaustedError, UserNotFoundError
 from good_egg.formatter import format_check_run_summary, format_markdown_comment
 from good_egg.github_client import GitHubClient
-from good_egg.models import TrustLevel, TrustScore
-from good_egg.scorer import TrustScorer
+from good_egg.models import TrustLevel
+from good_egg.scorer import score_pr_author
 
 
 async def run_action() -> None:
@@ -90,34 +90,17 @@ async def run_action() -> None:
         )
     cache = Cache(ttls=config.cache_ttl.to_seconds())
 
-    skipped = False
+    score = await score_pr_author(
+        login=pr_author,
+        repo_owner=repo_owner,
+        repo_name=repo_name,
+        config=config,
+        token=token,
+        cache=cache,
+    )
+    skipped = score.flags.get("scoring_skipped", False)
+
     async with GitHubClient(token=token, config=config, cache=cache) as client:
-        if config.skip_known_contributors:
-            merged_count = await client.check_existing_contributor(
-                pr_author, repo_owner, repo_name,
-            )
-            if merged_count > 0:
-                skipped = True
-                score = TrustScore(
-                    user_login=pr_author,
-                    context_repo=repository,
-                    trust_level=TrustLevel.EXISTING_CONTRIBUTOR,
-                    flags={
-                        "is_existing_contributor": True,
-                        "scoring_skipped": True,
-                    },
-                    scoring_metadata={
-                        "context_repo_merged_pr_count": merged_count,
-                    },
-                )
-
-        if not skipped:
-            user_data = await client.get_user_contribution_data(
-                pr_author, context_repo=repository
-            )
-            scorer = TrustScorer(config)
-            score = scorer.score(user_data, repository)
-
         # Post/update PR comment
         if should_comment:
             comment_body = format_markdown_comment(score)

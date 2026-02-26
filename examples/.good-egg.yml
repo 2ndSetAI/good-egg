@@ -1,6 +1,10 @@
 # Good Egg configuration
 # Copy this file to your repository root as .good-egg.yml
 
+# Skip scoring for authors who already have merged PRs in the target repo.
+# Set to false to always run full scoring.
+# skip_known_contributors: true
+
 # Graph-based scoring algorithm parameters
 graph_scoring:
   alpha: 0.85                  # Damping factor (0-1)

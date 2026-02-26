@@ -77,6 +77,7 @@ pip install good-egg[mcp]     # With MCP server support
 - YAML config key for scoring parameters is `graph_scoring` (not "pagerank").
 - Environment variable overrides use `GOOD_EGG_` prefix.
 - The `[mcp]` optional extra adds the `mcp` dependency for the MCP server.
+- `skip_known_contributors` (default `true`) skips full scoring for PR authors who already have merged PRs in the target repo. The CLI `--force-score` flag and MCP `force_score` parameter override this.
 
 ## Important Rules
 
