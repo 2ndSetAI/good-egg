@@ -109,9 +109,11 @@ jobs:
           echo "::warning::Low trust PR author -- manual review required"
 
       - name: Auto-approve high trust
-        if: steps.egg.outputs.trust-level == 'HIGH'
+        if: >-
+          steps.egg.outputs.trust-level == 'HIGH' ||
+          steps.egg.outputs.trust-level == 'EXISTING_CONTRIBUTOR'
         run: |
-          echo "High trust author -- consider fast-tracking review"
+          echo "Trusted author -- consider fast-tracking review"
 ```
 
 ## Strict Mode

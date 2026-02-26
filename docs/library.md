@@ -34,9 +34,14 @@ async def main() -> None:
     )
     print(f"User: {result.user_login}")
     print(f"Trust level: {result.trust_level}")
-    print(f"Score: {result.normalized_score:.2f}")
-    print(f"Merged PRs: {result.total_merged_prs}")
-    print(f"Unique repos: {result.unique_repos_contributed}")
+
+    if result.flags.get("scoring_skipped"):
+        pr_count = result.scoring_metadata.get("context_repo_merged_pr_count", 0)
+        print(f"Scoring skipped -- {pr_count} merged PRs in repo")
+    else:
+        print(f"Score: {result.normalized_score:.2f}")
+        print(f"Merged PRs: {result.total_merged_prs}")
+        print(f"Unique repos: {result.unique_repos_contributed}")
 
 asyncio.run(main())
 ```
