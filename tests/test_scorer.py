@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
@@ -429,8 +430,8 @@ class TestV2Scoring:
         data = _make_contribution_data(merged_prs=prs, repos=repos, closed_pr_count=5)
         result = scorer.score(data, "my-org/my-elixir-app")
 
-        assert result.raw_score > 0.0
-        assert 0.0 <= result.normalized_score <= 1.0
+        expected = 1.0 / (1.0 + math.exp(-result.raw_score))
+        assert abs(result.normalized_score - expected) < 1e-9
         assert result.scoring_model == "v2"
 
     def test_v2_component_scores_populated(self) -> None:
