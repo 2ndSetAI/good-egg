@@ -1,7 +1,6 @@
 # Methodology
 
-For a higher-level introduction, see the
-[blog post](https://neotenyai.substack.com/p/scoring-open-source-contributors).
+For a higher-level introduction, see the [blog post](https://neotenyai.substack.com/p/scoring-open-source-contributors).
 
 ## The Problem
 
