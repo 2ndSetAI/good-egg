@@ -12,7 +12,8 @@ AI has made mass pull requests trivial to generate, eroding the signal that
 a PR represents genuine investment. Good Egg is a data-driven answer: it
 mines a contributor's existing track record across the GitHub ecosystem
 instead of requiring manual vouching. See
-[Methodology](https://github.com/2ndSetAI/good-egg/blob/main/docs/methodology.md) for the full approach.
+[Methodology](https://github.com/2ndSetAI/good-egg/blob/main/docs/methodology.md) for the full approach or read the
+[blog post](https://neotenyai.substack.com/p/scoring-open-source-contributors) for a higher-level overview.
 
 ## Quick Start
 
