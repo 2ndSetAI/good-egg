@@ -1,5 +1,7 @@
 # Methodology
 
+For a higher-level introduction, see the [blog post](https://neotenyai.substack.com/p/scoring-open-source-contributors).
+
 ## The Problem
 
 AI has eliminated the natural barrier to entry for open-source contributions. Generating a plausible pull request now takes seconds, not hours. The result: contribution volume is up, but signal-to-noise is down. Projects can no longer assume that a pull request represents genuine investment in the codebase.
