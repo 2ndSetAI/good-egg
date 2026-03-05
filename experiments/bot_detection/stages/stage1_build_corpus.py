@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 from experiments.bot_detection.cache import BotDetectionDB
 from experiments.bot_detection.checkpoint import write_stage_checkpoint
@@ -31,16 +32,18 @@ def _compute_stale_threshold(
 
 def _classify_outcome(
     state: str,
-    merged_at: datetime | None,
-    closed_at: datetime | None,
+    merged_at: object,
+    closed_at: object,
     created_at: datetime,
     stale_threshold_days: float,
 ) -> PROutcome:
     """Classify a PR into merged/rejected/pocket_veto."""
-    if merged_at is not None or state == "MERGED":
+    # NB: DuckDB via pandas returns NaT for NULL timestamps, not None.
+    # pd.NaT is truthy for `is not None`, so use pd.notna() instead.
+    if pd.notna(merged_at) or state == "MERGED":
         return PROutcome.MERGED
 
-    if closed_at is not None:
+    if pd.notna(closed_at):
         ttc = (closed_at - created_at).total_seconds() / 86400.0
         if ttc < stale_threshold_days:
             return PROutcome.REJECTED
@@ -78,11 +81,9 @@ def _classify_all_prs(
         merged_prs = db.get_repo_prs(repo, state="MERGED")
         merged_ttms = []
         for pr in merged_prs:
-            if pr.get("merged_at") and pr.get("created_at"):
-                ma = pr["merged_at"]
-                ca = pr["created_at"]
-                if isinstance(ma, str):
-                    continue
+            ma = pr.get("merged_at")
+            ca = pr.get("created_at")
+            if pd.notna(ma) and pd.notna(ca):
                 ttm = (ma - ca).total_seconds() / 86400.0
                 if ttm > 0:
                     merged_ttms.append(ttm)

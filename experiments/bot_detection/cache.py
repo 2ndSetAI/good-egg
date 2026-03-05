@@ -168,7 +168,9 @@ class BotDetectionDB:
 
             # Insert reviews
             for review in data.get("reviews", []) or []:
-                submitted = _parse_timestamp(review.get("submittedAt"))
+                submitted = _parse_timestamp(
+                    review.get("submitted_at") or review.get("submittedAt")
+                )
                 if submitted is None:
                     continue
                 reviewer = review.get("author", "")
@@ -438,28 +440,34 @@ class BotDetectionDB:
 
     def filter_bots(self, patterns: list[str]) -> int:
         """Delete PRs from known bot accounts. Returns count deleted."""
-        total = 0
+        # Collect all bot authors first, then delete once
+        all_authors = self.con.execute(
+            "SELECT DISTINCT author FROM prs"
+        ).fetchall()
+        bot_authors: set[str] = set()
         for pattern in patterns:
             try:
                 compiled = re.compile(pattern, re.IGNORECASE)
             except re.error:
                 logger.warning("Invalid bot pattern: %s", pattern)
                 continue
-            # Get matching authors
-            authors = self.con.execute(
-                "SELECT DISTINCT author FROM prs"
-            ).fetchall()
-            bot_authors = [a[0] for a in authors if compiled.search(a[0])]
-            if bot_authors:
-                placeholders = ",".join(["?"] * len(bot_authors))
-                result = self.con.execute(
-                    f"DELETE FROM prs WHERE author IN ({placeholders})",
-                    bot_authors,
-                )
-                count = result.fetchone()[0] if result else 0  # type: ignore[index]
-                total += count
-        logger.info("Filtered %d bot PRs", total)
-        return total
+            for (author,) in all_authors:
+                if compiled.search(author):
+                    bot_authors.add(author)
+
+        if not bot_authors:
+            return 0
+
+        count_before = self.get_pr_count()
+        placeholders = ",".join(["?"] * len(bot_authors))
+        self.con.execute(
+            f"DELETE FROM prs WHERE author IN ({placeholders})",
+            list(bot_authors),
+        )
+        count_after = self.get_pr_count()
+        deleted = count_before - count_after
+        logger.info("Filtered %d bot PRs (%d bot authors)", deleted, len(bot_authors))
+        return deleted
 
     def get_prs_dataframe(self) -> Any:
         """Return all PRs as a pandas DataFrame."""
