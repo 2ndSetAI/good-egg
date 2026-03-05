@@ -84,7 +84,8 @@ class TestFeatureRow:
         )
         assert row.burst_count_1h == 0
         assert row.review_response_rate is None
-        assert row.ge_score is None
+        assert row.ge_score_v1 is None
+        assert row.ge_score_v2 is None
 
     def test_serialization(self) -> None:
         row = FeatureRow(

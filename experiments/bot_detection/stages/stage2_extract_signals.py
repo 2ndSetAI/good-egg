@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import math
 from collections import Counter
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +22,9 @@ from experiments.bot_detection.models import (
     PROutcome,
     StudyConfig,
 )
+from good_egg.config import load_config
+from good_egg.models import MergedPR, UserContributionData, UserProfile
+from good_egg.scorer import TrustScorer
 
 logger = logging.getLogger(__name__)
 
@@ -296,6 +299,121 @@ def compute_cross_repo_tfidf(
 
 
 # ----------------------------------------------------------
+# GE score computation (v1 and v2)
+# ----------------------------------------------------------
+
+# Pre-load scorer configs once at module level (lazy init in _get_scorers)
+_scorers: dict[str, TrustScorer] | None = None
+
+
+def _get_scorers() -> dict[str, TrustScorer]:
+    """Lazily initialize v1 and v2 TrustScorer instances."""
+    global _scorers  # noqa: PLW0603
+    if _scorers is None:
+        config_v1 = load_config()
+        config_v1.scoring_model = "v1"
+        config_v2 = load_config()
+        config_v2.scoring_model = "v2"
+        _scorers = {
+            "v1": TrustScorer(config_v1),
+            "v2": TrustScorer(config_v2),
+        }
+    return _scorers
+
+
+def compute_ge_scores(
+    prior_merged_prs: list[dict[str, Any]],
+    closed_pr_count: int,
+    author_info: dict[str, Any] | None,
+    author: str,
+    context_repo: str,
+    test_time: datetime,
+) -> dict[str, float | None]:
+    """Compute GE v1 and v2 scores from the author's prior merged PRs.
+
+    Anti-lookahead: only prior_merged_prs already filtered to
+    merged_at < T and repo != context_repo should be passed in.
+    """
+    scorers = _get_scorers()
+
+    # Build UserProfile
+    if author_info and pd.notna(author_info.get("account_created_at")):
+        created_at = author_info["account_created_at"]
+        if not isinstance(created_at, datetime):
+            created_at = datetime(2020, 1, 1, tzinfo=UTC)
+        elif created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=UTC)
+    else:
+        # Estimate: use earliest PR creation time minus 30 days, or fallback
+        if prior_merged_prs:
+            dates = [
+                pr["merged_at"] for pr in prior_merged_prs
+                if pd.notna(pr.get("merged_at"))
+            ]
+            if dates:
+                earliest = min(dates)
+                if earliest.tzinfo is None:
+                    earliest = earliest.replace(tzinfo=UTC)
+                created_at = earliest - timedelta(days=30)
+            else:
+                created_at = datetime(2020, 1, 1, tzinfo=UTC)
+        else:
+            created_at = datetime(2020, 1, 1, tzinfo=UTC)
+
+    followers = 0
+    public_repos = 0
+    if author_info:
+        followers = author_info.get("followers", 0) or 0
+        public_repos = author_info.get("public_repos", 0) or 0
+
+    profile = UserProfile(
+        login=author,
+        created_at=created_at,
+        followers_count=followers,
+        public_repos_count=public_repos,
+        is_bot=False,
+    )
+
+    # Build MergedPR list from prior merged PRs
+    merged_prs: list[MergedPR] = []
+    for pr in prior_merged_prs:
+        ma = pr.get("merged_at")
+        if not pd.notna(ma):
+            continue
+        if ma.tzinfo is None:
+            ma = ma.replace(tzinfo=UTC)
+        merged_prs.append(MergedPR(
+            repo_name_with_owner=pr["repo"],
+            title=pr.get("title", ""),
+            merged_at=ma,
+            additions=pr.get("additions", 0) or 0,
+            deletions=pr.get("deletions", 0) or 0,
+            changed_files=pr.get("files_changed", 0) or 0,
+        ))
+
+    user_data = UserContributionData(
+        profile=profile,
+        merged_prs=merged_prs,
+        contributed_repos={},
+        closed_pr_count=closed_pr_count,
+    )
+
+    results: dict[str, float | None] = {}
+    for model_name, scorer in scorers.items():
+        try:
+            score = scorer.score(user_data, context_repo)
+            results[f"ge_score_{model_name}"] = score.normalized_score
+        except Exception:
+            logger.debug(
+                "GE %s scoring failed for %s on %s", model_name, author, context_repo,
+                exc_info=True,
+            )
+            results[f"ge_score_{model_name}"] = None
+
+    return results
+
+
+# ----------------------------------------------------------
 # Main extraction loop
 # ----------------------------------------------------------
 
@@ -333,6 +451,30 @@ def extract_features_for_pr(
     # H3: Cross-repo (TF-IDF)
     cross_repo = compute_cross_repo_tfidf(prior_prs)
 
+    # GE scores (v1 and v2) with anti-lookahead
+    prior_merged = [pr for pr in prior_prs if pd.notna(pr.get("merged_at"))]
+    closed_count = db.get_closed_pr_count_before(author, repo, created_at)
+    author_info = db.get_author_info(author)
+    ge_scores = compute_ge_scores(
+        prior_merged, closed_count, author_info, author, repo, created_at,
+    )
+
+    # Author metadata for baselines
+    account_age_days: float | None = None
+    followers_val: int | None = None
+    public_repos_val: int | None = None
+    if author_info:
+        ca = author_info.get("account_created_at")
+        if pd.notna(ca):
+            age = (created_at - ca).total_seconds() / 86400.0
+            account_age_days = max(0.0, age)
+        f = author_info.get("followers")
+        if f is not None and f > 0:
+            followers_val = f
+        r = author_info.get("public_repos")
+        if r is not None and r > 0:
+            public_repos_val = r
+
     return FeatureRow(
         repo=repo,
         number=number,
@@ -355,6 +497,13 @@ def extract_features_for_pr(
         language_entropy=cross_repo.language_entropy,
         topic_coherence=cross_repo.topic_coherence,
         duplicate_title_count=cross_repo.duplicate_title_count,
+        # GE scores
+        ge_score_v1=ge_scores.get("ge_score_v1"),
+        ge_score_v2=ge_scores.get("ge_score_v2"),
+        # Author metadata
+        account_age_days=account_age_days,
+        followers=followers_val,
+        public_repos=public_repos_val,
     )
 
 

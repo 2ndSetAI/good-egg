@@ -286,6 +286,10 @@ class BotDetectionDB:
                 with open(json_file) as f:
                     data = json.loads(f.read())
                 login = data.get("login", json_file.stem)
+                # Profile data is nested under contribution_data.profile
+                profile = (
+                    data.get("contribution_data", {}).get("profile", {})
+                )
                 try:
                     self.con.execute(
                         """INSERT OR IGNORE INTO authors
@@ -293,10 +297,10 @@ class BotDetectionDB:
                         VALUES (?, ?, ?, ?, ?)""",
                         [
                             login,
-                            _parse_timestamp(data.get("created_at")),
-                            data.get("followers", 0) or 0,
-                            data.get("public_repos", 0) or 0,
-                            False,
+                            _parse_timestamp(profile.get("created_at")),
+                            profile.get("followers_count", 0) or 0,
+                            profile.get("public_repos_count", 0) or 0,
+                            profile.get("is_bot", False),
                         ],
                     )
                     author_count += 1
@@ -468,6 +472,33 @@ class BotDetectionDB:
         deleted = count_before - count_after
         logger.info("Filtered %d bot PRs (%d bot authors)", deleted, len(bot_authors))
         return deleted
+
+    def get_author_info(self, login: str) -> dict[str, Any] | None:
+        """Get author metadata from the authors table."""
+        rows = self.con.execute(
+            "SELECT * FROM authors WHERE login = ?", [login]
+        ).fetchdf()
+        if rows.empty:
+            return None
+        return rows.to_dict("records")[0]
+
+    def get_closed_pr_count_before(
+        self,
+        author: str,
+        exclude_repo: str,
+        before: datetime,
+    ) -> int:
+        """Count author's closed (non-merged) PRs on other repos before T."""
+        result = self.con.execute(
+            """SELECT COUNT(*) FROM prs
+            WHERE author = ?
+              AND repo != ?
+              AND created_at < ?
+              AND state = 'CLOSED'
+              AND merged_at IS NULL""",
+            [author, exclude_repo, before],
+        ).fetchone()
+        return result[0] if result else 0  # type: ignore[index]
 
     def get_prs_dataframe(self) -> Any:
         """Return all PRs as a pandas DataFrame."""

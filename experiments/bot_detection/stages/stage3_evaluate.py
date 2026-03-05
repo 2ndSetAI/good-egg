@@ -39,7 +39,8 @@ H3_COLS = [
     "max_title_similarity", "language_entropy",
     "topic_coherence", "duplicate_title_count",
 ]
-GE_COL = "ge_score"
+GE_V1_COL = "ge_score_v1"
+GE_V2_COL = "ge_score_v2"
 
 
 # ---------------------------------------------------------------------------
@@ -330,13 +331,14 @@ def _h5_ge_complement(
     y: np.ndarray,
     groups: np.ndarray,
     config: StudyConfig,
+    ge_col: str = "ge_score_v1",
 ) -> dict[str, Any]:
-    """LRT of (GE + bot signals) vs GE-only."""
+    """LRT of (GE + bot signals) vs GE-only for a single GE model."""
     seed = config.analysis.get("random_seed", 42)
     n_folds = config.analysis.get("cv_folds", 5)
     bot_cols = H1_COLS + H2_COLS + H3_COLS
-    ge_only = [GE_COL]
-    ge_plus = [GE_COL] + bot_cols
+    ge_only = [ge_col]
+    ge_plus = [ge_col] + bot_cols
 
     oof_ge = _cv_predict(df, ge_only, y, groups, n_folds, seed)
     oof_ge_plus = _cv_predict(df, ge_plus, y, groups, n_folds, seed)
@@ -355,6 +357,7 @@ def _h5_ge_complement(
     lrt = likelihood_ratio_test(ll_ge, ll_ge_plus, df_diff)
 
     return {
+        "ge_col": ge_col,
         "ge_only_auc": auc_ge,
         "ge_plus_bot_auc": auc_ge_plus,
         "delong": delong,
@@ -430,19 +433,22 @@ def _write_summary_md(
         lines.append("")
 
     # H5
-    h5 = results.get("H5_ge_complement")
-    if h5 and not h5.get("skipped"):
-        lines.append("## H5 GE Complement")
-        lines.append(f"- GE-only AUC: {h5['ge_only_auc']['auc']:.3f}")
-        lines.append(f"- GE+bot AUC: {h5['ge_plus_bot_auc']['auc']:.3f}")
-        lrt = h5["lrt"]
-        lines.append(
-            f"- LRT: chi2={lrt['lr_statistic']:.2f}, "
-            f"df={lrt['df']}, p={lrt['p_value']:.4g}"
-        )
-        dl = h5["delong"]
-        lines.append(f"- DeLong: z={dl['z_statistic']:.3f}, p={dl['p_value']:.4g}")
-        lines.append("")
+    for label in ["v1", "v2"]:
+        h5 = results.get(f"H5_ge_complement_{label}")
+        if h5 and not h5.get("skipped"):
+            lines.append(f"## H5 GE Complement ({label})")
+            lines.append(f"- GE-only AUC: {h5['ge_only_auc']['auc']:.3f}")
+            lines.append(f"- GE+bot AUC: {h5['ge_plus_bot_auc']['auc']:.3f}")
+            lrt = h5["lrt"]
+            lines.append(
+                f"- LRT: chi2={lrt['lr_statistic']:.2f}, "
+                f"df={lrt['df']}, p={lrt['p_value']:.4g}"
+            )
+            dl = h5["delong"]
+            lines.append(
+                f"- DeLong: z={dl['z_statistic']:.3f}, p={dl['p_value']:.4g}"
+            )
+            lines.append("")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text("\n".join(lines))
@@ -505,13 +511,15 @@ def run_stage3(base_dir: Path, config: StudyConfig) -> dict[str, Any]:
     logger.info("Evaluating H4 (combined model)")
     results["H4_combined"] = _h4_combined(df, y, groups, config)
 
-    # H5 GE complement (skip if ge_score is entirely NaN)
-    if df[GE_COL].notna().any():
-        logger.info("Evaluating H5 (GE complement)")
-        results["H5_ge_complement"] = _h5_ge_complement(df, y, groups, config)
-    else:
-        logger.warning("Skipping H5: ge_score is entirely NaN (no author GE scores loaded)")
-        results["H5_ge_complement"] = {"skipped": True, "reason": "ge_score all NaN"}
+    # H5 GE complement — run for each available GE model
+    for ge_col, label in [(GE_V1_COL, "v1"), (GE_V2_COL, "v2")]:
+        key = f"H5_ge_complement_{label}"
+        if df[ge_col].notna().any():
+            logger.info("Evaluating H5 (GE %s complement)", label)
+            results[key] = _h5_ge_complement(df, y, groups, config, ge_col=ge_col)
+        else:
+            logger.warning("Skipping H5 %s: %s is entirely NaN", label, ge_col)
+            results[key] = {"skipped": True, "reason": f"{ge_col} all NaN"}
 
     # Strip oof_probs from JSON output (keep for downstream but don't persist)
     json_results = _strip_oof_probs(results)
@@ -530,7 +538,7 @@ def run_stage3(base_dir: Path, config: StudyConfig) -> dict[str, Any]:
         base_dir / "data",
         "stage3",
         row_counts={"features": len(df)},
-        details={"hypotheses_evaluated": ["H1", "H2", "H3", "H4", "H5"]},
+        details={"hypotheses_evaluated": ["H1", "H2", "H3", "H4", "H5_v1", "H5_v2"]},
     )
 
     return results

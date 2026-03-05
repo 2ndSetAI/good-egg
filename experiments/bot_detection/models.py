@@ -125,8 +125,11 @@ class FeatureRow(BaseModel):
     topic_coherence: float = 0.0
     duplicate_title_count: int = 0
 
-    # Baselines
-    ge_score: float | None = None
+    # GE scores (computed with anti-lookahead)
+    ge_score_v1: float | None = None
+    ge_score_v2: float | None = None
+
+    # Author metadata baselines
     account_age_days: float | None = None
     followers: int | None = None
     public_repos: int | None = None

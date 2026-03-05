@@ -27,13 +27,15 @@ def _make_binary_outcome(df: pd.DataFrame) -> np.ndarray:
 # Baseline score generators
 # ---------------------------------------------------------------------------
 
-def _ge_score_baseline(df: pd.DataFrame) -> np.ndarray:
+def _ge_score_baseline(df: pd.DataFrame, col: str = "ge_score_v1") -> np.ndarray:
     """GE trust score: invert so higher = more suspicious (positive class).
 
-    Rows with missing ge_score get the median value.
+    Rows with missing score get the median value.
     """
-    scores = df["ge_score"].values.astype(float).copy()
+    scores = df[col].values.astype(float).copy()
     median = np.nanmedian(scores)
+    if np.isnan(median):
+        median = 0.5
     scores[np.isnan(scores)] = median
     # Invert: low GE score -> high suspicion
     return 1.0 - scores
@@ -146,10 +148,11 @@ def run_stage4(base_dir: Path, config: StudyConfig) -> dict[str, Any]:
         "random": _random_baseline(len(df), seed=seed),
     }
 
-    if df["ge_score"].notna().any():
-        baselines["ge_score"] = _ge_score_baseline(df)
-    else:
-        logger.warning("Skipping ge_score baseline (all NaN)")
+    for ge_col in ["ge_score_v1", "ge_score_v2"]:
+        if ge_col in df.columns and df[ge_col].notna().any():
+            baselines[ge_col] = _ge_score_baseline(df, col=ge_col)
+        else:
+            logger.warning("Skipping %s baseline (all NaN)", ge_col)
 
     if df["account_age_days"].notna().any():
         baselines["account_age_lt_30d"] = _account_age_baseline(df, threshold_days=30)
@@ -166,7 +169,7 @@ def run_stage4(base_dir: Path, config: StudyConfig) -> dict[str, Any]:
     else:
         logger.warning("Skipping zero_repos baseline (all NaN)")
 
-    reference = "ge_score" if "ge_score" in baselines else "random"
+    reference = "ge_score_v1" if "ge_score_v1" in baselines else "random"
     logger.info("Comparing %d baselines (reference: %s)", len(baselines), reference)
     comparison = _compare_baselines(y, baselines, reference=reference)
 
