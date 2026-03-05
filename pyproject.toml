@@ -29,6 +29,12 @@ dependencies = [
 
 [project.optional-dependencies]
 mcp = ["mcp>=1.0"]
+experiments = [
+    "duckdb>=1.0",
+    "scikit-learn>=1.4",
+    "pandas>=2.1",
+    "pyarrow>=14.0",
+]
 
 [project.scripts]
 good-egg = "good_egg.cli:main"

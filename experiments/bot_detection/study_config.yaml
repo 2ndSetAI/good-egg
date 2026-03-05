@@ -1,0 +1,89 @@
+# ============================================================
+# Bot Detection Experiment Configuration
+# ============================================================
+
+# ----------------------------------------------------------
+# Data sources
+# ----------------------------------------------------------
+data_sources:
+  neoteny_primary: "/home/jeff/Documents/neoteny/code/copy-1/neoteny/data/github/.cache/github_cache.duckdb"
+  neoteny_secondary: "/home/jeff/Documents/neoteny/code/neoteny/data/github/.cache/github_cache.duckdb"
+  pr27_data: "experiments/validation/data/raw"
+
+# ----------------------------------------------------------
+# Outcome classification
+# ----------------------------------------------------------
+classification:
+  stale_threshold_floor_days: 30
+  stale_threshold_cap_days: 180
+  stale_threshold_percentile: 90
+  stale_threshold_bin: "2024H1"
+
+# ----------------------------------------------------------
+# H1: Burstiness parameter sweep
+# ----------------------------------------------------------
+burstiness_sweep:
+  windows_hours: [1, 4, 12, 24]
+  min_repos: [2, 3, 5]
+  min_prs: [3, 5, 10]
+
+# ----------------------------------------------------------
+# Analysis
+# ----------------------------------------------------------
+analysis:
+  cv_folds: 5
+  random_seed: 42
+  alpha: 0.05
+  positive_class: "not_merged"
+
+# ----------------------------------------------------------
+# Scale definitions (repo subsets for ramp-up)
+# ----------------------------------------------------------
+scale:
+  micro:
+    - "keras-team/keras"
+    - "pytorch/pytorch"
+  small:
+    - "keras-team/keras"
+    - "pytorch/pytorch"
+    - "scikit-learn/scikit-learn"
+    - "apache/spark"
+    - "apache/kafka"
+    - "fastapi/fastapi"
+    - "astral-sh/ruff"
+    - "golang/go"
+    - "microsoft/TypeScript"
+    - "pallets/flask"
+
+# ----------------------------------------------------------
+# Bot patterns (for filtering known bots)
+# ----------------------------------------------------------
+bot_patterns:
+  - "\\[bot\\]$"
+  - "-bot$"
+  - "_bot$"
+  - "-app$"
+  - "^dependabot"
+  - "^renovate"
+  - "^greenkeeper"
+  - "^snyk-"
+  - "^codecov"
+  - "^mergify"
+  - "^allcontributors"
+  - "^github-actions"
+  - "^pre-commit-ci"
+
+# ----------------------------------------------------------
+# Embedding (H3b)
+# ----------------------------------------------------------
+embedding:
+  model: "gemini-embedding-001"
+  batch_size: 50
+
+# ----------------------------------------------------------
+# Paths (relative to experiments/bot-detection/)
+# ----------------------------------------------------------
+paths:
+  local_db: "data/bot_detection.duckdb"
+  features: "data/features"
+  results: "data/results"
