@@ -1,0 +1,17 @@
+{
+  "stage": "stage4",
+  "timestamp": "2026-03-05T18:07:09.717166+00:00",
+  "row_counts": {
+    "features": 38502
+  },
+  "details": {
+    "baselines": [
+      "random",
+      "ge_score_v1",
+      "ge_score_v2",
+      "account_age_lt_30d",
+      "zero_followers",
+      "zero_repos"
+    ]
+  }
+}

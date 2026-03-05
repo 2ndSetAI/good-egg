@@ -299,6 +299,75 @@ def compute_cross_repo_tfidf(
 
 
 # ----------------------------------------------------------
+# H7: Burst content homogeneity features
+# ----------------------------------------------------------
+
+
+def compute_burst_content_features(
+    burst_prs: list[dict[str, Any]],
+) -> dict[str, float | None]:
+    """Compute content homogeneity features for PRs within a 24h burst.
+
+    NOTE: This is the synchronous version that uses pre-computed embeddings.
+    The async embedding step runs separately.
+    """
+    if len(burst_prs) < 2:
+        return {
+            "burst_title_embedding_sim": None,
+            "burst_body_embedding_sim": None,
+            "burst_size_cv": None,
+            "burst_file_pattern_entropy": None,
+        }
+
+    # burst_size_cv: coefficient of variation of (additions + deletions)
+    sizes = [
+        (pr.get("additions", 0) or 0) + (pr.get("deletions", 0) or 0)
+        for pr in burst_prs
+    ]
+    if any(s > 0 for s in sizes):
+        mean_size = np.mean(sizes)
+        std_size = np.std(sizes)
+        burst_size_cv = (
+            float(std_size / mean_size) if mean_size > 0 else None
+        )
+    else:
+        burst_size_cv = None
+
+    # burst_file_pattern_entropy: entropy of repo distribution within burst
+    repos = [pr.get("repo", "") for pr in burst_prs]
+    repo_counts = Counter(repos)
+    total = sum(repo_counts.values())
+    if total > 0:
+        probs = [c / total for c in repo_counts.values()]
+        entropy = -sum(p * math.log2(p) for p in probs if p > 0)
+    else:
+        entropy = None
+
+    return {
+        "burst_title_embedding_sim": None,  # Set later by embedding pipeline
+        "burst_body_embedding_sim": None,   # Set later by embedding pipeline
+        "burst_size_cv": burst_size_cv,
+        "burst_file_pattern_entropy": (
+            float(entropy) if entropy is not None else None
+        ),
+    }
+
+
+def compute_embedding_similarity(
+    embeddings: list[np.ndarray],
+) -> float | None:
+    """Mean pairwise cosine similarity of embeddings."""
+    if len(embeddings) < 2:
+        return None
+    from experiments.bot_detection.embedding import cosine_sim
+    sims = []
+    for i in range(len(embeddings)):
+        for j in range(i + 1, len(embeddings)):
+            sims.append(cosine_sim(embeddings[i], embeddings[j]))
+    return float(np.mean(sims)) if sims else None
+
+
+# ----------------------------------------------------------
 # GE score computation (v1 and v2)
 # ----------------------------------------------------------
 
@@ -475,6 +544,35 @@ def extract_features_for_pr(
         if r is not None and r > 0:
             public_repos_val = r
 
+    account_status_val: str | None = None
+    if author_info:
+        account_status_val = author_info.get("account_status")
+
+    # H7: Burst content homogeneity
+    prs_24h = [
+        pr for pr in prior_prs
+        if pr.get("created_at")
+        and pr["created_at"] >= created_at - timedelta(hours=24)
+    ]
+    content_features = compute_burst_content_features(prs_24h)
+
+    # H6: Interaction features (burstiness x novelty)
+    has_prior_merge = len(prior_merged) > 0
+    has_prior_repo_prs = any(True for _ in db.con.execute(
+        "SELECT 1 FROM prs WHERE author = ? AND repo = ? AND created_at < ? LIMIT 1",
+        [author, repo, created_at],
+    ).fetchall())
+
+    burst_no_prior_merge = burst.burst_count_24h * (0 if has_prior_merge else 1)
+    burst_first_time_repo = burst.burst_count_24h * (0 if has_prior_repo_prs else 1)
+    ge_v2 = ge_scores.get("ge_score_v2")
+    burst_low_ge = burst.burst_count_24h * (
+        1 if (ge_v2 is not None and ge_v2 < 0.1) else 0
+    )
+    burst_new_account = burst.burst_count_24h * (
+        1 if account_age_days is not None and account_age_days < 90 else 0
+    )
+
     return FeatureRow(
         repo=repo,
         number=number,
@@ -500,10 +598,27 @@ def extract_features_for_pr(
         # GE scores
         ge_score_v1=ge_scores.get("ge_score_v1"),
         ge_score_v2=ge_scores.get("ge_score_v2"),
+        # H7
+        burst_title_embedding_sim=content_features[
+            "burst_title_embedding_sim"
+        ],
+        burst_body_embedding_sim=content_features[
+            "burst_body_embedding_sim"
+        ],
+        burst_size_cv=content_features["burst_size_cv"],
+        burst_file_pattern_entropy=content_features[
+            "burst_file_pattern_entropy"
+        ],
+        # H6
+        burst_no_prior_merge=burst_no_prior_merge,
+        burst_first_time_repo=burst_first_time_repo,
+        burst_low_ge=burst_low_ge,
+        burst_new_account=burst_new_account,
         # Author metadata
         account_age_days=account_age_days,
         followers=followers_val,
         public_repos=public_repos_val,
+        account_status=account_status_val,
     )
 
 

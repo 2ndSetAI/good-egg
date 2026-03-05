@@ -67,6 +67,7 @@ class AuthorRecord(BaseModel):
     is_bot: bool = False
     ge_score: float | None = None
     ge_trust_level: str | None = None
+    account_status: str | None = None
 
 
 class BurstinessFeatures(BaseModel):
@@ -129,10 +130,23 @@ class FeatureRow(BaseModel):
     ge_score_v1: float | None = None
     ge_score_v2: float | None = None
 
+    # H6: Interaction features (burstiness x novelty)
+    burst_no_prior_merge: int = 0
+    burst_first_time_repo: int = 0
+    burst_low_ge: int = 0
+    burst_new_account: int = 0
+
+    # H7: Burst content homogeneity
+    burst_title_embedding_sim: float | None = None
+    burst_body_embedding_sim: float | None = None
+    burst_size_cv: float | None = None
+    burst_file_pattern_entropy: float | None = None
+
     # Author metadata baselines
     account_age_days: float | None = None
     followers: int | None = None
     public_repos: int | None = None
+    account_status: str | None = None
 
 
 class StageCheckpoint(BaseModel):

@@ -57,7 +57,8 @@ CREATE TABLE IF NOT EXISTS authors (
     public_repos INTEGER NOT NULL DEFAULT 0,
     is_bot BOOLEAN NOT NULL DEFAULT FALSE,
     ge_score REAL,
-    ge_trust_level TEXT
+    ge_trust_level TEXT,
+    account_status TEXT
 );
 """
 
@@ -499,6 +500,27 @@ class BotDetectionDB:
             [author, exclude_repo, before],
         ).fetchone()
         return result[0] if result else 0  # type: ignore[index]
+
+    def update_author_status(self, login: str, status: str) -> None:
+        """Update account status for an author."""
+        self.con.execute(
+            "UPDATE authors SET account_status = ? WHERE login = ?",
+            [status, login],
+        )
+
+    def get_authors_without_status(self) -> list[str]:
+        """Get author logins that haven't been checked yet."""
+        rows = self.con.execute(
+            "SELECT login FROM authors WHERE account_status IS NULL ORDER BY login"
+        ).fetchall()
+        return [r[0] for r in rows]
+
+    def get_suspended_authors(self) -> list[str]:
+        """Get authors with suspended/deleted accounts."""
+        rows = self.con.execute(
+            "SELECT login FROM authors WHERE account_status = 'suspended' ORDER BY login"
+        ).fetchall()
+        return [r[0] for r in rows]
 
     def get_prs_dataframe(self) -> Any:
         """Return all PRs as a pandas DataFrame."""

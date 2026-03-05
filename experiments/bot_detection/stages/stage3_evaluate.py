@@ -39,6 +39,14 @@ H3_COLS = [
     "max_title_similarity", "language_entropy",
     "topic_coherence", "duplicate_title_count",
 ]
+H6_COLS = [
+    "burst_no_prior_merge", "burst_first_time_repo",
+    "burst_low_ge", "burst_new_account",
+]
+H7_COLS = [
+    "burst_title_embedding_sim", "burst_size_cv",
+    "burst_file_pattern_entropy",
+]
 GE_V1_COL = "ge_score_v1"
 GE_V2_COL = "ge_score_v2"
 
@@ -379,7 +387,7 @@ def _write_summary_md(
     lines.append("")
 
     # Per-hypothesis results
-    for h_key in ["H1", "H2", "H3"]:
+    for h_key in ["H1", "H2", "H3", "H6", "H7"]:
         h = results.get(h_key)
         if not h:
             continue
@@ -499,6 +507,19 @@ def run_stage3(base_dir: Path, config: StudyConfig) -> dict[str, Any]:
         df, y, groups, H3_COLS, "Cross-repo fingerprinting", n_folds, seed,
     )
 
+    # H6: Interaction features
+    logger.info("Evaluating H6 (interaction features)")
+    results["H6"] = _evaluate_hypothesis(
+        df, y, groups, H6_COLS, "Interaction (burstiness x novelty)", n_folds, seed,
+    )
+
+    # H7: Content homogeneity
+    logger.info("Evaluating H7 (burst content homogeneity)")
+    results["H7"] = _evaluate_hypothesis(
+        df, y, groups, H7_COLS,
+        "Burst content homogeneity", n_folds, seed,
+    )
+
     # H1 parameter sweep
     logger.info("Running H1 burstiness sweep")
     results["h1_sweep"] = _h1_burstiness_sweep(df, y, groups, config)
@@ -538,7 +559,12 @@ def run_stage3(base_dir: Path, config: StudyConfig) -> dict[str, Any]:
         base_dir / "data",
         "stage3",
         row_counts={"features": len(df)},
-        details={"hypotheses_evaluated": ["H1", "H2", "H3", "H4", "H5_v1", "H5_v2"]},
+        details={
+            "hypotheses_evaluated": [
+                "H1", "H2", "H3", "H4",
+                "H5_v1", "H5_v2", "H6", "H7",
+            ],
+        },
     )
 
     return results

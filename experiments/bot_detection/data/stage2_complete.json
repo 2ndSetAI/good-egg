@@ -1,0 +1,44 @@
+{
+  "stage": "stage2",
+  "timestamp": "2026-03-05T18:06:22.422656+00:00",
+  "row_counts": {
+    "feature_rows": 38502
+  },
+  "details": {
+    "output_path": "/home/jeff/Documents/scratch/good-egg/experiments/bot_detection/data/features/features.parquet",
+    "columns": [
+      "repo",
+      "number",
+      "author",
+      "outcome",
+      "created_at",
+      "burst_count_1h",
+      "burst_repos_1h",
+      "burst_count_24h",
+      "burst_repos_24h",
+      "burst_max_rate",
+      "review_response_rate",
+      "ci_failure_followup_rate",
+      "avg_response_latency_hours",
+      "abandoned_pr_rate",
+      "max_title_similarity",
+      "language_entropy",
+      "topic_coherence",
+      "duplicate_title_count",
+      "ge_score_v1",
+      "ge_score_v2",
+      "burst_no_prior_merge",
+      "burst_first_time_repo",
+      "burst_low_ge",
+      "burst_new_account",
+      "burst_title_embedding_sim",
+      "burst_body_embedding_sim",
+      "burst_size_cv",
+      "burst_file_pattern_entropy",
+      "account_age_days",
+      "followers",
+      "public_repos",
+      "account_status"
+    ]
+  }
+}

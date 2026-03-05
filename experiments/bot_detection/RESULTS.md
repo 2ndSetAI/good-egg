@@ -1,124 +1,141 @@
 # Bot Detection Experiment Results
 
-## Dataset
+## Dataset (Iteration 2)
 
-- **42,536 PRs** across 97 repos, 10,638 distinct authors
+- **38,502 PRs** across 97 repos, 10,617 distinct authors
 - Sources: neoteny DuckDB caches (primary + secondary) and PR 27 JSONL data
-- Outcome distribution: 31,736 merged (74.6%), 6,298 rejected (14.8%), 4,502 pocket veto (10.6%)
-- Non-merge rate: 25.4%
-- 184 known bot PRs filtered before analysis
+- Outcome distribution: 28,661 merged (74.4%), 5,587 rejected (14.5%), 4,254 pocket veto (11.1%)
+- Non-merge rate: 25.6%
+- **4,218 bot PRs filtered** (31 bot authors) -- up from 184 in iteration 1 after adding `^app/` pattern to catch `app/*` accounts
+
+### Iteration 2 Changes
+
+- **Bot filter fix (WS1)**: Added `^app/` regex pattern, removing 4,034 additional `app/*` bot PRs (e.g. `app/copybara-service`, `app/dependabot`)
+- **Interaction features (WS3/H6)**: `burst_no_prior_merge`, `burst_first_time_repo`, `burst_low_ge`, `burst_new_account`
+- **Content homogeneity features (WS4/H7)**: `burst_size_cv`, `burst_file_pattern_entropy` (embedding similarity deferred -- requires Gemini API key)
+- **Account status script (WS2)**: Ready to run but requires GITHUB_TOKEN (not executed in this iteration)
 
 ## H1: Burstiness
 
-**AUC-ROC: 0.479 [0.473, 0.486], Mann-Whitney p = 8.4e-11**
+**AUC-ROC: 0.490 [0.483, 0.496], Mann-Whitney p = 0.0016**
 
-The signal is statistically significant but *inverted*: bursty authors are more likely to be merged, not less. Authors with burst_count_24h >= 3 have a 12.7% non-merge rate vs 25.9% for non-bursty authors.
+The signal is statistically significant but *inverted*: bursty authors are more likely to be merged, not less. After the bot filter fix, the effect is weaker (AUC moved from 0.479 to 0.490, closer to 0.5), suggesting some of the previous inversion was from `app/*` bots that were merged automatically.
 
-This makes sense in hindsight. An author who opens PRs across many repos in a short window is likely an active, experienced contributor with an established track record. They're power users, not spammers. Only 3.9% of PRs come from bursty authors (24h count >= 3), and 99.3% of those bursty authors have non-zero GE scores.
-
-The H1 parameter sweep found 12 of 22 configs significant after Holm-Bonferroni correction:
+The H1 parameter sweep found 2 of 15 configs significant after Holm-Bonferroni correction:
 
 | Config | Adj. p-value |
 |---|---|
-| burst_count_24h >= 3 | 4.1e-32 |
-| burst_count_24h >= 5 | 6.0e-28 |
-| burst_count_24h >= 2 | 6.0e-28 |
-| burst_count_24h >= 7 | 1.7e-26 |
-| burst_count_24h >= 10 | 2.0e-24 |
+| burst_count_24h >= 1 | 0.0037 |
+| burst_repos_24h >= 1 | 0.0037 |
 
-The association is real and very strong statistically, just in the opposite direction from what the DOE hypothesized.
+With cleaner data, the burstiness signal is weaker. The pattern remains: bursty = experienced contributor, not spammer.
 
 ## H2: Engagement Lifecycle
 
-**AUC-ROC: 0.498 [0.492, 0.504], Mann-Whitney p = 0.52**
+**AUC-ROC: 0.500 [0.493, 0.506], Mann-Whitney p = 0.95**
 
-No signal. This is primarily a data limitation: the neoteny cache stores only merged PRs (which is where most of our data comes from), so the "abandoned PR" and "fire-and-forget" signals have almost no non-merged prior PRs to compute from.
-
-- `abandoned_pr_rate`: 100% NaN (no prior closed-without-merge PRs in neoteny data)
-- `review_response_rate`: 90.8% NaN
-- `ci_failure_followup_rate`: 97.4% NaN
-
-A proper test of H2 would require PR data that includes non-merged PRs with their review and commit history.
+No signal. Same data limitation as iteration 1: neoteny cache stores mainly merged PRs, so engagement signals computed from rejected PRs are overwhelmingly NaN.
 
 ## H3: Cross-Repo Fingerprinting
 
-**AUC-ROC: 0.479 [0.473, 0.485], Mann-Whitney p = 3.1e-11**
+**AUC-ROC: 0.512 [0.506, 0.519], Mann-Whitney p = 0.00025**
 
-Like H1, statistically significant but inverted. Authors with higher cross-repo title similarity and more repos in their history tend to be *more* likely to merge. This again reflects that cross-repo activity is a marker of experience, not spam.
+Flipped from iteration 1 (was 0.479, now 0.512). With the `app/*` bots removed, cross-repo features now weakly predict non-merge rather than merge. The H3b model (with entropy features) significantly outperforms H3a (DeLong z=-10.74, p=6.7e-27).
 
-H3b (with language entropy features) significantly outperforms H3a (title similarity only) per DeLong test (z=3.17, p=0.0015), but in both cases the signal predicts merge, not non-merge.
+This is the strongest single-hypothesis signal in the iteration 2 results.
 
 ## H4: Combined Model
 
-**AUC-ROC: 0.495 [0.489, 0.501]**
+**AUC-ROC: 0.518 [0.512, 0.524]**
 
-Combining H1+H2+H3 features does not produce a useful non-merge predictor. All nested LRTs are significant (p < 1e-18), confirming the individual signals capture distinct variance, but that variance collectively predicts merge rather than non-merge.
+Combining H1+H2+H3 improves on any single signal. All nested LRTs are significant (p < 1e-20). The combined AUC of 0.518 is a modest improvement over iteration 1 (was 0.495), driven by the H3 flip after bot filter cleanup.
 
 ## H5: GE Score Complement
 
 ### GE v1
-- GE-only AUC: 0.502
-- GE+bot signals AUC: 0.503
-- DeLong: z=0.41, p=0.68 (no significant difference)
-- LRT: chi2=485.3, p=1.9e-95
+- GE-only AUC: 0.511
+- GE+bot signals AUC: 0.519
+- DeLong: z=3.98, p=6.9e-05 (significant improvement)
+- LRT: chi2=166.0, p=1.2e-28
 
 ### GE v2
-- GE-only AUC: 0.507
-- GE+bot signals AUC: 0.503
-- DeLong: z=-1.97, p=0.049 (marginally significant, bot signals *hurt*)
-- LRT: chi2=443.9, p=1.2e-86
+- GE-only AUC: 0.518
+- GE+bot signals AUC: 0.521
+- DeLong: z=2.85, p=0.0044 (significant improvement)
+- LRT: chi2=160.7, p=1.4e-27
 
-The LRT says the bot features add statistically significant information beyond GE alone, but the DeLong test says this information doesn't improve AUC -- and for v2, it slightly degrades it. The bot signals and GE scores are measuring overlapping constructs (cross-repo activity = experience = trust). Adding redundant features to logistic regression adds noise.
+Both GE models benefit from adding bot signals. In iteration 1, adding bot signals to GE v2 *hurt* performance (z=-1.97). Now that the `app/*` confounders are removed, the bot signals provide genuine complementary information. The improvement is modest (0.511 -> 0.519 for v1, 0.518 -> 0.521 for v2).
+
+## H6: Interaction Features (Burstiness x Novelty)
+
+**AUC-ROC: 0.493 [0.486, 0.499], Mann-Whitney p = 0.029**
+
+The interaction features attempt to separate bursty power users from bursty spammers. A bursty author without a track record (no prior merges, first time at repo, low GE) is more suspicious than one with established history.
+
+Feature distributions show the core problem: there are almost no suspicious bursty authors.
+
+| Feature | Nonzero count | % of dataset |
+|---|---|---|
+| burst_no_prior_merge | 78 | 0.2% |
+| burst_first_time_repo | 102 | 0.3% |
+| burst_low_ge | 78 | 0.2% |
+| burst_new_account | 7 | 0.0% |
+
+The candidate spammers (yashwantbezawada, ayushm98, arrdel) all correctly trigger the interaction features, but 78 nonzero values out of 38K PRs isn't enough signal density to move the AUC.
+
+## H7: Burst Content Homogeneity
+
+**AUC-ROC: 0.492 [0.486, 0.499], Mann-Whitney p = 0.023**
+
+Within-burst content features (size CV, repo entropy) weakly predict non-merge (AUC < 0.5 = inverted). Only 113 of 38K PRs have computable burst content features (requires >= 2 PRs in the 24h window). The embedding similarity feature (`burst_title_embedding_sim`) was not computed in this run (requires Gemini API key).
 
 ## Baselines (Stage 4)
 
 | Baseline | AUC-ROC | 95% CI |
 |---|---|---|
-| GE v2 | 0.536 | [0.532, 0.540] |
-| GE v1 | 0.531 | [0.527, 0.534] |
-| Random | 0.502 | [0.496, 0.509] |
-| Account age < 30d | 0.501 | [0.500, 0.501] |
+| GE v2 | 0.527 | [0.524, 0.531] |
+| GE v1 | 0.519 | [0.516, 0.522] |
+| Random | 0.503 | [0.496, 0.510] |
+| Account age < 30d | 0.501 | [0.500, 0.502] |
 | Zero followers | 0.500 | [0.500, 0.500] |
 | Zero repos | 0.500 | [0.500, 0.500] |
 
-GE v2 significantly outperforms v1 (DeLong p=2.7e-12). Both significantly outperform random. Account age, zero followers, and zero repos are useless as standalone predictors on this dataset.
+GE v2 remains the best single predictor. With the cleaner dataset (bot filter fix), GE AUCs dropped slightly from iteration 1 (v2: 0.536 -> 0.527), suggesting the `app/*` bots were easy merges that inflated the previous GE numbers.
 
-## Key Correlations
+## Interpretation (Iteration 2)
 
-| Feature pair | Pearson r |
-|---|---|
-| burst_count_24h vs ge_score_v1 | 0.369 |
-| burst_repos_24h vs ge_score_v1 | 0.503 |
-| burst_count_24h vs ge_score_v2 | 0.366 |
-| burst_repos_24h vs ge_score_v2 | 0.421 |
+The bot filter fix was the most impactful change. Removing 4,034 `app/*` bot PRs:
 
-Burstiness and GE scores are measuring the same underlying construct: how active and connected an author is across repos. The r=0.50 correlation between burst_repos_24h and ge_score_v1 confirms this.
+1. **Flipped H3** from inverted (0.479) to correctly-oriented (0.512). The `app/*` bots had uniform cross-repo patterns that looked like "experienced" contributors to the H3 model.
+2. **Made H5 positive**: Bot signals now genuinely complement GE scores (both v1 and v2) instead of hurting them.
+3. **Reduced noise** in the burstiness signal (H1 moved from 0.479 to 0.490).
 
-## Interpretation
+The interaction features (H6) and content homogeneity features (H7) didn't move the needle. The core problem is signal density: only 78-102 out of 38K PRs trigger the interaction conditions. This dataset has almost no spam — the suspicious bursty-with-no-track-record pattern exists (3 confirmed candidates) but at a rate too low to train or evaluate a model.
 
-The central finding is that the behavioral signals hypothesized to detect bot-like spam activity (burstiness, cross-repo similarity, low engagement) are, in this dataset, markers of experienced contributors. The "300 PRs to 100 repos in 24 hours" pattern described in Issue #38 does not appear in this historical data at meaningful scale. The bursty authors in our dataset are power users, not spammers.
+**What we've established:**
+- Burstiness alone cannot distinguish spammers from power users (both are bursty)
+- The `burst × no_prior_merge` interaction correctly identifies the 3 known candidates but has near-zero base rate
+- Cross-repo fingerprinting (H3) shows the most promise after cleaning, weakly predicting non-merge
+- GE v2 remains the best single predictor (AUC=0.527)
+- Bot signals genuinely complement GE when the data is clean
 
-This doesn't mean burstiness can't detect spam. It means:
-
-1. **Base rate matters.** In this dataset, ~0% of the 42K PRs are spam. The burstiness signal works as designed (it identifies cross-repo volume) but the population it identifies happens to be benign.
-
-2. **The signal is confounded with experience.** An author active across many repos in a short window has, by definition, an established cross-repo history. That's exactly what the GE score measures. The two signals are r=0.50 correlated.
-
-3. **To validate against actual spam**, we'd need a dataset that includes the specific episode described in Issue #38, or labeled spam/non-spam ground truth. The current dataset draws from established open-source projects where spam volume is negligible.
-
-4. **GE v2 is the best available predictor** of non-merge outcomes on this data (AUC=0.536), modestly but significantly better than v1 (0.531). Neither is strong -- the 0.536 AUC reflects that most non-merges are legitimate PRs that were rejected on technical merit, not spam.
+**What would help next:**
+- Account status ground truth (WS2 script ready, needs GITHUB_TOKEN) — if suspended authors cluster in the bursty-low-GE quadrant, that validates the interaction features
+- Gemini embeddings for title similarity within bursts — requires API key
+- A dataset with actual labeled spam episodes
 
 ## Data Limitations
 
-- Neoteny cache contains only merged PRs, so H2 engagement signals (abandoned PR rate, review response patterns on rejected PRs) couldn't be computed
+- Neoteny cache contains only merged PRs, so H2 engagement signals couldn't be computed
 - Author metadata (account age, followers) only available for ~28% of authors (PR 27 subset)
-- No labeled spam ground truth -- non-merge is a weak proxy for "bad PR"
-- GE scores computed without repo metadata (language, stars) since this wasn't cached, slightly underestimating true GE discriminative power
+- No labeled spam ground truth — non-merge is a weak proxy for "bad PR"
+- Account status (suspended vs active) not yet collected — script ready but requires GITHUB_TOKEN
+- Embedding similarity features require Gemini API key (not available in this run)
 
 ## Pipeline Details
 
-- Stage 1: 42,536 classified PRs from 97 repos
-- Stage 2: 42,536 feature rows (13 behavioral + 2 GE + 3 author metadata columns)
-- Stage 3: 5-fold StratifiedGroupKFold CV grouped by repo, LogisticRegression(C=inf)
+- Stage 1: 38,502 classified PRs from 97 repos (down from 42,536 after bot filter fix)
+- Stage 2: 38,502 feature rows (13 behavioral + 4 interaction + 3 content + 2 GE + 4 author metadata columns)
+- Stage 3: 5-fold StratifiedGroupKFold CV grouped by repo, LogisticRegression(C=inf), 8 hypotheses (H1-H7)
 - Stage 4: 6 baselines with DeLong pairwise comparisons
 - All features respect anti-lookahead: computed from author's other-repo PRs with created_at < T

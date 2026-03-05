@@ -165,6 +165,64 @@ class TestBotFiltering:
         assert filtered >= 1
         assert populated_db.get_pr_count() == 5
 
+    def test_filter_app_prefix_bots(self, populated_db: BotDetectionDB) -> None:
+        """Verify ^app/ pattern catches app/copybara-service style authors."""
+        for i, author in enumerate(
+            ["app/copybara-service", "app/dependabot"],
+            start=200,
+        ):
+            populated_db.con.execute(
+                """INSERT INTO prs (repo, number, author, title, created_at,
+                   state, source)
+                VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                ["org/repo-a", i, author, "Bot PR", datetime(2024, 1, 1),
+                 "MERGED", "test"],
+            )
+        assert populated_db.get_pr_count() == 7
+        filtered = populated_db.filter_bots(["^app/"])
+        assert filtered == 2
+        assert populated_db.get_pr_count() == 5
+
+
+class TestAccountStatus:
+    def test_update_author_status(self, db: BotDetectionDB) -> None:
+        db.con.execute(
+            "INSERT INTO authors (login) VALUES (?)", ["alice"],
+        )
+        db.update_author_status("alice", "active")
+        row = db.con.execute(
+            "SELECT account_status FROM authors WHERE login = ?", ["alice"],
+        ).fetchone()
+        assert row[0] == "active"
+
+    def test_get_authors_without_status(self, db: BotDetectionDB) -> None:
+        db.con.execute("INSERT INTO authors (login) VALUES (?)", ["alice"])
+        db.con.execute(
+            "INSERT INTO authors (login, account_status) VALUES (?, ?)",
+            ["bob", "active"],
+        )
+        result = db.get_authors_without_status()
+        assert result == ["alice"]
+
+    def test_get_suspended_authors(self, db: BotDetectionDB) -> None:
+        db.con.execute(
+            "INSERT INTO authors (login, account_status) VALUES (?, ?)",
+            ["alice", "suspended"],
+        )
+        db.con.execute(
+            "INSERT INTO authors (login, account_status) VALUES (?, ?)",
+            ["bob", "active"],
+        )
+        result = db.get_suspended_authors()
+        assert result == ["alice"]
+
+    def test_get_suspended_authors_empty(self, db: BotDetectionDB) -> None:
+        db.con.execute(
+            "INSERT INTO authors (login, account_status) VALUES (?, ?)",
+            ["alice", "active"],
+        )
+        assert db.get_suspended_authors() == []
+
 
 class TestUpdateOutcome:
     def test_update_pr_outcome(self, populated_db: BotDetectionDB) -> None:

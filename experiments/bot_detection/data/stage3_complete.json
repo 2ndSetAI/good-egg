@@ -1,0 +1,19 @@
+{
+  "stage": "stage3",
+  "timestamp": "2026-03-05T18:06:52.429766+00:00",
+  "row_counts": {
+    "features": 38502
+  },
+  "details": {
+    "hypotheses_evaluated": [
+      "H1",
+      "H2",
+      "H3",
+      "H4",
+      "H5_v1",
+      "H5_v2",
+      "H6",
+      "H7"
+    ]
+  }
+}

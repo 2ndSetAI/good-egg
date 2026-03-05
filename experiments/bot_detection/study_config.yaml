@@ -63,6 +63,7 @@ bot_patterns:
   - "-bot$"
   - "_bot$"
   - "-app$"
+  - "^app/"
   - "^dependabot"
   - "^renovate"
   - "^greenkeeper"
