@@ -79,6 +79,22 @@ pip install good-egg[mcp]     # With MCP server support
 - The `[mcp]` optional extra adds the `mcp` dependency for the MCP server.
 - `skip_known_contributors` (default `true`) skips full scoring for PR authors who already have merged PRs in the target repo. The CLI `--force-score` flag and MCP `force_score` parameter override this.
 
+## Writing Style
+
+Write like a human. Avoid common LLM writing tics:
+
+- **No filler preambles**: Don't open with "Great question!", "Certainly!", "I'd be happy to help!", or "Absolutely!". Just answer.
+- **No false profundity**: Don't use "It's not X -- it's Y" reframes, "Here's the thing", "Here's the kicker", or "Let's break this down". Just say it.
+- **No weasel words**: Drop "delve", "leverage", "robust", "streamline", "landscape", "tapestry", "paradigm". Use plain words.
+- **No hedge transitions**: Skip "It's worth noting", "Importantly", "Interestingly", "Notably". Either the point matters enough to include or it doesn't.
+- **No manufactured drama**: Don't use "Not X. Not Y. Just Z.", rhetorical "The result? Devastating.", or stakes inflation ("fundamentally reshape everything").
+- **No teacher voice**: Don't say "Think of it as...", "Imagine a world where...", "Let's unpack this". Assume a competent audience.
+- **No repetition padding**: Don't restate the same point multiple ways to seem thorough. Say it once, clearly.
+- **No signposted structure**: Don't use "In conclusion", "To sum up", "As we've seen". The reader can tell.
+- **Formatting**: Don't overuse em dashes, bold-first bullets, or unicode arrows. Keep formatting minimal and functional.
+
+Any one of these occasionally is fine. The problem is clustering them or repeating the same pattern.
+
 ## Important Rules
 
 - **No AI attribution**: Do not add `Co-Authored-By`, `Signed-off-by`, or any other trailer attributing AI/Claude to commits. Do not sign PR descriptions, comments, or code comments as Claude or any AI assistant. Commits should be attributed solely to the human author.
