@@ -58,6 +58,8 @@ def _fill_and_scale(
     """Impute NaN with column median from train, then standard-scale."""
     scaler = StandardScaler()
     medians = np.nanmedian(x_train, axis=0)
+    # Fall back to 0.0 for all-NaN columns (e.g. abandoned_pr_rate, ge_score)
+    medians = np.where(np.isnan(medians), 0.0, medians)
     for col_idx in range(x_train.shape[1]):
         mask_train = np.isnan(x_train[:, col_idx])
         x_train[mask_train, col_idx] = medians[col_idx]
@@ -75,7 +77,7 @@ def _fit_lr(
 ) -> LogisticRegression:
     """Fit LogisticRegression with no penalty."""
     model = LogisticRegression(
-        penalty=None, solver="lbfgs", max_iter=1000, random_state=seed,
+        C=np.inf, solver="lbfgs", max_iter=1000, random_state=seed,
     )
     model.fit(x_train, y_train)
     return model
@@ -113,6 +115,7 @@ def _full_model_log_likelihood(
     """Fit on all data, return log-likelihood."""
     x_all = df[feature_cols].values.astype(float)
     medians = np.nanmedian(x_all, axis=0)
+    medians = np.where(np.isnan(medians), 0.0, medians)
     for col_idx in range(x_all.shape[1]):
         mask = np.isnan(x_all[:, col_idx])
         x_all[mask, col_idx] = medians[col_idx]
@@ -428,7 +431,7 @@ def _write_summary_md(
 
     # H5
     h5 = results.get("H5_ge_complement")
-    if h5:
+    if h5 and not h5.get("skipped"):
         lines.append("## H5 GE Complement")
         lines.append(f"- GE-only AUC: {h5['ge_only_auc']['auc']:.3f}")
         lines.append(f"- GE+bot AUC: {h5['ge_plus_bot_auc']['auc']:.3f}")
@@ -502,9 +505,13 @@ def run_stage3(base_dir: Path, config: StudyConfig) -> dict[str, Any]:
     logger.info("Evaluating H4 (combined model)")
     results["H4_combined"] = _h4_combined(df, y, groups, config)
 
-    # H5 GE complement
-    logger.info("Evaluating H5 (GE complement)")
-    results["H5_ge_complement"] = _h5_ge_complement(df, y, groups, config)
+    # H5 GE complement (skip if ge_score is entirely NaN)
+    if df[GE_COL].notna().any():
+        logger.info("Evaluating H5 (GE complement)")
+        results["H5_ge_complement"] = _h5_ge_complement(df, y, groups, config)
+    else:
+        logger.warning("Skipping H5: ge_score is entirely NaN (no author GE scores loaded)")
+        results["H5_ge_complement"] = {"skipped": True, "reason": "ge_score all NaN"}
 
     # Strip oof_probs from JSON output (keep for downstream but don't persist)
     json_results = _strip_oof_probs(results)

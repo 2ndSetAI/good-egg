@@ -141,21 +141,38 @@ def run_stage4(base_dir: Path, config: StudyConfig) -> dict[str, Any]:
 
     y = _make_binary_outcome(df)
 
-    # Build baselines
+    # Build baselines, skipping those with no data
     baselines: dict[str, np.ndarray] = {
-        "ge_score": _ge_score_baseline(df),
-        "account_age_lt_30d": _account_age_baseline(df, threshold_days=30),
-        "zero_followers": _zero_followers_baseline(df),
-        "zero_repos": _zero_repos_baseline(df),
         "random": _random_baseline(len(df), seed=seed),
     }
 
-    logger.info("Comparing %d baselines", len(baselines))
-    comparison = _compare_baselines(y, baselines, reference="ge_score")
+    if df["ge_score"].notna().any():
+        baselines["ge_score"] = _ge_score_baseline(df)
+    else:
+        logger.warning("Skipping ge_score baseline (all NaN)")
+
+    if df["account_age_days"].notna().any():
+        baselines["account_age_lt_30d"] = _account_age_baseline(df, threshold_days=30)
+    else:
+        logger.warning("Skipping account_age baseline (all NaN)")
+
+    if df["followers"].notna().any():
+        baselines["zero_followers"] = _zero_followers_baseline(df)
+    else:
+        logger.warning("Skipping zero_followers baseline (all NaN)")
+
+    if df["public_repos"].notna().any():
+        baselines["zero_repos"] = _zero_repos_baseline(df)
+    else:
+        logger.warning("Skipping zero_repos baseline (all NaN)")
+
+    reference = "ge_score" if "ge_score" in baselines else "random"
+    logger.info("Comparing %d baselines (reference: %s)", len(baselines), reference)
+    comparison = _compare_baselines(y, baselines, reference=reference)
 
     results: dict[str, Any] = {
         "n_samples": len(df),
-        "reference_baseline": "ge_score",
+        "reference_baseline": reference,
         "baselines": comparison,
     }
 
