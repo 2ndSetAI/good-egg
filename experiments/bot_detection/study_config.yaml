@@ -6,6 +6,7 @@
 # Data sources
 # ----------------------------------------------------------
 data_sources:
+  oss_parquet: "/home/jeff/Documents/neoteny/code/neoteny/data/oss_data/parquet"
   neoteny_primary: "/home/jeff/Documents/neoteny/code/copy-1/neoteny/data/github/.cache/github_cache.duckdb"
   neoteny_secondary: "/home/jeff/Documents/neoteny/code/neoteny/data/github/.cache/github_cache.duckdb"
   pr27_data: "experiments/validation/data/raw"

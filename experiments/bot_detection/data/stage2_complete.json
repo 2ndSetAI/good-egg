@@ -1,8 +1,8 @@
 {
   "stage": "stage2",
-  "timestamp": "2026-03-05T18:06:22.422656+00:00",
+  "timestamp": "2026-03-06T03:00:28.075031+00:00",
   "row_counts": {
-    "feature_rows": 38502
+    "feature_rows": 200172
   },
   "details": {
     "output_path": "/home/jeff/Documents/scratch/good-egg/experiments/bot_detection/data/features/features.parquet",

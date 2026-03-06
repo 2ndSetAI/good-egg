@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from experiments.bot_detection.cache import BotDetectionDB
@@ -233,3 +234,129 @@ class TestUpdateOutcome:
         ).fetchone()
         assert prs[0] == "merged"
         assert prs[1] == 45.0
+
+
+class TestParquetImport:
+    """Tests for import_oss_parquet()."""
+
+    @pytest.fixture
+    def parquet_dir(self, tmp_path: Path) -> Path:
+        """Create a temp dir with sample parquet files."""
+        repo_dir = tmp_path / "parquet" / "org_repo-a"
+        repo_dir.mkdir(parents=True)
+
+        # Create a parquet file with tz-aware timestamps and float columns
+        df = pd.DataFrame({
+            "number": [1, 2, 3, 4, 5],
+            "repo": ["org/repo-a"] * 5,
+            "title": ["PR 1", "PR 2", "PR 3", "PR 4", "PR 5"],
+            "body": ["body 1", None, "body 3", "", "body 5"],
+            "author": ["alice", "bob", "alice", "charlie", ""],
+            "created_at": pd.to_datetime([
+                "2024-01-10", "2024-02-01", "2024-03-01",
+                "2024-04-01", "2024-05-01",
+            ]).tz_localize("UTC"),
+            "closed_at": pd.to_datetime([
+                "2024-01-15", None, "2024-03-10", None, None,
+            ]).tz_localize("UTC"),
+            "merged_at": pd.to_datetime([
+                "2024-01-15", None, "2024-03-10", None, None,
+            ]).tz_localize("UTC"),
+            "state": ["MERGED", "CLOSED", "MERGED", "OPEN", "MERGED"],
+            "additions": [10.0, float("nan"), 5.0, 20.0, 1.0],
+            "deletions": [3.0, 1.0, float("nan"), 0.0, 0.0],
+            "files_changed": [2.0, float("nan"), 1.0, 3.0, 1.0],
+            "review_count": [1, 0, 2, 0, 0],
+            "outcome": ["MERGED", "REJECTED", "MERGED", "UNRESOLVED", "MERGED"],
+            "pr_size": [13.0, 1.0, 5.0, 20.0, 1.0],
+            "enrichment_status": ["complete"] * 5,
+        })
+        df.to_parquet(repo_dir / "raw_prs.parquet")
+        return tmp_path / "parquet"
+
+    def test_basic_import(self, db: BotDetectionDB, parquet_dir: Path) -> None:
+        """Test that parquet data is imported correctly."""
+        counts = db.import_oss_parquet(parquet_dir)
+        # 5 rows but author="" on row 5 gets filtered out -> 4 rows
+        assert counts["prs"] == 4
+        assert counts["repos"] == 1
+        assert counts["skipped_repos"] == 0
+
+    def test_timezone_stripped(self, db: BotDetectionDB, parquet_dir: Path) -> None:
+        """Timestamps should be naive (no timezone) after import."""
+        db.import_oss_parquet(parquet_dir)
+        row = db.con.execute(
+            "SELECT created_at FROM prs WHERE number = 1"
+        ).fetchone()
+        ts = row[0]
+        # DuckDB returns naive datetime
+        assert ts.tzinfo is None
+        assert ts == datetime(2024, 1, 10)
+
+    def test_nan_to_zero(self, db: BotDetectionDB, parquet_dir: Path) -> None:
+        """NaN in additions/deletions/files_changed should become 0."""
+        db.import_oss_parquet(parquet_dir)
+        row = db.con.execute(
+            "SELECT additions, deletions, files_changed FROM prs WHERE number = 2"
+        ).fetchone()
+        assert row[0] == 0  # additions was NaN
+        assert row[1] == 1  # deletions was 1.0
+        assert row[2] == 0  # files_changed was NaN
+
+    def test_empty_author_filtered(self, db: BotDetectionDB, parquet_dir: Path) -> None:
+        """Rows with empty author should be skipped."""
+        db.import_oss_parquet(parquet_dir)
+        authors = db.get_distinct_authors()
+        assert "" not in authors
+        # PR 5 (empty author) should not be imported
+        row = db.con.execute(
+            "SELECT COUNT(*) FROM prs WHERE number = 5"
+        ).fetchone()
+        assert row[0] == 0
+
+    def test_dedup_parquet_first(self, db: BotDetectionDB, parquet_dir: Path) -> None:
+        """Parquet data imported first wins dedup (INSERT OR IGNORE)."""
+        db.import_oss_parquet(parquet_dir)
+        # Insert same repo/number with different source
+        db.con.execute(
+            """INSERT OR IGNORE INTO prs
+            (repo, number, author, title, created_at, state, source)
+            VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            ["org/repo-a", 1, "alice", "Different Title",
+             datetime(2024, 1, 10), "MERGED", "neoteny"],
+        )
+        prs = db.get_repo_prs("org/repo-a")
+        pr1 = [p for p in prs if p["number"] == 1][0]
+        assert pr1["source"] == "oss_parquet"
+        assert pr1["title"] == "PR 1"
+
+    def test_low_merge_rate_skipped(self, db: BotDetectionDB, tmp_path: Path) -> None:
+        """Repos with merge rate below threshold are skipped."""
+        repo_dir = tmp_path / "pq2" / "low_merge_repo"
+        repo_dir.mkdir(parents=True)
+        df = pd.DataFrame({
+            "number": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            "repo": ["org/low-merge"] * 10,
+            "title": [f"PR {i}" for i in range(10)],
+            "body": [""] * 10,
+            "author": ["alice"] * 10,
+            "created_at": pd.to_datetime(["2024-01-01"] * 10).tz_localize("UTC"),
+            "closed_at": pd.to_datetime(["2024-01-15"] * 10).tz_localize("UTC"),
+            "merged_at": pd.to_datetime(
+                [None] * 10  # 0% merge rate
+            ).tz_localize("UTC"),
+            "state": ["CLOSED"] * 10,
+            "additions": [1.0] * 10,
+            "deletions": [0.0] * 10,
+            "files_changed": [1.0] * 10,
+            "review_count": [0] * 10,
+            "outcome": ["REJECTED"] * 10,
+            "pr_size": [1.0] * 10,
+            "enrichment_status": ["complete"] * 10,
+        })
+        df.to_parquet(repo_dir / "raw_prs.parquet")
+
+        counts = db.import_oss_parquet(tmp_path / "pq2")
+        assert counts["prs"] == 0
+        assert counts["skipped_repos"] == 1
+        assert db.get_pr_count() == 0

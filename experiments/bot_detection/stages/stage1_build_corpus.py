@@ -138,7 +138,17 @@ def run_stage1(
     total_counts: dict[str, int] = {}
 
     with BotDetectionDB(db_path) as db:
-        # Step 1: Import neoteny primary
+        # Step 0: Import OSS parquet data (primary source)
+        oss_parquet_path = Path(sources.get("oss_parquet", ""))
+        if oss_parquet_path.exists():
+            logger.info("Importing OSS parquet data: %s", oss_parquet_path)
+            counts = db.import_oss_parquet(oss_parquet_path, repo_filter=repo_filter)
+            for k, v in counts.items():
+                total_counts[k] = total_counts.get(k, 0) + v
+        else:
+            logger.warning("OSS parquet data not found: %s", oss_parquet_path)
+
+        # Step 1: Import neoteny primary (gap-fill)
         primary_path = Path(sources.get("neoteny_primary", ""))
         if primary_path.exists():
             logger.info("Importing neoteny primary: %s", primary_path)

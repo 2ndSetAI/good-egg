@@ -60,6 +60,11 @@ CREATE TABLE IF NOT EXISTS authors (
     ge_trust_level TEXT,
     account_status TEXT
 );
+
+CREATE INDEX IF NOT EXISTS idx_prs_author_created ON prs(author, created_at);
+CREATE INDEX IF NOT EXISTS idx_prs_author_repo ON prs(author, repo, created_at);
+CREATE INDEX IF NOT EXISTS idx_reviews_pr ON reviews(repo, pr_number);
+CREATE INDEX IF NOT EXISTS idx_commits_pr ON commits(repo, pr_number);
 """
 
 
@@ -522,9 +527,130 @@ class BotDetectionDB:
         ).fetchall()
         return [r[0] for r in rows]
 
+    # ----------------------------------------------------------
+    # Import: OSS parquet data
+    # ----------------------------------------------------------
+
+    def import_oss_parquet(
+        self,
+        parquet_dir: Path,
+        repo_filter: list[str] | None = None,
+        min_merge_rate: float = 0.10,
+    ) -> dict[str, int]:
+        """Import PR data from neoteny OSS parquet files.
+
+        Scans parquet_dir for subdirectories containing raw_prs.parquet.
+        Skips repos below min_merge_rate (cherry-pick/phabricator workflows).
+        Returns dict with row counts including skipped_repos.
+        """
+        import pandas as pd
+
+        pr_count = 0
+        repo_count = 0
+        skipped_repos = 0
+
+        parquet_files = sorted(parquet_dir.glob("*/raw_prs.parquet"))
+        if not parquet_files:
+            logger.warning("No parquet files found in %s", parquet_dir)
+            return {"prs": 0, "repos": 0, "skipped_repos": 0}
+
+        for pq_file in parquet_files:
+            df = pd.read_parquet(pq_file)
+            if df.empty:
+                continue
+
+            # Get repo name from the data (owner/repo format)
+            repo = df["repo"].iloc[0]
+            if repo_filter and repo not in repo_filter:
+                continue
+
+            # Compute merge rate and skip low-merge repos
+            total = len(df)
+            merged = (df["state"] == "MERGED").sum()
+            merge_rate = merged / total if total > 0 else 0.0
+            if merge_rate < min_merge_rate:
+                logger.warning(
+                    "Skipping %s: merge rate %.1f%% (%d/%d) below threshold %.0f%%",
+                    repo, merge_rate * 100, merged, total, min_merge_rate * 100,
+                )
+                skipped_repos += 1
+                continue
+
+            # Strip timezone from timestamps
+            for col in ["created_at", "merged_at", "closed_at"]:
+                if col not in df.columns:
+                    continue
+                if hasattr(df[col].dtype, "tz") and df[col].dtype.tz is not None:
+                    df[col] = df[col].dt.tz_localize(None)
+
+            # Convert float columns to int with NaN -> 0
+            for col in ["additions", "deletions", "files_changed"]:
+                if col in df.columns:
+                    df[col] = df[col].fillna(0).astype(int)
+
+            # Filter out rows with empty/null author or created_at
+            df = df.dropna(subset=["author", "created_at"])
+            df = df[df["author"].str.strip() != ""]
+
+            # Insert rows
+            for _, row in df.iterrows():
+                author = row.get("author", "")
+                created_at = row.get("created_at")
+                if pd.isna(created_at) or not author:
+                    continue
+                try:
+                    self.con.execute(
+                        """INSERT OR IGNORE INTO prs
+                        (repo, number, author, title, body, created_at,
+                         merged_at, closed_at, state, additions, deletions,
+                         files_changed, labels, source)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'oss_parquet')""",
+                        [
+                            repo,
+                            int(row["number"]),
+                            author,
+                            row.get("title", "") or "",
+                            row.get("body", "") or "",
+                            _to_naive_dt(created_at),
+                            _to_naive_dt(row.get("merged_at")),
+                            _to_naive_dt(row.get("closed_at")),
+                            row.get("state", "UNKNOWN"),
+                            int(row.get("additions", 0)),
+                            int(row.get("deletions", 0)),
+                            int(row.get("files_changed", 0)),
+                            json.dumps([]),
+                        ],
+                    )
+                    pr_count += 1
+                except duckdb.ConstraintException:
+                    pass
+
+            repo_count += 1
+            logger.info(
+                "Imported %s: %d PRs (merge rate %.1f%%)",
+                repo, len(df), merge_rate * 100,
+            )
+
+        counts = {"prs": pr_count, "repos": repo_count, "skipped_repos": skipped_repos}
+        logger.info("Imported from OSS parquet: %s", counts)
+        return counts
+
     def get_prs_dataframe(self) -> Any:
         """Return all PRs as a pandas DataFrame."""
         return self.con.execute("SELECT * FROM prs").fetchdf()
+
+
+def _to_naive_dt(value: Any) -> datetime | None:
+    """Convert a pandas Timestamp or similar to a naive datetime, or None."""
+    import pandas as pd
+
+    if value is None or pd.isna(value):
+        return None
+    if hasattr(value, "to_pydatetime"):
+        return value.to_pydatetime().replace(tzinfo=None)
+    if isinstance(value, datetime):
+        return value.replace(tzinfo=None)
+    return None
 
 
 def _parse_timestamp(value: str | None) -> datetime | None:

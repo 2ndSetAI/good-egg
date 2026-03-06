@@ -87,4 +87,5 @@ dev = [
     "types-PyYAML>=6.0",
     "types-networkx>=3.2",
     "mcp>=1.0",
+    "google-generativeai>=0.8.6",
 ]

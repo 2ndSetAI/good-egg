@@ -1,17 +1,18 @@
 {
   "stage": "stage1",
-  "timestamp": "2026-03-05T18:02:28.732929+00:00",
+  "timestamp": "2026-03-06T01:44:57.070310+00:00",
   "row_counts": {
-    "prs": 58332,
-    "reviews": 127295,
-    "commits": 255718,
-    "authors": 10617,
-    "bots_filtered": 4218,
-    "outcome_merged": 28661,
-    "outcome_rejected": 5587,
-    "outcome_pocket_veto": 4254,
-    "final_prs": 38502,
-    "repos": 97
+    "prs": 277500,
+    "repos": 96,
+    "skipped_repos": 3,
+    "reviews": 77475,
+    "commits": 150121,
+    "authors": 31296,
+    "bots_filtered": 52659,
+    "outcome_merged": 146033,
+    "outcome_rejected": 23245,
+    "outcome_pocket_veto": 30894,
+    "final_prs": 200172
   },
   "details": {
     "scale": "full",
