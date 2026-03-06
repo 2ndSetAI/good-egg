@@ -527,6 +527,126 @@ class BotDetectionDB:
         ).fetchall()
         return [r[0] for r in rows]
 
+    def get_author_aggregate_stats(self) -> Any:
+        """Compute per-author aggregate features via DuckDB.
+
+        Returns a pandas DataFrame with one row per author.
+        """
+        return self.con.execute("""
+            SELECT
+                author AS login,
+                COUNT(*) AS total_prs,
+                COUNT(DISTINCT repo) AS total_repos,
+                COALESCE(SUM(CASE WHEN state = 'MERGED' THEN 1 ELSE 0 END)::DOUBLE
+                    / NULLIF(COUNT(*), 0), 0) AS merge_rate,
+                COALESCE(SUM(CASE WHEN outcome = 'rejected' THEN 1 ELSE 0 END)::DOUBLE
+                    / NULLIF(COUNT(*), 0), 0) AS rejection_rate,
+                COALESCE(SUM(CASE WHEN outcome = 'pocket_veto' THEN 1 ELSE 0 END)::DOUBLE
+                    / NULLIF(COUNT(*), 0), 0) AS pocket_veto_rate,
+                MEDIAN(additions) AS median_additions,
+                MEDIAN(deletions) AS median_deletions,
+                MEDIAN(files_changed) AS median_files_changed,
+                AVG(LENGTH(title)) AS mean_title_length,
+                AVG(LENGTH(body)) AS mean_body_length,
+                COALESCE(SUM(CASE WHEN body = '' OR body IS NULL THEN 1 ELSE 0 END)::DOUBLE
+                    / NULLIF(COUNT(*), 0), 0) AS empty_body_rate,
+                COUNT(DISTINCT DATE_TRUNC('day', created_at)) AS active_days,
+                EXTRACT(EPOCH FROM (MAX(created_at) - MIN(created_at))) / 86400.0
+                    AS career_span_days,
+                COUNT(*)::DOUBLE
+                    / NULLIF(COUNT(DISTINCT DATE_TRUNC('day', created_at)), 0)
+                    AS prs_per_active_day,
+                COUNT(DISTINCT repo)::DOUBLE
+                    / NULLIF(COUNT(DISTINCT DATE_TRUNC('day', created_at)), 0)
+                    AS repos_per_active_day
+            FROM prs
+            GROUP BY author
+            ORDER BY author
+        """).fetchdf()
+
+    def get_all_author_repo_pairs(self) -> list[tuple[str, str, int]]:
+        """Get all (author, repo, pr_count) triples for network analysis.
+
+        Returns list of (author, repo, count) tuples.
+        """
+        rows = self.con.execute("""
+            SELECT author, repo, COUNT(*) AS pr_count
+            FROM prs
+            GROUP BY author, repo
+            ORDER BY author, repo
+        """).fetchall()
+        return [(r[0], r[1], r[2]) for r in rows]
+
+    def get_author_pr_timestamps(self, login: str) -> list[datetime]:
+        """Get sorted PR timestamps for a single author."""
+        rows = self.con.execute(
+            "SELECT created_at FROM prs WHERE author = ? ORDER BY created_at",
+            [login],
+        ).fetchall()
+        return [r[0] for r in rows]
+
+    def get_all_author_pr_timestamps(self) -> dict[str, list[datetime]]:
+        """Get sorted PR timestamps for all authors, keyed by login."""
+        rows = self.con.execute(
+            "SELECT author, created_at FROM prs ORDER BY author, created_at"
+        ).fetchall()
+        result: dict[str, list[datetime]] = {}
+        for author, ts in rows:
+            result.setdefault(author, []).append(ts)
+        return result
+
+    def get_suspicious_authors(
+        self,
+        limit: int = 1000,
+        min_repos: int = 2,
+    ) -> list[str]:
+        """Get most suspicious authors for ground truth checking.
+
+        Selects multi-repo authors ordered by merge rate ascending.
+        """
+        rows = self.con.execute(
+            """SELECT author
+            FROM prs
+            GROUP BY author
+            HAVING COUNT(DISTINCT repo) >= ?
+            ORDER BY SUM(CASE WHEN state = 'MERGED' THEN 1 ELSE 0 END)::DOUBLE
+                / COUNT(*) ASC
+            LIMIT ?""",
+            [min_repos, limit],
+        ).fetchall()
+        return [r[0] for r in rows]
+
+    def get_author_profile_fields(self) -> Any:
+        """Get profile fields (account_age, followers, public_repos) for all authors.
+
+        Returns a pandas DataFrame.
+        """
+        return self.con.execute("""
+            SELECT
+                login,
+                account_created_at,
+                followers,
+                public_repos,
+                account_status
+            FROM authors
+        """).fetchdf()
+
+    def get_author_pr_titles(self, login: str, limit: int = 50) -> list[str]:
+        """Get PR titles for an author, up to limit."""
+        rows = self.con.execute(
+            "SELECT title FROM prs WHERE author = ? ORDER BY created_at DESC LIMIT ?",
+            [login, limit],
+        ).fetchall()
+        return [r[0] for r in rows]
+
+    def get_author_pr_bodies(self, login: str, limit: int = 50) -> list[str]:
+        """Get PR bodies for an author, up to limit."""
+        rows = self.con.execute(
+            "SELECT body FROM prs WHERE author = ? ORDER BY created_at DESC LIMIT ?",
+            [login, limit],
+        ).fetchall()
+        return [r[0] for r in rows]
+
     # ----------------------------------------------------------
     # Import: OSS parquet data
     # ----------------------------------------------------------

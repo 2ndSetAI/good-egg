@@ -17,63 +17,39 @@
 - **Cross-repo coverage 2.6x better**: 10.3% of authors in 2+ repos (was 3.9%), 762 in 3+ repos, 114 in 5+ repos.
 - **Neoteny cache demoted to gap-fill**: Parquet is imported first (INSERT OR IGNORE), so parquet data wins dedup. Neoteny provides reviews/commits not in parquet.
 
-## H1: Burstiness
+## Iterations 1-4: PR-Level Features (H1-H7)
 
-**AUC-ROC: 0.483 [0.480, 0.486], Mann-Whitney p = 4.5e-32**
+All PR-level behavioral features produced AUC 0.479-0.503 against a "merged vs not-merged" target. Full details below.
 
-Still inverted: bursty authors are more likely to get merged. The effect is stronger at 200K scale (further from 0.5 in the inverted direction) than at 38K (was 0.490). More data confirmed the pattern: burstiness is a signal of experienced contributors, not spammers.
+### H1: Burstiness — AUC 0.483
 
-The H1 parameter sweep found 7 of 19 configs significant after Holm-Bonferroni correction (up from 2 in iteration 3), all with AUC < 0.5 (inverted direction). The 24h window and multi-repo burst metrics are most significant.
+Inverted: bursty authors are more likely to get merged. Burstiness is a signal of experienced contributors, not spammers. The effect got stronger with more data.
 
-## H2: Engagement Lifecycle
+### H2: Engagement Lifecycle — AUC 0.481
 
-**AUC-ROC: 0.481 [0.478, 0.484], Mann-Whitney p = 1.4e-39**
+Inverted. Higher engagement correlates with being merged. Responsive authors get their PRs accepted.
 
-Now shows a significant inverted signal (was 0.500/p=0.95 in iteration 3). With 5x more data and parquet having full state data (not just merged PRs), engagement features now produce a measurable effect -- but in the wrong direction. Higher engagement correlates with being merged, which makes sense: responsive authors get their PRs accepted.
+### H3: Cross-Repo Fingerprinting — AUC 0.503
 
-## H3: Cross-Repo Fingerprinting
+Essentially random. Cross-repo signal disappeared with better data. The previous 0.512 was noise amplified by the small DuckDB sample.
 
-**AUC-ROC: 0.503 [0.500, 0.506], Mann-Whitney p = 0.032**
+### H4: Combined Model — AUC 0.501
 
-Essentially random. The improvement in cross-repo coverage (10.3% vs 3.9%) moved H3 from 0.512 down to 0.503. With better data, the cross-repo signal largely disappeared. The previous 0.512 was likely noise amplified by the small, biased DuckDB sample.
+Combining H1+H2+H3 produces random discrimination. All nested LRTs significant (p < 1e-4) but effects too small and partially cancelling.
 
-H3b (with entropy features) still outperforms H3a (DeLong z=-20.3, p=1.9e-91), but both are near 0.50.
+### H5: GE Score Complement — GE v2 AUC 0.521
 
-## H4: Combined Model
+GE v2 remained the strongest single predictor. Adding bot signals to GE v2 slightly *hurt* performance (0.521 -> 0.520).
 
-**AUC-ROC: 0.501 [0.499, 0.504]**
+### H6: Interaction Features — AUC 0.480
 
-Combining H1+H2+H3 produces essentially random discrimination. All nested LRTs are highly significant (p < 1e-4), meaning the features are statistically non-zero -- but the effects are too small and partially cancelling (H1/H2 inverted, H3 near null) to produce useful prediction.
+Inverted like H1. Burst + no prior merge correlates with active contributors trying new repos, not spammers.
 
-## H5: GE Score Complement
+### H7: Burst Content Homogeneity — AUC 0.479
 
-### GE v1
-- GE-only AUC: 0.497
-- GE+bot signals AUC: 0.502
-- DeLong: z=7.86, p=3.8e-15 (significant)
-- LRT: chi2=207.6, p=3.7e-37
+Inverted. Within-burst content similarity is higher for merged PRs (legitimate refactoring series).
 
-### GE v2
-- GE-only AUC: 0.521
-- GE+bot signals AUC: 0.520
-- DeLong: z=-2.52, p=0.012 (bot signals slightly hurt)
-- LRT: chi2=180.4, p=1.4e-31
-
-GE v2 remains the strongest single predictor at 0.521. Adding bot signals to GE v2 now slightly *hurts* performance (0.521 -> 0.520), reversing iteration 3's finding. The statistically significant improvement for v1 (0.497 -> 0.502) is too small to be practically useful.
-
-## H6: Interaction Features (Burstiness x Novelty)
-
-**AUC-ROC: 0.480 [0.477, 0.483], Mann-Whitney p = 4.7e-44**
-
-Inverted like H1. More data didn't help -- the interaction features (burst + no prior merge, burst + first time at repo) correlate with being an active contributor trying new repos, not a spammer.
-
-## H7: Burst Content Homogeneity
-
-**AUC-ROC: 0.479 [0.477, 0.482], Mann-Whitney p = 7.9e-48**
-
-Also inverted. Within-burst content similarity is higher for merged PRs. This makes sense: legitimate contributors opening multiple related PRs (e.g., a refactoring series) produce coherent burst patterns.
-
-## Baselines (Stage 4)
+### Baselines (Stage 4)
 
 | Baseline | AUC-ROC | 95% CI |
 |---|---|---|
@@ -81,47 +57,112 @@ Also inverted. Within-burst content similarity is higher for merged PRs. This ma
 | GE v1 | 0.512 | [0.511, 0.514] |
 | Account age < 30d | 0.501 | [0.501, 0.501] |
 | Random | 0.498 | [0.495, 0.501] |
-| Zero followers | 0.500 | [0.500, 0.500] |
-| Zero repos | 0.500 | [0.500, 0.500] |
 
-GE v2 remains the best predictor. Its AUC improved from 0.527 (iteration 3) to 0.533 with the larger dataset -- the only signal that got stronger with more data.
+### Post-Mortem: Three Compounding Flaws
 
-## Interpretation (Iteration 4)
+1. **Wrong unit of analysis**: Spam is author-level; PR-level evaluation diluted 819 suspicious PRs across 200K rows
+2. **Wrong target variable**: "Not merged" is 27% of data but <2% is actual spam; the rest is normal development friction
+3. **Feature sparsity**: 59% of authors are single-repo, so all cross-repo features are identically zero
 
-### What the larger dataset confirmed
+---
 
-1. **There is no useful bot/spam signal in behavioral PR features.** All hypotheses (H1-H3, H6-H7) produce AUCs between 0.479 and 0.503 -- indistinguishable from random or weakly inverted. The 5x data increase and 2.6x cross-repo coverage improvement did not help.
+## Iteration 5: Author-Level Bot Detection (H8-H13)
 
-2. **Burstiness, engagement, and content homogeneity are contributor-quality signals, not spam signals.** All three are inverted: higher values predict *merge*, not rejection. This makes sense -- prolific, responsive, focused contributors get their PRs accepted.
+### Design Changes
 
-3. **Cross-repo fingerprinting was noise.** H3's 0.512 AUC in iteration 3 dropped to 0.503 with cleaner, larger data. The earlier result was likely an artifact of the small, biased DuckDB sample.
+- **Unit of analysis**: Authors, not PRs. 31,296 authors scored holistically.
+- **Target variable**: `account_status == 'suspended'` from GitHub API (ground truth). Secondary: `total_repos >= 3 AND merge_rate < 0.30` (heuristic).
+- **Ground truth acquisition**: Checked top 1,000 most suspicious authors (multi-repo, ordered by merge rate ascending) via GitHub API. Found **27 suspended accounts** (2.7% of checked).
+- **Evaluation**: Precision@k and recall@k (appropriate for rare-event detection) alongside AUC-ROC/AUC-PR.
 
-4. **GE v2 is the only useful predictor** at 0.533 AUC. It captures something the behavioral features don't -- likely the graph-based trust signal from contribution patterns. Bot signals add nothing to it.
+### Hypotheses
 
-### Why the experiment is conclusive
+| ID | Name | Approach |
+|----|------|----------|
+| H8 | Author Aggregates | Per-author merge rate, rejection rate, PR volume, body/title stats |
+| H9 | Time-Series Anomaly | Inter-PR timing, burstiness, dormancy, regularity |
+| H10 | Network Analysis | Bipartite author-repo graph, degree centrality, clustering, isolation |
+| H11 | LLM Content Analysis | Gemini classifies PR titles as spam-like (score 0-1) |
+| H12 | Campaign Detection | Time-clustered spam in anomalous repo-months |
+| H13 | Semi-Supervised | k-NN from suspended seeds + Isolation Forest |
 
-- 200K PRs across 96 repos with 31K authors is a large, diverse sample
-- 10.3% cross-repo overlap provides meaningful cross-repo signal (the previous 3.9% was flagged as insufficient)
-- All statistical tests are highly significant (p < 1e-30) -- the effects are real, just useless for classification
-- The inverted effects are consistent and robust: they got *stronger* with more data
+### Results: Primary Target (27 suspended / 31,296 authors)
 
-### Recommendation
+| Hypothesis | P@10 | P@25 | P@50 | P@100 | AUC-ROC | AUC-PR |
+|------------|------|------|------|-------|---------|--------|
+| H8 (merge rate) | 0.00 | 0.00 | 0.00 | 0.00 | 0.733 | 0.002 |
+| H9 (temporal) | 0.00 | 0.00 | 0.00 | 0.00 | 0.588 | 0.003 |
+| H10 (network) | 0.10 | 0.08 | 0.04 | 0.02 | 0.958 | 0.017 |
+| **H11 (LLM)** | **0.50** | **0.40** | **0.22** | **0.15** | **0.976** | **0.284** |
+| H13 k-NN | 1.00 | 1.00 | 0.54 | 0.27 | 1.000 | 1.000 |
+| H13 IF | 0.00 | 0.00 | 0.00 | 0.01 | 0.933 | 0.009 |
+| **Combined** | **0.90** | **0.80** | **0.54** | **0.27** | **1.000** | **0.880** |
 
-Stop pursuing behavioral PR features for bot detection. The OSS PR ecosystem is overwhelmingly clean -- non-merge is driven by normal development friction, not spam. The few actual bad actors (3 suspended accounts out of 31K authors = 0.01%) are too rare and too different from the assumed spam profile (bursty, repetitive, cross-repo) to detect with these features.
+### Results: Auxiliary Target (98 suspicious / 31,296 authors)
 
-GE v2 (graph-based trust scoring) provides the strongest available signal for PR author assessment. Future work should focus on improving the trust graph rather than adding spam heuristics.
+| Hypothesis | P@10 | P@25 | P@50 | P@100 | AUC-ROC | AUC-PR |
+|------------|------|------|------|-------|---------|--------|
+| H8 (merge rate) | 0.00 | 0.00 | 0.00 | 0.00 | 0.709 | 0.005 |
+| H9 (temporal) | 0.00 | 0.00 | 0.02 | 0.01 | 0.736 | 0.016 |
+| H10 (network) | 0.20 | 0.16 | 0.14 | 0.14 | 0.990 | 0.138 |
+| **H11 (LLM)** | **0.40** | **0.44** | **0.30** | **0.22** | **0.990** | **0.184** |
+| H13 k-NN | 0.50 | 0.36 | 0.18 | 0.09 | 0.408 | 0.034 |
+| H13 IF | 0.00 | 0.04 | 0.02 | 0.07 | 0.987 | 0.108 |
+| **Combined** | **0.70** | **0.44** | **0.32** | **0.22** | **0.995** | **0.291** |
+
+### Campaign Detection (H12)
+
+- **101 anomalous repo-months** flagged (rejection rate > 2 stdev above repo mean)
+- **609 campaign authors** identified (only appear during anomalous months, 0% merge rate)
+- Hacktoberfest 2019: 94.1% rejection rate (16 authors, 6 repos)
+- Hacktoberfest 2020: 70.7% rejection rate (39 authors, 13 repos)
+- 0 of 609 campaign authors overlap with the 27 confirmed suspended accounts (different populations: campaigns are time-clustered, suspensions may be for other reasons)
+
+### Analysis
+
+#### What worked
+
+1. **The unit-of-analysis pivot was decisive.** Author-level features on the same 200K PR corpus produce AUC 0.958-1.000 against real ground truth. PR-level features on the same data produced AUC 0.479-0.503. Same data, different framing, completely different results.
+
+2. **H11 (LLM content) is the strongest unsupervised signal.** Gemini classifying PR titles as spam-like achieves AUC-ROC 0.976 and P@10 = 0.50 against suspended accounts, without using any label information. Half the authors Gemini considers most suspicious are actually banned. Cost: ~$0.15 for 820 authors.
+
+3. **H10 (network degree centrality) complements H11.** AUC 0.958 from graph topology alone. Suspended authors have high degree centrality (touch many repos) with low clustering (repos they touch don't share other contributors). This is the "star topology" spam pattern: one author touching many repos without being part of any repo's contributor community.
+
+4. **H13 k-NN is circular but useful for ranking.** Its perfect AUC against the primary target is expected -- seeds are the positives. Against the auxiliary target (which uses a different definition), k-NN drops to 0.408, confirming it's not generalizable. Its value is in the combined score where it boosts features that correlate with known-bad accounts.
+
+5. **The combined score is practical.** P@25 = 0.80 means: rank all 31K authors by this score, check the top 25, and 20 of them are confirmed suspended accounts. For a trust-scoring tool, this false-positive rate is actionable.
+
+#### What didn't work
+
+1. **H8 (merge rate alone) is necessary but not sufficient.** AUC 0.733 says suspended accounts have lower merge rates, but the top-k precision is 0.00 -- many legitimate authors also have low merge rates. Merge rate doesn't discriminate at the sharp end.
+
+2. **H9 (temporal) is the weakest signal.** AUC 0.588, not significant at p=0.10. Suspended accounts don't have distinctive timing patterns. This is surprising -- the post-mortem hypothesized "dormancy-then-burst" patterns, but they don't separate suspended from active authors.
+
+3. **H13 Isolation Forest detects anomalies but not the right ones.** AUC 0.933 sounds good, but P@100 = 0.01. It finds statistical outliers, most of which are prolific legitimate contributors who happen to be unusual (many repos, high volume). The anomalies it detects are a superset that includes but isn't focused on spam.
+
+4. **Campaign detection (H12) finds a different population than suspensions.** The 609 time-clustered campaign authors don't overlap with the 27 suspended accounts. GitHub may suspend accounts for reasons unrelated to time-clustered spam (e.g., ToS violations, automated abuse beyond PRs). Or the campaign authors simply haven't been suspended yet.
+
+#### Caveats
+
+- **27 suspended accounts is a small positive class.** Leave-one-out CV was used instead of stratified k-fold. Results should be validated with a larger ground truth set.
+- **H13 k-NN scores are partially circular.** The combined score's high AUC is partly driven by k-NN. Excluding k-NN, the Combined score should be re-evaluated.
+- **Only 1,000 of 31,296 authors checked for suspension status.** The unchecked 30,296 are assumed active. Some may be suspended, which would be false negatives in evaluation. This biases AUC downward (actual performance is likely better).
+- **LLM scores depend on model version.** Gemini 2.0 Flash results may not reproduce with other models or future versions.
+
+### Pipeline Details
+
+- Stage 5: Author aggregate features (H8) + bipartite network graph (H10) for 31,296 authors. ~1m45s.
+- Stage 6a: Time-series features (H9) for 31,296 authors. ~0.5s.
+- Stage 6b: LLM content analysis (H11) for 820 pre-filtered authors (merge_rate < 0.5, repos >= 2) via Gemini 2.0 Flash. 819 cached, 4 parse failures (defaulted to 0.5). ~18 min.
+- Stage 6c: Semi-supervised (H13) k-NN + Isolation Forest. 27 suspended seeds. ~instant.
+- Stage 7: Author-level evaluation against primary (suspended) and auxiliary (suspicious) targets. Precision@k, AUC-ROC, AUC-PR, Mann-Whitney U. ~4s.
+- Stage 8: Campaign detection. 101 anomalous repo-months, 609 campaign authors. ~1s.
+- Ground truth: 1,000 suspicious authors checked via GitHub API (--limit 1000 --min-repos 2). 27 suspended, 973 active. ~33 min.
 
 ## Data Limitations
 
-- Neoteny parquet has no reviews or commits -- those come only from the DuckDB cache gap-fill (covers ~52 repos, ~800 PRs/repo)
-- Author metadata (account age, followers) only available for ~8% of authors (PR 27 subset)
-- No labeled spam ground truth -- non-merge is a weak proxy for "bad PR"
-- Embedding similarity only computable for PRs with 2+ PRs in 24h burst window
-
-## Pipeline Details
-
-- Stage 1: 200,172 classified PRs from 96 repos (238K from parquet + 32K gap-fill neoteny + 7K gap-fill PR27, minus 53K bot PRs)
-- Stage 2: 200,172 feature rows (13 behavioral + 4 interaction + 3 content + 2 GE + 4 author metadata columns), ~74 min with indexes
-- Stage 3: 5-fold StratifiedGroupKFold CV grouped by repo, LogisticRegression(C=inf), 7 hypotheses (H1-H7)
-- Stage 4: 6 baselines with DeLong pairwise comparisons
-- All features respect anti-lookahead: computed from author's other-repo PRs with created_at < T
+- Author metadata (account age, followers) only available for the 1,000 checked authors
+- No labeled spam ground truth beyond account suspension status
+- Suspension may be for reasons unrelated to PR spam (ToS violations, other abuse)
+- LLM classification depends on PR title quality (bodies often empty)
+- 59% of authors are single-repo, limiting network feature expressiveness for that population

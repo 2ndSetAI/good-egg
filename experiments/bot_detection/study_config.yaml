@@ -83,6 +83,38 @@ embedding:
   batch_size: 50
 
 # ----------------------------------------------------------
+# Author-level analysis (Iteration 5: H8-H13)
+# ----------------------------------------------------------
+author_analysis:
+  # H9: Time series
+  burst_gap_days: 7
+  burst_min_prs: 3
+
+  # H11: LLM content
+  llm_model: "gemini/gemini-2.0-flash"
+  llm_max_titles: 50
+  llm_pre_filter_merge_rate: 0.5
+  llm_pre_filter_min_repos: 2
+
+  # H12: Campaigns
+  campaign_windows:
+    - name: "hacktoberfest_2020"
+      start: "2020-10-01"
+      end: "2020-10-31"
+    - name: "hacktoberfest_2019"
+      start: "2019-10-01"
+      end: "2019-10-31"
+
+  # H13: Semi-supervised
+  knn_k: 5
+  isolation_forest_contamination: 0.05
+
+  # Evaluation
+  precision_at_k: [10, 25, 50, 100, 250]
+  cv_folds: 5
+  random_seed: 42
+
+# ----------------------------------------------------------
 # Paths (relative to experiments/bot-detection/)
 # ----------------------------------------------------------
 paths:

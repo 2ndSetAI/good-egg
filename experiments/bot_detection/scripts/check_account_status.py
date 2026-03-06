@@ -13,7 +13,9 @@ import logging
 import os
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import click
 import httpx
@@ -25,25 +27,79 @@ logger = logging.getLogger(__name__)
 DEFAULT_DB = "experiments/bot_detection/data/bot_detection.duckdb"
 
 
-def _check_accounts(db: BotDetectionDB, token: str) -> None:
-    """Query GitHub API for each author without a status."""
-    # Get all distinct authors from prs table (superset of authors table)
-    all_authors_rows = db.con.execute(
-        "SELECT DISTINCT author FROM prs ORDER BY author"
-    ).fetchall()
-    all_authors = [r[0] for r in all_authors_rows]
+def _upsert_profile_fields(
+    db: BotDetectionDB,
+    login: str,
+    user_data: dict[str, Any],
+) -> None:
+    """Store profile fields from a GitHub API /users response."""
+    created_at = None
+    raw_created = user_data.get("created_at")
+    if raw_created:
+        try:
+            raw_created = raw_created.rstrip("Z")
+            if "+" in raw_created:
+                raw_created = raw_created[: raw_created.index("+")]
+            created_at = datetime.fromisoformat(raw_created)
+        except (ValueError, TypeError):
+            pass
 
-    # Find which already have a status
-    existing = db.con.execute(
-        "SELECT login, account_status FROM authors WHERE account_status IS NOT NULL"
-    ).fetchall()
-    done = {r[0] for r in existing}
+    followers = user_data.get("followers", 0) or 0
+    public_repos = user_data.get("public_repos", 0) or 0
 
-    to_check = [a for a in all_authors if a not in done]
-    logger.info(
-        "Total authors: %d, already checked: %d, remaining: %d",
-        len(all_authors), len(done), len(to_check),
+    db.con.execute(
+        """INSERT INTO authors (login, account_created_at, followers, public_repos)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT (login) DO UPDATE SET
+            account_created_at = COALESCE(?, authors.account_created_at),
+            followers = ?,
+            public_repos = ?""",
+        [login, created_at, followers, public_repos,
+         created_at, followers, public_repos],
     )
+
+
+def _check_accounts(
+    db: BotDetectionDB,
+    token: str,
+    limit: int | None = None,
+    min_repos: int = 1,
+) -> None:
+    """Query GitHub API for each author without a status.
+
+    If limit is set and min_repos > 1, check only the most suspicious
+    authors (multi-repo, ordered by merge rate ascending).
+    """
+    if limit and min_repos > 1:
+        # Targeted check: most suspicious authors first
+        target_authors = db.get_suspicious_authors(limit=limit, min_repos=min_repos)
+        # Find which already have a status
+        existing = db.con.execute(
+            "SELECT login, account_status FROM authors WHERE account_status IS NOT NULL"
+        ).fetchall()
+        done = {r[0] for r in existing}
+        to_check = [a for a in target_authors if a not in done]
+        logger.info(
+            "Targeted check: %d suspicious authors, already checked: %d, remaining: %d",
+            len(target_authors), len(done), len(to_check),
+        )
+    else:
+        # Original behavior: check all authors
+        all_authors_rows = db.con.execute(
+            "SELECT DISTINCT author FROM prs ORDER BY author"
+        ).fetchall()
+        all_authors = [r[0] for r in all_authors_rows]
+
+        existing = db.con.execute(
+            "SELECT login, account_status FROM authors WHERE account_status IS NOT NULL"
+        ).fetchall()
+        done = {r[0] for r in existing}
+
+        to_check = [a for a in all_authors if a not in done]
+        logger.info(
+            "Total authors: %d, already checked: %d, remaining: %d",
+            len(all_authors), len(done), len(to_check),
+        )
 
     if not to_check:
         logger.info("All authors already checked.")
@@ -56,8 +112,8 @@ def _check_accounts(db: BotDetectionDB, token: str) -> None:
 
     # Very conservative: 2s between requests, check remaining before every call,
     # stop using more than 50% of the budget per reset window
-    REQUEST_DELAY = 2.0
-    MAX_USAGE_FRACTION = 0.5  # only use half the rate limit budget
+    request_delay = 2.0
+    max_usage_fraction = 0.5  # only use half the rate limit budget
 
     with httpx.Client(headers=headers, timeout=30.0) as client:
         # Check current rate limit before starting
@@ -68,7 +124,7 @@ def _check_accounts(db: BotDetectionDB, token: str) -> None:
                 "Rate limit: %d/%d remaining, resets at %d",
                 rl["remaining"], rl["limit"], rl["reset"],
             )
-            budget = int(rl["limit"] * MAX_USAGE_FRACTION)
+            budget = int(rl["limit"] * max_usage_fraction)
             if rl["remaining"] < budget:
                 wait = max(1, rl["reset"] - int(time.time()) + 5)
                 logger.info(
@@ -81,13 +137,16 @@ def _check_accounts(db: BotDetectionDB, token: str) -> None:
             if i > 0 and i % 100 == 0:
                 logger.info("Progress: %d / %d checked", i, len(to_check))
 
-            time.sleep(REQUEST_DELAY)
+            time.sleep(request_delay)
 
             while True:
                 resp = client.get(f"https://api.github.com/users/{login}")
 
                 if resp.status_code == 200:
                     status = "active"
+                    # Store profile fields from the response
+                    user_data = resp.json()
+                    _upsert_profile_fields(db, login, user_data)
                     break
                 elif resp.status_code == 404:
                     status = "suspended"
@@ -121,7 +180,7 @@ def _check_accounts(db: BotDetectionDB, token: str) -> None:
             remaining = resp.headers.get("X-RateLimit-Remaining")
             limit = resp.headers.get("X-RateLimit-Limit")
             if remaining is not None and limit is not None:
-                threshold = int(int(limit) * MAX_USAGE_FRACTION)
+                threshold = int(int(limit) * max_usage_fraction)
                 if int(remaining) < threshold:
                     reset_at = resp.headers.get("X-RateLimit-Reset")
                     if reset_at:
@@ -142,7 +201,19 @@ def _check_accounts(db: BotDetectionDB, token: str) -> None:
     type=click.Path(exists=False),
     help="Path to bot_detection DuckDB.",
 )
-def main(db_path: str) -> None:
+@click.option(
+    "--limit",
+    default=None,
+    type=int,
+    help="Max authors to check (suspicious-first when combined with --min-repos).",
+)
+@click.option(
+    "--min-repos",
+    default=1,
+    type=int,
+    help="Min distinct repos for targeted check (default: 1 = all authors).",
+)
+def main(db_path: str, limit: int | None, min_repos: int) -> None:
     """Check GitHub account status for all PR authors."""
     logging.basicConfig(
         level=logging.INFO,
@@ -160,7 +231,7 @@ def main(db_path: str) -> None:
         sys.exit(1)
 
     with BotDetectionDB(path) as db:
-        _check_accounts(db, token)
+        _check_accounts(db, token, limit=limit, min_repos=min_repos)
 
 
 if __name__ == "__main__":

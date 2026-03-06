@@ -26,6 +26,7 @@ def _load_study_config(base_dir: Path) -> StudyConfig:
         scale=raw.get("scale", {}),
         paths=raw.get("paths", {}),
         bot_patterns=raw.get("bot_patterns", []),
+        author_analysis=raw.get("author_analysis", {}),
     )
 
 
@@ -78,6 +79,18 @@ def _run_stage(stage_num: int, ctx_obj: dict) -> None:
     elif stage_num == 4:
         from experiments.bot_detection.stages.stage4_baselines import run_stage4
         run_stage4(base_dir, config)
+    elif stage_num == 5:
+        from experiments.bot_detection.stages.stage5_author_features import run_stage5
+        run_stage5(base_dir, config)
+    elif stage_num == 6:
+        from experiments.bot_detection.stages.stage6_time_series import run_stage6_time_series
+        run_stage6_time_series(base_dir, config)
+    elif stage_num == 7:
+        from experiments.bot_detection.stages.stage7_author_evaluate import run_stage7
+        run_stage7(base_dir, config)
+    elif stage_num == 8:
+        from experiments.bot_detection.stages.stage8_campaigns import run_stage8
+        run_stage8(base_dir, config)
     else:
         logger.error("Unknown stage: %d", stage_num)
         sys.exit(1)
@@ -86,8 +99,8 @@ def _run_stage(stage_num: int, ctx_obj: dict) -> None:
 @cli.command("run-all")
 @click.pass_context
 def run_all(ctx: click.Context) -> None:
-    """Run all pipeline stages (1-4) sequentially."""
-    for stage_num in range(1, 5):
+    """Run all pipeline stages (1-8) sequentially."""
+    for stage_num in range(1, 9):
         logger.info("=== Running Stage %d ===", stage_num)
         _run_stage(stage_num, ctx.obj)
     logger.info("=== Pipeline complete ===")
@@ -97,10 +110,20 @@ def run_all(ctx: click.Context) -> None:
 @click.argument("stage", type=int)
 @click.pass_context
 def run_stage(ctx: click.Context, stage: int) -> None:
-    """Run a specific pipeline stage (1-4)."""
+    """Run a specific pipeline stage (1-8)."""
     logger.info("=== Running Stage %d ===", stage)
     _run_stage(stage, ctx.obj)
     logger.info("=== Stage %d complete ===", stage)
+
+
+@cli.command("run-author-pipeline")
+@click.pass_context
+def run_author_pipeline(ctx: click.Context) -> None:
+    """Run author-level pipeline stages (5-8) sequentially."""
+    for stage_num in range(5, 9):
+        logger.info("=== Running Stage %d ===", stage_num)
+        _run_stage(stage_num, ctx.obj)
+    logger.info("=== Author pipeline complete ===")
 
 
 if __name__ == "__main__":
