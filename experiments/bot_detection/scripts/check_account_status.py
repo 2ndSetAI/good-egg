@@ -70,36 +70,34 @@ def _check_accounts(
     If limit is set and min_repos > 1, check only the most suspicious
     authors (multi-repo, ordered by merge rate ascending).
     """
-    if limit and min_repos > 1:
+    if min_repos > 1:
         # Targeted check: most suspicious authors first
-        target_authors = db.get_suspicious_authors(limit=limit, min_repos=min_repos)
-        # Find which already have a status
-        existing = db.con.execute(
-            "SELECT login, account_status FROM authors WHERE account_status IS NOT NULL"
-        ).fetchall()
-        done = {r[0] for r in existing}
-        to_check = [a for a in target_authors if a not in done]
-        logger.info(
-            "Targeted check: %d suspicious authors, already checked: %d, remaining: %d",
-            len(target_authors), len(done), len(to_check),
+        target_authors = db.get_suspicious_authors(
+            limit=limit or 999999, min_repos=min_repos,
         )
     else:
-        # Original behavior: check all authors
-        all_authors_rows = db.con.execute(
-            "SELECT DISTINCT author FROM prs ORDER BY author"
+        # All authors ordered by merge rate ascending (most suspicious first)
+        target_authors_rows = db.con.execute(
+            """SELECT author
+            FROM prs
+            GROUP BY author
+            ORDER BY SUM(CASE WHEN state = 'MERGED' THEN 1 ELSE 0 END)::DOUBLE
+                / COUNT(*) ASC
+            LIMIT ?""",
+            [limit or 999999],
         ).fetchall()
-        all_authors = [r[0] for r in all_authors_rows]
+        target_authors = [r[0] for r in target_authors_rows]
 
-        existing = db.con.execute(
-            "SELECT login, account_status FROM authors WHERE account_status IS NOT NULL"
-        ).fetchall()
-        done = {r[0] for r in existing}
-
-        to_check = [a for a in all_authors if a not in done]
-        logger.info(
-            "Total authors: %d, already checked: %d, remaining: %d",
-            len(all_authors), len(done), len(to_check),
-        )
+    # Find which already have a status
+    existing = db.con.execute(
+        "SELECT login, account_status FROM authors WHERE account_status IS NOT NULL"
+    ).fetchall()
+    done = {r[0] for r in existing}
+    to_check = [a for a in target_authors if a not in done]
+    logger.info(
+        "Targeted check: %d target authors, already checked: %d, remaining: %d",
+        len(target_authors), len(done), len(to_check),
+    )
 
     if not to_check:
         logger.info("All authors already checked.")
