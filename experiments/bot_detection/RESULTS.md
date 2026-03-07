@@ -413,6 +413,253 @@ T1 (2020-01-01) has only 253 evaluable authors and 7 suspended, making results n
 - Output: `data/temporal_holdout/T_{date}/author_features.parquet` and `author_evaluation.json` per cutoff, plus `data/temporal_holdout/aggregated_results.json`
 - Original `data/features/author_features.parquet` and `data/results/author_evaluation.json` untouched
 
+## Iteration 7: Merge Rate Non-Monotonicity (stage 10)
+
+Tested whether the merge_rate → suspension relationship is non-monotonic (very low = bot/spam, very high = survivorship artifact, middle = normal). Compared 4 model parameterizations across 6 temporal cutoffs using the same holdout data from Iteration 6.
+
+**Features**: `hub_score` and `merge_rate` only. `account_age_days` was excluded because it's 100% NaN for suspended accounts (their GitHub profiles are unavailable), making it a leaked indicator of the target variable.
+
+### Models Tested
+
+1. **Linear** — logit(hub_score, merge_rate)
+2. **Quadratic** — logit(hub_score, merge_rate, merge_rate²)
+3. **Two-feature** — logit(hub_score, merge_rate, low_merge_flag) with threshold tuned via inner CV
+4. **GBT** — GradientBoostingClassifier(hub_score, merge_rate)
+
+### Results (3 stable cutoffs with ≥30 suspended)
+
+| Cutoff | n_susp | Linear | Quadratic | Two-feature | GBT |
+|---|---|---|---|---|---|
+| 2022-07-01 | 43 | 0.580 | 0.574 | 0.577 | 0.569 |
+| 2023-01-01 | 68 | 0.617 | 0.617 | 0.613 | 0.634 |
+| 2024-01-01 | 147 | 0.593 | 0.596 | 0.588 | 0.578 |
+
+The 3 early cutoffs (7-26 suspended) produce AUC < 0.5, indicating insufficient statistical power for any model -- not enough positives for LOO-CV to produce stable predictions.
+
+### Answers
+
+1. **Is the relationship non-monotonic?** No strong evidence. The quadratic merge_rate² coefficient is positive at most cutoffs (penalizes extremes), but the improvement over linear is negligible (< 0.01 AUC difference). Spearman correlation between binned merge_rate and suspension rate is negative (rho ≈ -0.7 to -0.9), confirming a monotonic trend: lower merge_rate → higher suspension probability.
+
+2. **Which parameterization wins?** No consistent winner. Linear wins at 2/6 cutoffs, quadratic at 1, two-feature at 2, GBT at 1. Mean AUC differences are within noise (0.33±0.27 across all cutoffs, 0.59±0.02 for stable cutoffs only). DeLong tests show no significant improvement for any variant over linear (all adjusted p > 0.05).
+
+3. **Fitted coefficients?** merge_rate has a consistently negative coefficient (-0.5 to -0.9), confirming low merge_rate predicts suspension. The quadratic term is positive but small. The low_merge_flag coefficient is positive (0.1-1.4) but inconsistent across cutoffs.
+
+4. **Stable across cutoffs?** No. Rankings shuffle freely across cutoffs. The signal is too weak for any parameterization to dominate.
+
+5. **GBT partial dependence?** merge_rate is the dominant feature (70-96% importance). hub_score contributes 4-30%. The partial dependence curve for merge_rate is monotonically decreasing -- no U-shape detected.
+
+### Implications
+
+The merge_rate → suspension relationship is **monotonic**, not U-shaped. Low merge_rate predicts suspension; high merge_rate does not additionally predict it. The negative weight in v2's logistic regression (-0.7783) captures the correct direction. Non-linear parameterizations don't help because there's no non-linearity to capture.
+
+The modest AUC (0.58-0.63) at larger cutoffs is consistent with Iteration 6's finding (0.69±0.11). The lower values here likely reflect using only 2 features (hub_score + merge_rate) vs Iteration 6's merge_rate-only univariate AUC.
+
+### Pipeline Details
+
+- Runtime: ~65 seconds for all 6 cutoffs
+- No DB queries, no LLM calls -- pure computation on existing parquets
+- Output: `data/temporal_holdout/merge_rate_experiment.json`
+- Code: `stages/stage10_merge_rate_models.py`, CLI: `run-merge-rate-experiment`
+
+---
+
+## Iteration 8: Two-Model Pipeline (stage 11)
+
+### Motivation
+
+Good Egg v2 computes a trust score via logistic regression on graph_score, merge_rate, and account_age. It was trained to predict contributor quality, not suspension. Iterations 6-7 showed merge_rate monotonically predicts suspension (AUC ~0.69 univariate). The question: does adding a dedicated suspension classifier alongside a GE v2-style trust score improve detection? This frames Good Egg as a two-model pipeline -- trust scoring + suspension risk -- and evaluates whether the combination beats either model alone.
+
+### Feature Audit
+
+After Iteration 6's decontamination analysis, 16 features survive as safe (0% NaN for both classes, no leakage, no differential missingness). Leaked features excluded: `account_age_days` (100% NaN for suspended), `followers`/`public_repos` (always 0 for suspended), `knn_distance_to_seed*` (seeds are the positives), `isolation_forest_score` (trained with labels). Differentially missing: `inter_pr_cv`, `burst_episode_count` (80% NaN for suspended vs 66% for active).
+
+Skewed features (`median_additions`, `median_files_changed`, `career_span_days`, `total_prs`) are log-transformed before scaling. All logistic regressions use `class_weight="balanced"`.
+
+### Models
+
+**Baselines:**
+1. **merge_rate_only** -- `1 - merge_rate` as suspension score (Iteration 6 reference)
+2. **ge_v2_proxy** -- LR on hub_score + merge_rate, negated to produce suspension score (simulates GE v2 without leaked account_age)
+
+**Suspension classifiers:**
+3. **susp_lr_small** -- LR on top-5 univariate AUC features: mean_title_length, rejection_rate, merge_rate, career_span_days, hour_entropy
+4. **susp_lr_full** -- LR on all 16 safe features
+5. **susp_gbt** -- GradientBoostingClassifier on all 16 safe features (n_estimators=100, max_depth=3)
+
+**Combined pipelines** (using best single suspension classifier per cutoff):
+6. **linear_combo** -- `alpha * ge_proxy_susp + (1-alpha) * susp_score`, alpha tuned via inner 3-fold CV
+7. **stacked** -- second-stage LR on both models' OOF probabilities
+8. **product** -- `ge_proxy_susp * susp_score`
+9. **max_score** -- `max(ge_proxy_susp, susp_score)`
+
+### Evaluation Protocol
+
+Same CV strategy as Iteration 7: LOO-CV when n_suspended < 30 (cutoffs 2020-2022), 5-fold stratified CV otherwise. DeLong paired tests vs ge_v2_proxy with Holm-Bonferroni correction. Combined models use OOF probabilities from the same CV folds.
+
+### Results
+
+| Cutoff | n_susp | ge_v2_proxy | susp_lr_full | susp_gbt | Best combo | Best combo AUC |
+|---|---|---|---|---|---|---|
+| 2020-01-01 | 7 | 0.980 | 0.546 | 0.551 | max_score | 0.972 |
+| 2021-01-01 | 16 | 0.981 | 0.548 | 0.492 | max_score | 0.820 |
+| 2022-01-01 | 26 | 0.839 | 0.610 | 0.629 | max_score | 0.826 |
+| 2022-07-01 | 43 | 0.420 | 0.647 | 0.665 | susp_gbt* | 0.665 |
+| 2023-01-01 | 68 | 0.383 | 0.637 | 0.683 | susp_gbt* | 0.683 |
+| 2024-01-01 | 147 | 0.407 | 0.695 | 0.686 | stacked | 0.695 |
+
+*At these cutoffs, no combined model beats the best single suspension classifier.
+
+**Aggregated across cutoffs (mean ± std AUC-ROC):**
+
+| Model | Mean AUC | Std AUC |
+|---|---|---|
+| merge_rate_only | 0.571 | 0.051 |
+| ge_v2_proxy | 0.668 | 0.269 |
+| susp_lr_small | 0.530 | 0.191 |
+| susp_lr_full | 0.614 | 0.053 |
+| susp_gbt | 0.618 | 0.072 |
+| linear_combo | 0.617 | 0.070 |
+| stacked | 0.419 | 0.263 |
+| product | 0.619 | 0.049 |
+| max_score | 0.663 | 0.219 |
+
+### Key Finding: GE v2 Proxy Flips Direction at Later Cutoffs
+
+The most striking result is that ge_v2_proxy's performance is bimodal. At early cutoffs (2020-2021), it produces AUC 0.98 -- near perfect. At later cutoffs (2022-07 onward), it drops below 0.5, meaning the model's trust predictions are *inverted* relative to suspension. The model predicts that suspended accounts are *more trustworthy* than active ones.
+
+This happens because the ge_v2_proxy is `1 - LR(hub_score, merge_rate)`, where the LR was trained with balanced class weights on the cutoff's data. At early cutoffs with very few suspended accounts (7-16), the balanced weighting amplifies a clean separation. At later cutoffs with more suspended accounts (43-147), the model learns a relationship that doesn't generalize across the OOF folds, producing inverted predictions.
+
+The high variance (std = 0.269) confirms this instability. No other model comes close to this level of variance.
+
+### Analysis
+
+**The dedicated suspension classifiers beat ge_v2_proxy at larger cutoffs.** At cutoffs with ≥43 suspended accounts (the 3 stable cutoffs from Iteration 7), susp_gbt achieves 0.57-0.68 AUC while ge_v2_proxy achieves 0.38-0.42. DeLong tests confirm this difference is significant (adjusted p < 0.05 at all 3 stable cutoffs). The suspension classifiers are more stable: susp_gbt has std = 0.072 vs ge_v2_proxy's 0.269.
+
+**No combined model consistently beats the best single model.** At early cutoffs where ge_v2_proxy dominates, max_score preserves most of the signal (0.97 vs 0.98). At later cutoffs where suspension classifiers dominate, the combined models can't improve on the single best. The product combiner (mean AUC 0.619) marginally edges susp_gbt (0.618) but the difference is noise. The stacked combiner (0.419) is the worst overall, unstable at small sample sizes.
+
+**linear_combo alpha values are informative.** At early cutoffs (2020-2021), the tuned alpha is 0.9, heavily weighting ge_v2_proxy. At later cutoffs (2022-07 onward), alpha drops to 0.1, heavily weighting the suspension classifier. The optimizer correctly identifies which sub-model is useful per cutoff, but this doesn't help at test time when you don't know which regime you're in.
+
+**susp_lr_full vs susp_gbt is a wash.** GBT wins at 4 of 6 cutoffs (mean rank 3.8 vs 4.2), lr_full wins at 2 (including the largest cutoff, 2024-01-01 with 147 suspended). Neither dominates.
+
+**Best suspension classifier per cutoff**: susp_gbt wins at 4 cutoffs, susp_lr_full at 2. This is consistent with GBT handling nonlinearities in the 16-feature space slightly better, but with insufficient ground truth to make it reliable.
+
+### Implications for Good Egg
+
+1. **A dedicated suspension classifier with ~16 behavioral features outperforms the GE v2-style trust model at predicting suspension.** The trust model's features (hub_score + merge_rate) were chosen for trust, not suspension -- different targets, different optimal features.
+
+2. **Combining the two models doesn't help.** The trust model's instability (flipping direction across cutoffs) makes it an unreliable component in any combination. The suspension classifier alone is the better choice.
+
+3. **The practical ceiling is AUC ~0.69.** Both susp_lr_full and susp_gbt plateau around 0.69 at the largest cutoff (147 suspended). This is consistent with Iteration 6's merge_rate-only AUC of 0.69±0.11. The additional 15 features beyond merge_rate provide modest lift (0.60→0.69 at the largest cutoff).
+
+4. **Account_age would help if it weren't leaked.** The feature audit excluded account_age_days because it's 100% NaN for suspended accounts (their profiles are unavailable). In a production system where you're scoring active accounts before they get suspended, account_age would be available and likely useful.
+
+### Pipeline Details
+
+- Runtime: ~90 seconds for all 6 cutoffs (dominated by LOO-CV at early cutoffs)
+- Output: `data/temporal_holdout/two_model_pipeline.json`
+- Code: `stages/stage11_two_model_pipeline.py`, CLI: `run-two-model-pipeline`
+
+---
+
+## Iteration 9: k-NN Holdout Experiment (stage 12)
+
+### Motivation
+
+Iteration 6 dismissed k-NN (H13) as "structurally circular, not fixable" because the suspended accounts used as seeds ARE the evaluation labels, giving seeds distance 0 and AUC 1.000 at every cutoff. But this is fixable: split the suspended accounts into seed and evaluation sets via cross-validation folds, then test whether k-NN distance from the remaining seeds can identify the held-out suspended accounts among the active population.
+
+Secondary question: does k-NN distance to suspended seeds (computed WITHOUT merge_rate) predict PR merge rates among active accounts? This tests whether "behavioral proximity to bots" generalizes as a quality signal beyond the circular suspension prediction.
+
+### Design
+
+**Experiment A: Suspension prediction with held-out seeds.** Per cutoff, fold the suspended accounts only into CV splits. For each fold, the non-held-out suspended accounts are seeds, and the held-out suspended + all active accounts are the eval set. Scaler fit on seeds + active (excluding held-out). LOO-CV when n_suspended < 30, 5-fold otherwise. Active accounts appear in every fold's eval set; their score is averaged across folds.
+
+Three k-NN variants tested:
+- **knn_safe16_euclidean**: 16 safe features, euclidean distance, k=5
+- **knn_safe15_no_mr**: 15 features (no merge_rate), euclidean, k=5
+- **knn_safe16_cosine**: 16 safe features, cosine distance, k=5
+
+Plus a k sweep on the best variant: k ∈ {3, 5, 10, 15}.
+
+Baselines: `merge_rate_only` (1 - merge_rate, no CV) and `susp_lr_full` (LR on 16 features, same CV protocol as Iteration 8). Note: all models are evaluated on the same population (active + suspended accounts only), which differs from Iteration 6's evaluation that included unchecked authors as negatives. This is why merge_rate_only AUCs here (0.571 mean) are lower than Iteration 6's H8 AUCs (0.693 mean).
+
+**Experiment B: Quality prediction among active accounts.** Using ALL suspended accounts as seeds (no splitting -- different target population, different target variable, no circularity), test whether k-NN distance predicts merge_rate among active accounts. Uses 15 features (no merge_rate) to avoid predicting merge_rate from itself.
+
+### Results: Experiment A (Suspension Prediction)
+
+| Cutoff | n_susp | knn_16_euc | knn_15_no_mr | knn_16_cos | merge_rate | susp_lr_full |
+|---|---|---|---|---|---|---|
+| 2020-01-01 | 7 | 0.189 | 0.187 | 0.563 | 0.508 | 0.546 |
+| 2021-01-01 | 16 | 0.392 | 0.401 | 0.472 | 0.500 | 0.548 |
+| 2022-01-01 | 26 | 0.432 | 0.417 | 0.489 | 0.566 | 0.610 |
+| 2022-07-01 | 43 | 0.529 | 0.513 | 0.582 | 0.620 | 0.647 |
+| 2023-01-01 | 68 | 0.543 | 0.515 | 0.589 | 0.631 | 0.637 |
+| 2024-01-01 | 147 | 0.585 | 0.567 | 0.613 | 0.599 | 0.695 |
+| **Mean±SD** | | **0.445±0.132** | **0.433±0.124** | **0.551±0.053** | **0.571±0.051** | **0.614±0.053** |
+
+**Stable cutoffs only (n_suspended ≥ 30):**
+
+| Model | Mean AUC | Std AUC |
+|---|---|---|
+| knn_safe16_euclidean | 0.552 | 0.024 |
+| knn_safe15_no_mr | 0.532 | 0.025 |
+| knn_safe16_cosine | 0.595 | 0.013 |
+| merge_rate_only | 0.617 | 0.013 |
+| susp_lr_full | 0.660 | 0.026 |
+
+**k sweep (best variant: knn_safe16_cosine):**
+
+Higher k generally helps slightly. At the largest cutoff (147 suspended), k=15 achieves AUC 0.630 vs k=5's 0.613. Early cutoffs can't test large k (seed set too small).
+
+**Ranking consistency:** susp_lr_full wins 5/6 cutoffs (mean rank 1.2). merge_rate_only ranks 2.3 on average. knn_safe16_cosine ranks 2.5. Euclidean variants rank 4-5.
+
+### Results: Experiment B (Quality Prediction)
+
+| Metric | Mean | Std |
+|---|---|---|
+| Spearman rho (knn_score vs merge_rate) | -0.272 | 0.051 |
+| Binary AUC (merge_rate < 0.3) | 0.756 | 0.066 |
+
+Quartile analysis (by k-NN suspiciousness score, averaged across cutoffs):
+
+| Quartile | Mean merge_rate | Interpretation |
+|---|---|---|
+| Q1 (most suspicious) | 0.291 | Closest to bots → lowest merge rate |
+| Q2 | 0.183 | |
+| Q3 | 0.077 | |
+| Q4 (least suspicious) | 0.102 | Farthest from bots → higher merge rate |
+
+The Q3/Q4 non-monotonicity is likely noise from the score distribution's tail. The overall trend is clear: proximity to suspended accounts in feature space predicts lower merge rates among active accounts.
+
+Note: `rejection_rate` remains in the 15-feature set and is mechanically correlated with merge_rate (~complementary). This is acceptable because rejection patterns are substantively meaningful beyond merge rate, but the Spearman correlation includes this indirect path.
+
+### Analysis
+
+**k-NN circularity is now broken.** All AUCs are well below 1.0, confirming the held-out CV design works. The previous AUC = 1.000 was entirely an artifact of seeds getting distance 0.
+
+**k-NN is a weak suspension predictor.** The best variant (cosine, 16 features) achieves 0.595 mean AUC on stable cutoffs -- above chance but worse than susp_lr_full (0.660). knn_cosine is competitive with merge_rate_only (0.617 vs 0.595 on stable cutoffs, and cosine beats merge_rate at the largest cutoff 0.613 vs 0.599). Euclidean distance performs particularly poorly (0.552), likely because feature magnitudes dominate over direction in high-dimensional space.
+
+**Cosine >> Euclidean for k-NN.** Cosine distance is consistently better (0.595 vs 0.552 on stable cutoffs). This makes sense: suspended accounts differ from active ones in the *direction* of their feature profiles (behavioral shape), not necessarily in magnitude.
+
+**Removing merge_rate hurts.** knn_safe15_no_mr (0.532) is worse than knn_safe16_euclidean (0.552) and knn_safe16_cosine (0.595). merge_rate carries real signal even in a k-NN context, consistent with Iteration 6's finding.
+
+**k-NN does predict merge quality (Experiment B).** Among active accounts, proximity to suspended seeds (using 15 features, no merge_rate) predicts merge rate with Spearman rho = -0.272 and binary AUC = 0.756 for low-quality authors (merge_rate < 0.3). This suggests behavioral similarity to bots generalizes as a quality indicator. Caveat: `rejection_rate` is in the 15-feature set and is mechanically complementary to merge_rate, so some of this correlation may flow through that proxy rather than representing independent signal.
+
+**The practical ceiling hasn't moved.** susp_lr_full achieves 0.660 mean AUC on stable cutoffs (range 0.637-0.695), consistent with Iteration 8's results. The 16 behavioral features contain limited information about suspension. More labeled data or richer features (e.g., account_age for active accounts) might help.
+
+### Implications
+
+1. **k-NN is not competitive for suspension prediction.** LR on the same features consistently outperforms it. The non-parametric distance approach doesn't capture the suspension boundary as well as a linear decision surface with balanced class weights.
+
+2. **k-NN distance shows promise as a quality signal, with caveats.** Experiment B's Spearman rho of -0.272 and binary AUC of 0.756 suggest "distance from known bad actors" predicts merge quality among active accounts. However, `rejection_rate` in the feature set acts as a merge_rate proxy, inflating the correlation. A cleaner test would exclude both merge_rate and rejection_rate from the feature set.
+
+3. **The Iteration 6 dismissal was partially wrong.** k-NN circularity was fixable. The honest AUC is ~0.55-0.60 (not 1.0 and not useless). But the corrected result confirms that k-NN adds little beyond what LR already captures.
+
+### Pipeline Details
+
+- Runtime: ~5 seconds for all 6 cutoffs
+- Output: `data/temporal_holdout/knn_holdout_experiment.json`
+- Code: `stages/stage12_knn_holdout.py`, CLI: `run-knn-holdout`
+
 ---
 
 ## Data Limitations

@@ -207,5 +207,60 @@ def run_temporal_holdout(ctx: click.Context, cutoffs: str | None) -> None:
     _run_holdout(ctx.obj["base_dir"], config)
 
 
+@cli.command("run-merge-rate-experiment")
+@click.option(
+    "--cutoffs",
+    type=str,
+    default=None,
+    help="Comma-separated cutoff dates (YYYY-MM-DD) to override config.",
+)
+@click.pass_context
+def run_merge_rate_experiment(ctx: click.Context, cutoffs: str | None) -> None:
+    """Run merge rate non-monotonicity experiment (Iteration 7)."""
+    from experiments.bot_detection.stages.stage10_merge_rate_models import (
+        run_stage10,
+    )
+
+    config = ctx.obj["config"]
+    cutoff_list = cutoffs.split(",") if cutoffs else None
+    run_stage10(ctx.obj["base_dir"], config, cutoffs=cutoff_list)
+
+
+@cli.command("run-two-model-pipeline")
+@click.option(
+    "--cutoffs",
+    type=str,
+    default=None,
+    help="Comma-separated cutoff dates (YYYY-MM-DD) to override config.",
+)
+@click.pass_context
+def run_two_model_pipeline(ctx: click.Context, cutoffs: str | None) -> None:
+    """Run two-model pipeline experiment (Iteration 8)."""
+    from experiments.bot_detection.stages.stage11_two_model_pipeline import (
+        run_stage11,
+    )
+
+    config = ctx.obj["config"]
+    cutoff_list = cutoffs.split(",") if cutoffs else None
+    run_stage11(ctx.obj["base_dir"], config, cutoffs=cutoff_list)
+
+
+@cli.command("run-knn-holdout")
+@click.option(
+    "--cutoffs",
+    type=str,
+    default=None,
+    help="Comma-separated cutoff dates (YYYY-MM-DD) to override config.",
+)
+@click.pass_context
+def run_knn_holdout(ctx: click.Context, cutoffs: str | None) -> None:
+    """Run k-NN holdout experiment (Iteration 9)."""
+    from experiments.bot_detection.stages.stage12_knn_holdout import run_stage12
+
+    config = ctx.obj["config"]
+    cutoff_list = cutoffs.split(",") if cutoffs else None
+    run_stage12(ctx.obj["base_dir"], config, cutoffs=cutoff_list)
+
+
 if __name__ == "__main__":
     cli()
