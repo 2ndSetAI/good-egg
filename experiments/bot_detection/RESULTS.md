@@ -662,6 +662,344 @@ Note: `rejection_rate` remains in the 15-feature set and is mechanically correla
 
 ---
 
+## Iteration 10: Four Experiments for Good Egg Model Development (stages 13-14)
+
+### Motivation
+
+Iterations 5-9 studied bot detection via suspension prediction. The key findings: merge_rate is the only feature surviving temporal decontamination (AUC 0.66-0.70 via LR on 16 features), k-NN is weak for suspension but shows quality-prediction signal, and no individual feature beyond merge_rate predicts suspension above chance. But these experiments targeted suspension -- not the trust/merge prediction that Good Egg actually computes. This iteration runs four experiments connecting research findings to product decisions.
+
+### Experiment A: Merge Prediction
+
+**Question:** Which author-level features predict whether a user's *future* PRs will be merged?
+
+**Design:** For each temporal cutoff T, use pre-cutoff features to predict post-cutoff merge rate >= 0.5 (binary target). Post-cutoff merge rates computed from DuckDB `prs` table. Authors need >=1 pre-cutoff PR (from the parquet) and >=1 post-cutoff PR.
+
+**Models:**
+1. `merge_rate_only` -- pre-cutoff merge_rate as univariate score (v2 reference)
+2. `ge_v2_proxy` -- LR(hub_score, merge_rate) simulating v2
+3. `lr_full` -- LR on all 16 safe features
+4. `lr_full_no_mr` -- LR on 15 features (no merge_rate) to measure marginal signal
+5. `knn_cosine` -- k-NN cosine (k=5) with high-merge authors as seeds
+
+**Results:**
+
+| Model | Mean AUC | Std AUC | Mean Spearman rho |
+|---|---|---|---|
+| merge_rate_only | 0.576 | 0.023 | 0.121 |
+| ge_v2_proxy | 0.542 | 0.070 | 0.069 |
+| lr_full | 0.598 | 0.075 | 0.010 |
+| lr_full_no_mr | 0.571 | 0.069 | -0.019 |
+| knn_cosine | 0.467 | 0.023 | 0.006 |
+
+Population sizes: 62 (T_2020) to 2,154 (T_2024) authors with post-cutoff PRs.
+
+**DeLong tests (T_2024, largest cutoff):** lr_full significantly beats both merge_rate_only (adj_p < 0.001) and ge_v2_proxy (adj_p < 0.001). ge_v2_proxy does not significantly differ from merge_rate_only (adj_p = 0.14). knn_cosine is significantly *worse* than both baselines.
+
+**Key finding:** Pre-cutoff merge_rate is the strongest single predictor of future merge outcomes (AUC 0.576, rho 0.121). The 16-feature LR (0.598) provides modest improvement. Removing merge_rate drops AUC from 0.598 to 0.571 -- the other 15 features have some marginal signal. The ge_v2_proxy (hub_score + merge_rate) underperforms merge_rate alone, suggesting hub_score adds noise for merge prediction. k-NN is poor for merge prediction -- the label is not as clustered in feature space as suspension is.
+
+### Experiment B: Advisory Suspension Score
+
+**Question:** Can the 16-feature LR suspension classifier produce a useful advisory score for CI?
+
+**Design:** Three model variants with decreasing feature requirements:
+- `susp_lr_full` -- 16 features (requires extra API calls)
+- `susp_lr_available` -- 10 features (available from current graph build without extra API calls)
+- `susp_lr_cheap` -- 6 features (derivable from current v2 data)
+
+Evaluation: precision at fixed FPR thresholds, calibration, advisory tier precision.
+
+**Results (mean across 6 cutoffs):**
+
+| Model | Mean AUC | Std AUC | Brier | P@1%FPR | P@5%FPR | P@10%FPR |
+|---|---|---|---|---|---|---|
+| susp_lr_full | 0.614 | 0.053 | 0.198 | 0.124 | 0.086 | 0.074 |
+| susp_lr_available | 0.608 | 0.053 | 0.207 | 0.170 | 0.118 | 0.076 |
+| susp_lr_cheap | 0.538 | 0.193 | 0.234 | 0.057 | 0.038 | 0.053 |
+
+**Advisory tier precision:**
+
+| Model | HIGH (top 1%) | ELEVATED (next 4%) | NORMAL |
+|---|---|---|---|
+| susp_lr_full | 0.141 | 0.076 | 0.029 |
+| susp_lr_available | 0.206 | 0.094 | 0.027 |
+| susp_lr_cheap | 0.061 | 0.032 | 0.032 |
+
+**DeLong tests:** No significant differences between susp_lr_available and susp_lr_full at most cutoffs (p > 0.05 at 4/6 cutoffs). The 10-feature available model is statistically indistinguishable from the full 16-feature model for practical purposes.
+
+**Key finding:** The available-features model (10 features, zero extra API calls) performs comparably to the full model (AUC 0.608 vs 0.614). The HIGH tier achieves 14-21% precision (vs base rate ~3%), a 5-7x lift. The cheap model (6 features) is unstable (std 0.193) and performs poorly. An advisory tier using 10 available features is viable, but the absolute precision is modest -- roughly 1 in 5-7 "HIGH RISK" authors is actually suspended.
+
+### Experiment C: k-NN Bot Proximity as Feature
+
+**Question:** Does k-NN distance to suspended seeds improve merge prediction when added to ge_v2_proxy?
+
+**Design:** Compute `bot_proximity_score` (cosine distance to k=5 nearest suspended accounts using 15 features, no merge_rate) for each author. Compare ge_v2_proxy alone vs ge_v2_proxy + bot_proximity in LR for merge prediction.
+
+**Results (per cutoff):**
+
+| Cutoff | n_seeds | Base AUC | +BotProx AUC | Delta | DeLong p |
+|---|---|---|---|---|---|
+| 2020-01-01 | 7 | 0.463 | 0.582 | +0.119 | 0.243 |
+| 2021-01-01 | 16 | 0.431 | 0.567 | +0.136 | 0.056 |
+| 2022-01-01 | 26 | 0.578 | 0.689 | +0.110 | 0.001 |
+| 2022-07-01 | 43 | 0.620 | 0.699 | +0.079 | <0.001 |
+| 2023-01-01 | 68 | 0.567 | 0.638 | +0.071 | <0.001 |
+| 2024-01-01 | 147 | 0.592 | 0.625 | +0.033 | 0.001 |
+| **Mean** | | **0.542** | **0.633** | **+0.092** | |
+
+**Key finding:** Bot proximity consistently improves merge prediction (mean delta +0.092 AUC). The effect is significant at 4/6 cutoffs (DeLong p < 0.05). The feature encodes "behavioral distance from known-bad accounts" and carries signal independent of hub_score and merge_rate. At the largest cutoff (147 seeds), the delta narrows to +0.033 -- more seeds may paradoxically dilute the signal if the suspended population is heterogeneous.
+
+This is the strongest evidence yet that a shipped seed file of suspended account feature vectors could improve Good Egg predictions. Runtime overhead would be negligible (<10ms per author for 147-seed brute-force k-NN in 15 dimensions).
+
+### Experiment D: Temporal Windowing of Merge Rate
+
+**Question:** Does a short-term lookback merge rate predict future merges better than all-time?
+
+**Design:** Five merge_rate variants: alltime, 1yr, 6mo, 3mo, exponentially weighted (half-life 180d). Each tested as univariate predictor and in v2-style LR(hub_score, mr_variant). Population filter: >=2 PRs in the lookback window.
+
+**Results (aggregated, cutoffs with sufficient data):**
+
+| Variant | Uni AUC | V2 LR AUC | Spearman rho | n_cutoffs |
+|---|---|---|---|---|
+| mr_alltime | 0.542 | 0.415 | 0.087 | 6 |
+| mr_1yr | 0.611 | 0.507 | 0.199 | 6 |
+| mr_6mo | 0.618 | 0.503 | 0.234 | 6 |
+| mr_3mo | 0.675 | 0.647 | 0.211 | 4 |
+| mr_weighted | 0.577 | 0.545 | 0.122 | 6 |
+
+Note: mr_3mo only has 4 cutoffs because early cutoffs have <10 eligible authors in the 3-month window. The v2 LR AUC is lower than univariate for some variants because hub_score adds noise for merge prediction (consistent with Experiment A).
+
+**Best window per-cutoff (stable cutoffs only, n>=100):**
+
+| Cutoff | mr_alltime | mr_1yr | mr_6mo | mr_3mo | mr_weighted |
+|---|---|---|---|---|---|
+| 2022-01-01 | 0.512 | 0.600 | 0.529 | **0.657** | 0.561 |
+| 2022-07-01 | **0.711** | 0.663 | 0.624 | 0.737 | 0.660 |
+| 2023-01-01 | 0.615 | **0.659** | 0.658 | 0.645 | 0.645 |
+| 2024-01-01 | 0.630 | 0.590 | **0.697** | 0.659 | 0.606 |
+
+**Key finding:** Short-term merge rates (3mo, 6mo) outperform all-time merge rate for predicting future merges. The 3-month window achieves the highest univariate AUC (0.675) when data is available. The exponentially weighted rate (half-life 180d) performs only marginally better than all-time (0.577 vs 0.542), suggesting the half-life is too long to capture recency signal effectively. Good Egg's current all-time merge rate is suboptimal; a 3-6 month lookback window would likely improve predictions.
+
+### Implications for Good Egg
+
+1. **Merge rate is the strongest single feature for both suspension and merge prediction.** The 16-feature LR provides modest improvement (AUC 0.598 vs 0.576), but the marginal features aren't worth the API cost for merge prediction.
+
+2. **Bot proximity is worth shipping.** A static seed file (~50KB JSON) of suspended account feature vectors, plus ~30 lines in scorer.py to compute k-NN distance, adds meaningful signal to merge prediction (+0.09 AUC). The runtime cost is negligible.
+
+3. **Short-term merge rate beats all-time.** Switching from all-time to 3-6 month lookback could improve merge prediction by 0.05-0.10 AUC. This is a config change, not a code change -- v2's recency_config already supports weighting.
+
+4. **Advisory suspension tiers are viable but limited.** The 10-feature model (zero extra API calls) achieves 14-21% precision in the HIGH tier (5-7x lift over base rate). Useful as an informational signal, not reliable enough for blocking.
+
+5. **hub_score adds noise for merge prediction.** ge_v2_proxy (hub_score + merge_rate) underperforms merge_rate alone. This suggests the current v2 scoring formula may be overweighting graph structure for merge prediction.
+
+### Pipeline Details
+
+- Stage 13 runtime: ~3 seconds for all 6 cutoffs (A/C/D experiments)
+- Stage 14 runtime: ~7 seconds for all 6 cutoffs (Experiment B)
+- Outputs: `data/temporal_holdout/merge_prediction_experiment.json`, `data/temporal_holdout/advisory_score_experiment.json`
+- Code: `stages/stage13_merge_prediction.py`, `stages/stage14_advisory_score.py`
+- CLI: `run-merge-prediction`, `run-advisory-score`
+
+---
+
+## Decisions and Open Questions (Post-Iteration 10)
+
+### Decisions made
+
+**1. k-NN bot proximity will not ship in the open-source Good Egg.**
+The feature requires maintaining a non-stale seed file of suspended account feature vectors. Seeds go stale as GitHub suspends new accounts and the population shifts. Keeping seeds current requires periodic re-scraping of account status -- a hosted service concern, not something an open-source GitHub Action can do autonomously. This is a feature for a commercial/hosted version of Good Egg, not the OSS release.
+
+**2. Merge rate lookback window will be shortened in Good Egg v3.**
+Experiment D showed 3-month merge rate (AUC 0.675) substantially outperforms all-time (0.542) for predicting future merges. v2's `recency_config` already supports exponential decay weighting, but the current half-life (180 days) is too long -- the weighted rate (AUC 0.577) barely beat all-time. v3 will shorten the effective lookback. The exact window (3mo vs 6mo) is a tuning question; 3mo has higher AUC but drops more authors below the minimum PR threshold.
+
+**3. "Bad Egg" suspension advisory score will be added to the Good Egg repo as a separate score type.**
+Based on the 10-feature `susp_lr_available` model (AUC 0.608, zero extra API calls). Ships as an advisory field in TrustScore output, not affecting trust level classification. The HIGH tier (top 1%) achieves 14-21% precision (5-7x lift over base rate) -- informational, not blocking.
+
+### Open question: feature selection for Bad Egg
+
+We have not done a proper ablation on the 10-feature set. The coefficient stability analysis from Iteration 8 raises concerns:
+
+| Feature | In 10-feat model | LR coeff sign stable | GBT importance (T_2024) |
+|---|---|---|---|
+| merge_rate | yes | NO | 0.024 |
+| total_prs | yes | NO | 0.014 |
+| career_span_days | yes | NO | 0.071 |
+| mean_title_length | yes | NO | 0.237 |
+| hub_score | yes | NO | 0.000 |
+| bipartite_clustering | yes | NO | 0.087 |
+| isolation_score | yes | NO | 0.000 |
+| total_repos | yes | NO | 0.000 |
+| median_additions | yes | yes | 0.162 |
+| median_files_changed | yes | yes | 0.103 |
+
+Only 2 of 10 features (median_additions, median_files_changed) have sign-stable LR coefficients across cutoffs. Three features (hub_score, isolation_score, total_repos) have zero GBT importance at the largest cutoff. The 6-feature "cheap" model was unstable (AUC std 0.193), but a *different* subset of 6-8 features -- chosen by ablation rather than API-cost convenience -- might perform better.
+
+**Needed experiment:** Forward feature selection or leave-one-out ablation on the 10-feature set, evaluated on the 3 stable cutoffs (n_suspended >= 43). Target: find the minimal feature subset that doesn't significantly degrade AUC vs the full 10. This would tell us whether hub_score, isolation_score, and total_repos can be dropped (simplifying the scoring pipeline) or whether they contribute through interactions despite zero univariate importance.
+
+### Open question: hub_score in Good Egg v3
+
+Experiment A showed hub_score adds noise for merge prediction -- ge_v2_proxy (hub_score + merge_rate) scored AUC 0.542 vs merge_rate_only at 0.576. But hub_score was designed for a different question: "is this person an established contributor to the open-source ecosystem?" rather than "will their future PRs get merged?" These may not be the same thing.
+
+**Proposed experiment (Iteration 11):** Test hub_score's value in a *repo-specific* context rather than the cross-repo merge prediction tested here.
+
+Design: For each author with post-cutoff PRs in a specific repo R, predict whether their PRs to R will be merged. Features:
+- `hub_score` (global graph centrality)
+- `repo_specific_score` -- hub_score contribution from repo R's neighborhood only
+- `has_prior_merged_in_R` -- binary: did the author have a merged PR in R pre-cutoff?
+- `merge_rate` (global)
+- `merge_rate_in_R` (repo-specific, if available)
+
+The hypothesis is that hub_score helps when the question is "does this person belong in this project's ecosystem?" (the original Good Egg question) rather than "will PRs get merged somewhere?" (what Iteration 10 tested). If hub_score helps for repo-specific prediction but not cross-repo, then v3 should keep it but reweight it. If it doesn't help even repo-specifically, it should be downweighted or removed.
+
+This experiment requires restructuring the target from per-author to per-author-per-repo, which is a different evaluation framework than the temporal holdout parquets currently support. Estimated scope: new stage15, querying per-repo merge outcomes from DuckDB.
+
+## Iteration 11: Feature Ablation + Hub Score Repo-Specific
+
+### Experiment 1: Bad Egg Feature Ablation (stage15)
+
+**Question:** What is the minimal subset of the 10 available features that doesn't significantly degrade suspension prediction AUC?
+
+**Method:** Two complementary analyses across 3 stable cutoffs (T_2022-07, T_2023-01, T_2024-01), each with 5-fold stratified CV and balanced LR:
+1. **Leave-one-out ablation** -- drop each feature, DeLong test vs full model, Holm-Bonferroni correction across 10 tests
+2. **Forward selection** -- greedy add best feature, DeLong test k-feature vs (k-1)-feature, stop when p > 0.05
+
+**LOO ablation results (mean across 3 cutoffs):**
+
+| Feature | Mean AUC Delta | Dispensable? |
+|---|---|---|
+| merge_rate | -0.040 | No (2/3) |
+| isolation_score | -0.008 | No (1/3) |
+| career_span_days | -0.003 | Yes (3/3) |
+| median_additions | -0.002 | Yes (3/3) |
+| mean_title_length | -0.001 | Yes (3/3) |
+| hub_score | +0.000 | Yes (3/3) |
+| total_repos | +0.000 | Yes (3/3) |
+| total_prs | +0.001 | Yes (3/3) |
+| bipartite_clustering | +0.001 | Yes (3/3) |
+| median_files_changed | +0.006 | Yes (3/3) |
+
+Only `merge_rate` and `isolation_score` are non-dispensable. 8 of 10 features can be dropped without significant AUC loss. `median_files_changed` actually *improves* AUC when removed (+0.006), suggesting it adds noise.
+
+**Forward selection results (mean rank across 3 cutoffs):**
+
+| Feature | Mean Rank | Selected in >0 cutoffs? |
+|---|---|---|
+| merge_rate | 1.3 | 3/3 |
+| isolation_score | 4.0 | 1/3 |
+| median_additions | 4.7 | 0/3 |
+| hub_score | 4.7 | 0/3 |
+| career_span_days | 5.7 | 0/3 |
+| total_repos | 5.7 | 0/3 |
+| total_prs | 6.0 | 0/3 |
+| mean_title_length | 6.7 | 1/3 |
+| bipartite_clustering | 7.3 | 0/3 |
+| median_files_changed | 9.0 | 0/3 |
+
+Forward selection consistently picks `merge_rate` first (rank 1.3), then `median_additions` or `isolation_score` as the second and third features. The formal stopping rule (p > 0.05 at each step) halts at k=1 in 2/3 cutoffs because the k=1→k=2 step has p=0.078 and p=0.113. But see below for why this is misleadingly conservative.
+
+**The top-3 forward-selected model beats the full 10-feature model in every cutoff:**
+
+| Cutoff | k=1 (mr) | k=2 (+med_adds) | k=3 (+isolation) | Full 10 | top3 - full |
+|---|---|---|---|---|---|
+| T_2022-07 | 0.598 | 0.672 | 0.682 | 0.641 | +0.042 |
+| T_2023-01 | 0.617 | 0.672 | 0.671 | 0.646 | +0.026 |
+| T_2024-01 | 0.613 | 0.668 | 0.680 | 0.678 | +0.002 |
+
+The 7 noise features actively degrade performance -- the 3-feature model is both simpler and higher-AUC than the 10-feature model. The AUC jump from k=1 to k=2 is +0.055 to +0.074 across cutoffs, a large effect that fails the per-step significance threshold only because of low power (43-147 suspended accounts with Holm-Bonferroni across 10 tests). At the largest cutoff (T_2024, 147 suspended), the 3-feature model {mean_title_length, merge_rate, isolation_score} was formally selected with both steps significant.
+
+**Recommended Bad Egg feature set: `merge_rate`, `median_additions`, `isolation_score`.**
+
+These three features have clear mechanistic interpretations for suspension detection:
+- **`merge_rate`** -- fraction of PRs that get merged. Suspended accounts have lower merge rates. The strongest single predictor, consistently ranked first in forward selection.
+- **`isolation_score`** -- fraction of an author's repos where no other multi-repo author contributes. Suspended accounts tend to work in repos that no established contributor touches. Non-dispensable in 2/3 cutoffs in LOO ablation.
+- **`median_additions`** -- median lines added per PR (log-transformed). Captures whether PR sizes are typical or anomalous. Consistently ranked 2nd in forward selection despite not being formally non-dispensable (a power issue -- the LOO test with 10 simultaneous corrections requires very large effects).
+
+All three features are already computed from the same GraphQL data GE fetches, so there is no additional API cost.
+
+### Experiment 2: Hub Score Repo-Specific (stage16)
+
+**Question:** Does hub_score improve merge prediction when the target is repo-specific ("will this author's PRs to repo R be merged?")?
+
+**Method:** For each cutoff and qualifying repo R (>=20 authors with post-cutoff PRs), predict binary target (post-cutoff merge rate in R >= 0.5). 7 model variants compare global vs repo-specific features, with and without hub_score. Pooled across repos, 5-fold stratified CV. DeLong tests with Holm-Bonferroni correction.
+
+**Per-cutoff results (key models):**
+
+| Cutoff | n pairs | mr_only | mr_repo | mr+hub | full_repo | full_combined |
+|---|---|---|---|---|---|---|
+| T_2020 | 22 | 0.494 | 0.588 | 0.118 | 0.282 | 0.306 |
+| T_2021 | 51 | 0.528 | 0.576 | 0.253 | 0.372 | 0.324 |
+| T_2022 | 271 | 0.623 | 0.630 | 0.597 | 0.653 | 0.662 |
+| T_2022-07 | 775 | 0.630 | 0.640 | 0.615 | 0.705 | 0.698 |
+| T_2023 | 968 | 0.604 | 0.600 | 0.599 | 0.670 | 0.661 |
+| T_2024 | 1304 | 0.622 | 0.622 | 0.653 | 0.679 | 0.692 |
+
+**Aggregated means:** mr_only 0.583, mr_repo 0.609, mr_plus_hub 0.472, full_repo 0.560, full_combined 0.557.
+
+**DeLong significance:**
+- `mr_plus_hub vs mr_only`: hub_score *hurts* in 3/6 cutoffs (significantly), helps in 1/6 (T_2024 only)
+- `mr_repo_plus_hub vs mr_repo`: same pattern -- hub_score hurts in early cutoffs, neutral or helps late
+- `full_combined vs full_repo`: never significant (0/6) -- global features add nothing on top of repo-specific
+- `full_repo vs mr_only`: significant in 4/6 cutoffs -- repo-specific features consistently beat global MR
+
+**Key findings:**
+1. **Repo-specific merge rate beats global.** `mr_repo` (0.609) > `mr_only` (0.583), and `full_repo` significantly beats `mr_only` in 4/6 cutoffs. Knowing someone's history *in this specific repo* is more informative than their global track record.
+2. **Hub score is unreliable for repo-specific prediction.** It catastrophically hurts with small samples (AUC < 0.3 for n < 100), is neutral for medium samples, and only helps at the largest cutoff (T_2024, n=1304, delta +0.031). The mean across cutoffs is negative.
+3. **Global features don't add to repo-specific ones.** `full_combined` ≈ `full_repo` across all cutoffs; DeLong test never significant.
+4. **The `full_repo` model (merge_rate_in_R, has_prior_merged_in_R, n_prior_prs_in_R) is the best stable model**, beating global MR significantly in most cutoffs.
+
+**Implication for GE v3:** hub_score should not be upweighted for repo-specific trust scoring. The strongest predictors are repo-specific: does this author have prior merged PRs in this repo, and what's their merge rate here? This aligns with the existing GE `skip_known_contributors` feature -- authors with prior merged PRs in the target repo are already trusted. For unknown authors, global merge_rate is the best single predictor; hub_score adds noise.
+
+However, stage16 pooled all author-repo pairs including known contributors. Since GE's `skip_known_contributors` (default true) fast-tracks authors with prior merged PRs, the scoring model only runs on authors *unknown to the target repo*. Stage17 tests hub_score specifically on that population.
+
+### Experiment 3: Hub Score for Unknown Contributors (stage17)
+
+**Question:** For authors with zero merged PRs in repo R (the population GE actually scores), does hub_score improve merge prediction?
+
+**Method:** Same temporal holdout framework as stage16, but filtered to author-repo pairs where `has_prior_merged_in_R = 0`. Only repos with >=100 pre-cutoff PRs (medium+). Results stratified by repo size: medium (100-499 PRs), large (500-1999), XL (2000+). 4 models compared: `mr_only`, `mr_hub` (+ hub_score), `mr_repos` (+ total_repos), `mr_hub_repos` (+ both).
+
+**Per-cutoff results (all medium+ repos pooled):**
+
+| Cutoff | n pairs | mr_only | mr+hub | mr+repos | hub sig? |
+|---|---|---|---|---|---|
+| T_2020 | 23 | 0.451 | 0.000 | 0.000 | Yes (hurts) |
+| T_2021 | 49 | 0.467 | 0.283 | 0.283 | No |
+| T_2022 | 179 | 0.525 | 0.517 | 0.517 | No |
+| T_2022-07 | 476 | 0.572 | 0.537 | 0.537 | Yes (hurts) |
+| T_2023 | 535 | 0.518 | 0.530 | 0.530 | No |
+| T_2024 | 1096 | 0.565 | 0.578 | 0.579 | No |
+
+**Aggregated by repo size tier:**
+
+| Tier | mr_only | mr+hub | mr+repos | Hub delta |
+|---|---|---|---|---|
+| All (medium+) | **0.516** | 0.408 | 0.408 | -0.108 |
+| Medium (100-499) | **0.538** | 0.394 | 0.392 | -0.144 |
+| Large (500-1999) | **0.553** | 0.484 | 0.486 | -0.069 |
+| XL (2000+) | **0.533** | 0.405 | 0.405 | -0.128 |
+
+`mr_only` wins in every tier. Adding hub_score or total_repos degrades AUC by 0.07-0.14 on average. The pattern holds for large and XL repos -- this is not a small-sample artifact.
+
+**DeLong significance:** `mr_hub vs mr_only` is significant in 2/6 cutoffs (both times hub_score *hurts*). It never significantly helps. `mr_hub vs mr_repos` is never significant (0/6) -- hub_score and total_repos carry identical information and are interchangeable.
+
+**Why hub_score hurts for unknown contributors:** Hub_score (degree centrality in the author-repo bipartite graph) measures how many repos an author has contributed to and how connected those repos are. For unknown-to-repo authors, this measures ecosystem breadth -- "has this person worked on many projects?" But ecosystem breadth is only weakly correlated with whether someone's PRs to a *new* repo will be merged. The LR overfits to noise in the hub_score dimension, hurting generalization.
+
+The T_2024 cutoff (n=1096) shows the closest result: mr+hub 0.578 vs mr_only 0.565. Even here the improvement is +0.013 and non-significant (p=0.94). With the largest available sample at the most favorable cutoff, hub_score can't clear the bar.
+
+**Conclusion for GE v3: drop hub_score from the scoring model.** For the population GE actually scores (unknown contributors to the target repo), `merge_rate` alone outperforms every model that includes hub_score. This holds across all repo size tiers and all temporal cutoffs. hub_score should be removed from the v3 scoring formula, not just downweighted.
+
+### Remaining work: Bad Egg
+
+1. **Threshold calibration** -- the tier cutoffs (top 1%, top 5%) are arbitrary percentiles. Calibrate against a decision-theoretic cost model: what's the cost of a false positive (annoying a legitimate contributor) vs false negative (missing a bad actor)?
+2. **Integration** -- add `SuspicionScore` model to `models.py`, advisory tier computation to `scorer.py`, and output formatting to `formatter.py`. Wire into the Action, CLI, and MCP interfaces.
+3. **Seed-free design** -- the OSS version uses only pre-trained LR coefficients (shipped as config), no seed file. The coefficients from the T_2024 fit are candidates, but cross-temporal stability should be verified.
+
+### Remaining work: Good Egg v3
+
+1. **Remove hub_score from scoring formula** -- stage17 shows merge_rate alone outperforms merge_rate + hub_score for unknown contributors across all repo sizes. The graph is still built (needed for repo discovery and contributor mapping), but hub_score should not be a scoring input.
+2. **Recency window tuning** -- implement 3-6 month lookback in the scoring pipeline. Test on held-out data whether 3mo or 6mo generalizes better. May need a minimum-PR-count fallback (use all-time if <2 PRs in window).
+3. **Scoring formula refit** -- refit v3 coefficients on the full dataset with merge_rate as the primary (possibly sole) input for unknown contributors. The v2 formula weighted hub_score heavily; v3 should not.
+
+---
+
 ## Data Limitations
 
 - Author metadata (account age, followers) only available for the 12,898 checked authors

@@ -262,5 +262,96 @@ def run_knn_holdout(ctx: click.Context, cutoffs: str | None) -> None:
     run_stage12(ctx.obj["base_dir"], config, cutoffs=cutoff_list)
 
 
+@cli.command("run-merge-prediction")
+@click.option(
+    "--cutoffs",
+    type=str,
+    default=None,
+    help="Comma-separated cutoff dates (YYYY-MM-DD) to override config.",
+)
+@click.pass_context
+def run_merge_prediction(ctx: click.Context, cutoffs: str | None) -> None:
+    """Run merge prediction experiment (Iteration 10, Experiments A/C/D)."""
+    from experiments.bot_detection.stages.stage13_merge_prediction import run_stage13
+
+    config = ctx.obj["config"]
+    cutoff_list = cutoffs.split(",") if cutoffs else None
+    run_stage13(ctx.obj["base_dir"], config, cutoffs=cutoff_list)
+
+
+@cli.command("run-advisory-score")
+@click.option(
+    "--cutoffs",
+    type=str,
+    default=None,
+    help="Comma-separated cutoff dates (YYYY-MM-DD) to override config.",
+)
+@click.pass_context
+def run_advisory_score(ctx: click.Context, cutoffs: str | None) -> None:
+    """Run advisory suspension score experiment (Iteration 10, Experiment B)."""
+    from experiments.bot_detection.stages.stage14_advisory_score import run_stage14
+
+    config = ctx.obj["config"]
+    cutoff_list = cutoffs.split(",") if cutoffs else None
+    run_stage14(ctx.obj["base_dir"], config, cutoffs=cutoff_list)
+
+
+@cli.command("run-feature-ablation")
+@click.option(
+    "--cutoffs",
+    type=str,
+    default=None,
+    help="Comma-separated cutoff dates (YYYY-MM-DD) to override config.",
+)
+@click.pass_context
+def run_feature_ablation(ctx: click.Context, cutoffs: str | None) -> None:
+    """Run Bad Egg feature ablation experiment (Iteration 11)."""
+    from experiments.bot_detection.stages.stage15_feature_ablation import (
+        run_stage15,
+    )
+
+    config = ctx.obj["config"]
+    cutoff_list = cutoffs.split(",") if cutoffs else None
+    run_stage15(ctx.obj["base_dir"], config, cutoffs=cutoff_list)
+
+
+@cli.command("run-hub-score-repo")
+@click.option(
+    "--cutoffs",
+    type=str,
+    default=None,
+    help="Comma-separated cutoff dates (YYYY-MM-DD) to override config.",
+)
+@click.pass_context
+def run_hub_score_repo(ctx: click.Context, cutoffs: str | None) -> None:
+    """Run EBE hub_score repo-specific experiment (Iteration 11)."""
+    from experiments.bot_detection.stages.stage16_hub_score_repo import (
+        run_stage16,
+    )
+
+    config = ctx.obj["config"]
+    cutoff_list = cutoffs.split(",") if cutoffs else None
+    run_stage16(ctx.obj["base_dir"], config, cutoffs=cutoff_list)
+
+
+@cli.command("run-hub-score-unknown")
+@click.option(
+    "--cutoffs",
+    type=str,
+    default=None,
+    help="Comma-separated cutoff dates (YYYY-MM-DD) to override config.",
+)
+@click.pass_context
+def run_hub_score_unknown(ctx: click.Context, cutoffs: str | None) -> None:
+    """Run hub_score experiment on unknown contributors (Iteration 11b)."""
+    from experiments.bot_detection.stages.stage17_hub_score_unknown import (
+        run_stage17,
+    )
+
+    config = ctx.obj["config"]
+    cutoff_list = cutoffs.split(",") if cutoffs else None
+    run_stage17(ctx.obj["base_dir"], config, cutoffs=cutoff_list)
+
+
 if __name__ == "__main__":
     cli()

@@ -1,0 +1,797 @@
+{
+  "per_cutoff": [
+    {
+      "n_pairs": 22,
+      "n_positive": 17,
+      "n_repos": 1,
+      "cv_strategy": "loo",
+      "models": {
+        "mr_only": {
+          "auc_roc": 0.49411764705882355,
+          "auc_pr": 0.7981283422459893
+        },
+        "mr_repo": {
+          "auc_roc": 0.5882352941176471,
+          "auc_pr": 0.8128342245989305
+        },
+        "mr_plus_hub": {
+          "auc_roc": 0.11764705882352941,
+          "auc_pr": 0.7760695187165776
+        },
+        "mr_repo_plus_hub": {
+          "auc_roc": 0.17647058823529413,
+          "auc_pr": 0.7691622103386809
+        },
+        "full_global": {
+          "auc_roc": 0.11764705882352941,
+          "auc_pr": 0.7760695187165776
+        },
+        "full_repo": {
+          "auc_roc": 0.28235294117647064,
+          "auc_pr": 0.7854106677636089
+        },
+        "full_combined": {
+          "auc_roc": 0.3058823529411765,
+          "auc_pr": 0.799925564631447
+        }
+      },
+      "delong_tests": {
+        "mr_plus_hub_vs_mr_only": {
+          "auc_a": 0.11764705882352941,
+          "auc_b": 0.49411764705882355,
+          "z_statistic": -3.6586364830401883,
+          "p_value": 0.00025356069655735737,
+          "adjusted_p": 0.0007606820896720721,
+          "reject_h0": true
+        },
+        "mr_repo_plus_hub_vs_mr_repo": {
+          "auc_a": 0.17647058823529413,
+          "auc_b": 0.5882352941176471,
+          "z_statistic": -8.640987597877148,
+          "p_value": 5.572916779647818e-18,
+          "adjusted_p": 2.229166711859127e-17,
+          "reject_h0": true
+        },
+        "full_combined_vs_full_repo": {
+          "auc_a": 0.3058823529411765,
+          "auc_b": 0.28235294117647064,
+          "z_statistic": 0.8528028654224407,
+          "p_value": 0.3937686346429933,
+          "adjusted_p": 0.3937686346429933,
+          "reject_h0": false
+        },
+        "full_repo_vs_mr_only": {
+          "auc_a": 0.28235294117647064,
+          "auc_b": 0.49411764705882355,
+          "z_statistic": -2.117647058823529,
+          "p_value": 0.03420496957867465,
+          "adjusted_p": 0.0684099391573493,
+          "reject_h0": false
+        }
+      },
+      "per_repo": [],
+      "cutoff": "2020-01-01"
+    },
+    {
+      "n_pairs": 51,
+      "n_positive": 43,
+      "n_repos": 2,
+      "cv_strategy": "5-fold",
+      "models": {
+        "mr_only": {
+          "auc_roc": 0.5276162790697675,
+          "auc_pr": 0.8542380518098711
+        },
+        "mr_repo": {
+          "auc_roc": 0.5755813953488372,
+          "auc_pr": 0.8623382441511895
+        },
+        "mr_plus_hub": {
+          "auc_roc": 0.25290697674418605,
+          "auc_pr": 0.7522868672914319
+        },
+        "mr_repo_plus_hub": {
+          "auc_roc": 0.3226744186046511,
+          "auc_pr": 0.7709691579355566
+        },
+        "full_global": {
+          "auc_roc": 0.24709302325581395,
+          "auc_pr": 0.7502694288854845
+        },
+        "full_repo": {
+          "auc_roc": 0.37209302325581395,
+          "auc_pr": 0.7835125497096992
+        },
+        "full_combined": {
+          "auc_roc": 0.3241279069767442,
+          "auc_pr": 0.772656056240219
+        }
+      },
+      "delong_tests": {
+        "mr_plus_hub_vs_mr_only": {
+          "auc_a": 0.25290697674418605,
+          "auc_b": 0.5276162790697675,
+          "z_statistic": -3.6969588559689877,
+          "p_value": 0.000218197689417856,
+          "adjusted_p": 0.000872790757671424,
+          "reject_h0": true
+        },
+        "mr_repo_plus_hub_vs_mr_repo": {
+          "auc_a": 0.3226744186046511,
+          "auc_b": 0.5755813953488372,
+          "z_statistic": -2.936227224665104,
+          "p_value": 0.003322308664059283,
+          "adjusted_p": 0.006644617328118566,
+          "reject_h0": true
+        },
+        "full_combined_vs_full_repo": {
+          "auc_a": 0.3241279069767442,
+          "auc_b": 0.37209302325581395,
+          "z_statistic": -0.9193391205949075,
+          "p_value": 0.35791822168576537,
+          "adjusted_p": 0.35791822168576537,
+          "reject_h0": false
+        },
+        "full_repo_vs_mr_only": {
+          "auc_a": 0.37209302325581395,
+          "auc_b": 0.5276162790697675,
+          "z_statistic": -3.147188468169873,
+          "p_value": 0.0016484866802107595,
+          "adjusted_p": 0.004945460040632278,
+          "reject_h0": true
+        }
+      },
+      "per_repo": [],
+      "cutoff": "2021-01-01"
+    },
+    {
+      "n_pairs": 271,
+      "n_positive": 234,
+      "n_repos": 7,
+      "cv_strategy": "5-fold",
+      "models": {
+        "mr_only": {
+          "auc_roc": 0.6227188727188728,
+          "auc_pr": 0.8883588170749921
+        },
+        "mr_repo": {
+          "auc_roc": 0.6301686301686302,
+          "auc_pr": 0.8906803610866836
+        },
+        "mr_plus_hub": {
+          "auc_roc": 0.5970200970200971,
+          "auc_pr": 0.8848260584521321
+        },
+        "mr_repo_plus_hub": {
+          "auc_roc": 0.5999075999075999,
+          "auc_pr": 0.88557017472922
+        },
+        "full_global": {
+          "auc_roc": 0.5977130977130977,
+          "auc_pr": 0.8859884810316567
+        },
+        "full_repo": {
+          "auc_roc": 0.6532109032109032,
+          "auc_pr": 0.9218799289209657
+        },
+        "full_combined": {
+          "auc_roc": 0.6623931623931624,
+          "auc_pr": 0.9131268462836089
+        }
+      },
+      "delong_tests": {
+        "mr_plus_hub_vs_mr_only": {
+          "auc_a": 0.5970200970200971,
+          "auc_b": 0.6227188727188728,
+          "z_statistic": -1.097414970417623,
+          "p_value": 0.2724600321466619,
+          "adjusted_p": 1.0,
+          "reject_h0": false
+        },
+        "mr_repo_plus_hub_vs_mr_repo": {
+          "auc_a": 0.5999075999075999,
+          "auc_b": 0.6301686301686302,
+          "z_statistic": -1.0920347887477238,
+          "p_value": 0.274817810374954,
+          "adjusted_p": 1.0,
+          "reject_h0": false
+        },
+        "full_combined_vs_full_repo": {
+          "auc_a": 0.6623931623931624,
+          "auc_b": 0.6532109032109032,
+          "z_statistic": 0.7509260824438091,
+          "p_value": 0.45269714230847424,
+          "adjusted_p": 1.0,
+          "reject_h0": false
+        },
+        "full_repo_vs_mr_only": {
+          "auc_a": 0.6532109032109032,
+          "auc_b": 0.6227188727188728,
+          "z_statistic": 0.8857458922589931,
+          "p_value": 0.37575447250308813,
+          "adjusted_p": 1.0,
+          "reject_h0": false
+        }
+      },
+      "per_repo": [
+        {
+          "repo": "ray-project/ray",
+          "n_pairs": 64,
+          "mr_only_auc": 0.6629464285714286,
+          "mr_repo_auc": 0.6629464285714286,
+          "mr_plus_hub_auc": 0.6941964285714286,
+          "mr_repo_plus_hub_auc": 0.6897321428571428,
+          "full_global_auc": 0.6941964285714286,
+          "full_repo_auc": 0.7522321428571428,
+          "full_combined_auc": 0.765625
+        }
+      ],
+      "cutoff": "2022-01-01"
+    },
+    {
+      "n_pairs": 775,
+      "n_positive": 639,
+      "n_repos": 13,
+      "cv_strategy": "5-fold",
+      "models": {
+        "mr_only": {
+          "auc_roc": 0.6302471692902514,
+          "auc_pr": 0.8643069225007884
+        },
+        "mr_repo": {
+          "auc_roc": 0.6396713615023474,
+          "auc_pr": 0.8668112303225691
+        },
+        "mr_plus_hub": {
+          "auc_roc": 0.6151155297799872,
+          "auc_pr": 0.8538421742842937
+        },
+        "mr_repo_plus_hub": {
+          "auc_roc": 0.6253682224063335,
+          "auc_pr": 0.858813374569876
+        },
+        "full_global": {
+          "auc_roc": 0.6146552517720703,
+          "auc_pr": 0.8536088763878618
+        },
+        "full_repo": {
+          "auc_roc": 0.7054163214581606,
+          "auc_pr": 0.9182643378583935
+        },
+        "full_combined": {
+          "auc_roc": 0.6979425573046121,
+          "auc_pr": 0.9146046446296283
+        }
+      },
+      "delong_tests": {
+        "mr_plus_hub_vs_mr_only": {
+          "auc_a": 0.6151155297799872,
+          "auc_b": 0.6302471692902514,
+          "z_statistic": -1.886529318782192,
+          "p_value": 0.059223661358285405,
+          "adjusted_p": 0.16321082101917228,
+          "reject_h0": false
+        },
+        "mr_repo_plus_hub_vs_mr_repo": {
+          "auc_a": 0.6253682224063335,
+          "auc_b": 0.6396713615023474,
+          "z_statistic": -1.9236090405646455,
+          "p_value": 0.05440360700639076,
+          "adjusted_p": 0.16321082101917228,
+          "reject_h0": false
+        },
+        "full_combined_vs_full_repo": {
+          "auc_a": 0.6979425573046121,
+          "auc_b": 0.7054163214581606,
+          "z_statistic": -1.1606228327480737,
+          "p_value": 0.24579531584728753,
+          "adjusted_p": 0.24579531584728753,
+          "reject_h0": false
+        },
+        "full_repo_vs_mr_only": {
+          "auc_a": 0.7054163214581606,
+          "auc_b": 0.6302471692902514,
+          "z_statistic": 3.5516993359824567,
+          "p_value": 0.00038275195055358324,
+          "adjusted_p": 0.001531007802214333,
+          "reject_h0": true
+        }
+      },
+      "per_repo": [
+        {
+          "repo": "huggingface/transformers",
+          "n_pairs": 138,
+          "mr_only_auc": 0.608495575221239,
+          "mr_repo_auc": 0.6203539823008848,
+          "mr_plus_hub_auc": 0.5861946902654868,
+          "mr_repo_plus_hub_auc": 0.5904424778761063,
+          "full_global_auc": 0.5854867256637168,
+          "full_repo_auc": 0.5807079646017699,
+          "full_combined_auc": 0.5798230088495575
+        },
+        {
+          "repo": "numpy/numpy",
+          "n_pairs": 73,
+          "mr_only_auc": 0.748533724340176,
+          "mr_repo_auc": 0.7302052785923754,
+          "mr_plus_hub_auc": 0.750733137829912,
+          "mr_repo_plus_hub_auc": 0.7521994134897361,
+          "full_global_auc": 0.7463343108504399,
+          "full_repo_auc": 0.8394428152492669,
+          "full_combined_auc": 0.782258064516129
+        },
+        {
+          "repo": "pandas-dev/pandas",
+          "n_pairs": 70,
+          "mr_only_auc": 0.5948945615982242,
+          "mr_repo_auc": 0.5948945615982242,
+          "mr_plus_hub_auc": 0.5493895671476138,
+          "mr_repo_plus_hub_auc": 0.5610432852386238,
+          "full_global_auc": 0.5482796892341842,
+          "full_repo_auc": 0.6925638179800222,
+          "full_combined_auc": 0.6781354051054385
+        },
+        {
+          "repo": "ray-project/ray",
+          "n_pairs": 109,
+          "mr_only_auc": 0.5536764705882353,
+          "mr_repo_auc": 0.582843137254902,
+          "mr_plus_hub_auc": 0.5526960784313726,
+          "mr_repo_plus_hub_auc": 0.5727941176470589,
+          "full_global_auc": 0.5512254901960785,
+          "full_repo_auc": 0.7678921568627451,
+          "full_combined_auc": 0.7637254901960785
+        },
+        {
+          "repo": "scikit-learn/scikit-learn",
+          "n_pairs": 72,
+          "mr_only_auc": 0.6005961251862891,
+          "mr_repo_auc": 0.6229508196721312,
+          "mr_plus_hub_auc": 0.5745156482861401,
+          "mr_repo_plus_hub_auc": 0.5938897168405365,
+          "full_global_auc": 0.5700447093889717,
+          "full_repo_auc": 0.7228017883755588,
+          "full_combined_auc": 0.739940387481371
+        },
+        {
+          "repo": "tensorflow/tensorflow",
+          "n_pairs": 104,
+          "mr_only_auc": 0.6910749506903353,
+          "mr_repo_auc": 0.7120315581854043,
+          "mr_plus_hub_auc": 0.6733234714003945,
+          "mr_repo_plus_hub_auc": 0.68663708086785,
+          "full_global_auc": 0.674802761341223,
+          "full_repo_auc": 0.7063609467455623,
+          "full_combined_auc": 0.7078402366863905
+        }
+      ],
+      "cutoff": "2022-07-01"
+    },
+    {
+      "n_pairs": 968,
+      "n_positive": 791,
+      "n_repos": 15,
+      "cv_strategy": "5-fold",
+      "models": {
+        "mr_only": {
+          "auc_roc": 0.6039055190097637,
+          "auc_pr": 0.8422109836495381
+        },
+        "mr_repo": {
+          "auc_roc": 0.6000021427500054,
+          "auc_pr": 0.8411088485019094
+        },
+        "mr_plus_hub": {
+          "auc_roc": 0.5992664652481662,
+          "auc_pr": 0.8403733378157243
+        },
+        "mr_repo_plus_hub": {
+          "auc_roc": 0.5982308027455772,
+          "auc_pr": 0.8409148794292929
+        },
+        "full_global": {
+          "auc_roc": 0.598780775246952,
+          "auc_pr": 0.8398609203612835
+        },
+        "full_repo": {
+          "auc_roc": 0.6698665066746662,
+          "auc_pr": 0.9029748545089831
+        },
+        "full_combined": {
+          "auc_roc": 0.661134800402837,
+          "auc_pr": 0.9001775424751708
+        }
+      },
+      "delong_tests": {
+        "mr_plus_hub_vs_mr_only": {
+          "auc_a": 0.5992664652481662,
+          "auc_b": 0.6039055190097637,
+          "z_statistic": -0.6733285006598129,
+          "p_value": 0.5007383247384427,
+          "adjusted_p": 1.0,
+          "reject_h0": false
+        },
+        "mr_repo_plus_hub_vs_mr_repo": {
+          "auc_a": 0.5982308027455772,
+          "auc_b": 0.6000021427500054,
+          "z_statistic": -0.2673369274153929,
+          "p_value": 0.7892097570956473,
+          "adjusted_p": 1.0,
+          "reject_h0": false
+        },
+        "full_combined_vs_full_repo": {
+          "auc_a": 0.661134800402837,
+          "auc_b": 0.6698665066746662,
+          "z_statistic": -1.9687676196699182,
+          "p_value": 0.04897978223869544,
+          "adjusted_p": 0.14693934671608633,
+          "reject_h0": false
+        },
+        "full_repo_vs_mr_only": {
+          "auc_a": 0.6698665066746662,
+          "auc_b": 0.6039055190097637,
+          "z_statistic": 2.9489763267064117,
+          "p_value": 0.0031882839748223497,
+          "adjusted_p": 0.012753135899289399,
+          "reject_h0": true
+        }
+      },
+      "per_repo": [
+        {
+          "repo": "huggingface/transformers",
+          "n_pairs": 170,
+          "mr_only_auc": 0.593082264957265,
+          "mr_repo_auc": 0.5969551282051282,
+          "mr_plus_hub_auc": 0.5909455128205128,
+          "mr_repo_plus_hub_auc": 0.6181891025641025,
+          "full_global_auc": 0.5898771367521368,
+          "full_repo_auc": 0.6049679487179487,
+          "full_combined_auc": 0.5972222222222222
+        },
+        {
+          "repo": "mlflow/mlflow",
+          "n_pairs": 51,
+          "mr_only_auc": 0.35319767441860467,
+          "mr_repo_auc": 0.36191860465116277,
+          "mr_plus_hub_auc": 0.33866279069767447,
+          "mr_repo_plus_hub_auc": 0.311046511627907,
+          "full_global_auc": 0.33575581395348836,
+          "full_repo_auc": 0.6017441860465117,
+          "full_combined_auc": 0.5901162790697675
+        },
+        {
+          "repo": "numpy/numpy",
+          "n_pairs": 86,
+          "mr_only_auc": 0.7488738738738738,
+          "mr_repo_auc": 0.6689189189189189,
+          "mr_plus_hub_auc": 0.768581081081081,
+          "mr_repo_plus_hub_auc": 0.634572072072072,
+          "full_global_auc": 0.7708333333333334,
+          "full_repo_auc": 0.7635135135135136,
+          "full_combined_auc": 0.7849099099099099
+        },
+        {
+          "repo": "opencv/opencv",
+          "n_pairs": 54,
+          "mr_only_auc": 0.610204081632653,
+          "mr_repo_auc": 0.610204081632653,
+          "mr_plus_hub_auc": 0.5918367346938775,
+          "mr_repo_plus_hub_auc": 0.5673469387755101,
+          "full_global_auc": 0.5918367346938775,
+          "full_repo_auc": 0.7653061224489794,
+          "full_combined_auc": 0.773469387755102
+        },
+        {
+          "repo": "pandas-dev/pandas",
+          "n_pairs": 101,
+          "mr_only_auc": 0.6117906066536203,
+          "mr_repo_auc": 0.5961350293542074,
+          "mr_plus_hub_auc": 0.5946673189823874,
+          "mr_repo_plus_hub_auc": 0.5873287671232877,
+          "full_global_auc": 0.5951565557729941,
+          "full_repo_auc": 0.6886007827788649,
+          "full_combined_auc": 0.6805283757338552
+        },
+        {
+          "repo": "ray-project/ray",
+          "n_pairs": 116,
+          "mr_only_auc": 0.5865584685809404,
+          "mr_repo_auc": 0.6148564294631711,
+          "mr_plus_hub_auc": 0.5734498543487307,
+          "mr_repo_plus_hub_auc": 0.6013316687473991,
+          "full_global_auc": 0.5692883895131087,
+          "full_repo_auc": 0.7253433208489388,
+          "full_combined_auc": 0.7076570952975447
+        },
+        {
+          "repo": "scikit-learn/scikit-learn",
+          "n_pairs": 82,
+          "mr_only_auc": 0.5520361990950227,
+          "mr_repo_auc": 0.5733031674208144,
+          "mr_plus_hub_auc": 0.5656108597285068,
+          "mr_repo_plus_hub_auc": 0.5583710407239819,
+          "full_global_auc": 0.5610859728506787,
+          "full_repo_auc": 0.7072398190045249,
+          "full_combined_auc": 0.6895927601809955
+        },
+        {
+          "repo": "tensorflow/tensorflow",
+          "n_pairs": 122,
+          "mr_only_auc": 0.5779707184201566,
+          "mr_repo_auc": 0.5938032005447735,
+          "mr_plus_hub_auc": 0.5834184542049711,
+          "mr_repo_plus_hub_auc": 0.6014640789921689,
+          "full_global_auc": 0.5827374872318694,
+          "full_repo_auc": 0.5372829417773238,
+          "full_combined_auc": 0.5258767449778685
+        }
+      ],
+      "cutoff": "2023-01-01"
+    },
+    {
+      "n_pairs": 1304,
+      "n_positive": 1011,
+      "n_repos": 16,
+      "cv_strategy": "5-fold",
+      "models": {
+        "mr_only": {
+          "auc_roc": 0.6220381266815879,
+          "auc_pr": 0.8127721178459189
+        },
+        "mr_repo": {
+          "auc_roc": 0.6221123950537264,
+          "auc_pr": 0.8161518204819423
+        },
+        "mr_plus_hub": {
+          "auc_roc": 0.6528831319647697,
+          "auc_pr": 0.8468292530612682
+        },
+        "mr_repo_plus_hub": {
+          "auc_roc": 0.6524223304740011,
+          "auc_pr": 0.8464200317713917
+        },
+        "full_global": {
+          "auc_roc": 0.655084176448149,
+          "auc_pr": 0.8496651874037885
+        },
+        "full_repo": {
+          "auc_roc": 0.6786880154478214,
+          "auc_pr": 0.8779299524793766
+        },
+        "full_combined": {
+          "auc_roc": 0.6920850170310879,
+          "auc_pr": 0.8833053686283461
+        }
+      },
+      "delong_tests": {
+        "mr_plus_hub_vs_mr_only": {
+          "auc_a": 0.6528831319647697,
+          "auc_b": 0.6220381266815879,
+          "z_statistic": 2.409013891334619,
+          "p_value": 0.01599568912833877,
+          "adjusted_p": 0.03199137825667754,
+          "reject_h0": true
+        },
+        "mr_repo_plus_hub_vs_mr_repo": {
+          "auc_a": 0.6524223304740011,
+          "auc_b": 0.6221123950537264,
+          "z_statistic": 2.6605609599639823,
+          "p_value": 0.007801060432566772,
+          "adjusted_p": 0.023403181297700314,
+          "reject_h0": true
+        },
+        "full_combined_vs_full_repo": {
+          "auc_a": 0.6920850170310879,
+          "auc_b": 0.6786880154478214,
+          "z_statistic": 1.481481652661847,
+          "p_value": 0.1384782704839226,
+          "adjusted_p": 0.1384782704839226,
+          "reject_h0": false
+        },
+        "full_repo_vs_mr_only": {
+          "auc_a": 0.6786880154478214,
+          "auc_b": 0.6220381266815879,
+          "z_statistic": 3.6282955234650505,
+          "p_value": 0.0002852985800758895,
+          "adjusted_p": 0.001141194320303558,
+          "reject_h0": true
+        }
+      },
+      "per_repo": [
+        {
+          "repo": "huggingface/transformers",
+          "n_pairs": 218,
+          "mr_only_auc": 0.5962264150943396,
+          "mr_repo_auc": 0.6145797598627787,
+          "mr_plus_hub_auc": 0.6727272727272726,
+          "mr_repo_plus_hub_auc": 0.6762149799885647,
+          "full_global_auc": 0.6752429959977129,
+          "full_repo_auc": 0.642824471126358,
+          "full_combined_auc": 0.6672955974842767
+        },
+        {
+          "repo": "langchain-ai/langchain",
+          "n_pairs": 217,
+          "mr_only_auc": 0.5993234250221828,
+          "mr_repo_auc": 0.5794698314108252,
+          "mr_plus_hub_auc": 0.6395297249334515,
+          "mr_repo_plus_hub_auc": 0.6097493345164152,
+          "full_global_auc": 0.6368677905944986,
+          "full_repo_auc": 0.5796362023070097,
+          "full_combined_auc": 0.6310448092280391
+        },
+        {
+          "repo": "mlflow/mlflow",
+          "n_pairs": 54,
+          "mr_only_auc": 0.7022727272727273,
+          "mr_repo_auc": 0.7022727272727273,
+          "mr_plus_hub_auc": 0.7,
+          "mr_repo_plus_hub_auc": 0.6795454545454546,
+          "full_global_auc": 0.6636363636363637,
+          "full_repo_auc": 0.7602272727272728,
+          "full_combined_auc": 0.7125
+        },
+        {
+          "repo": "numpy/numpy",
+          "n_pairs": 80,
+          "mr_only_auc": 0.490215264187867,
+          "mr_repo_auc": 0.49119373776908026,
+          "mr_plus_hub_auc": 0.46379647749510766,
+          "mr_repo_plus_hub_auc": 0.4833659491193738,
+          "full_global_auc": 0.42270058708414876,
+          "full_repo_auc": 0.7720156555772995,
+          "full_combined_auc": 0.6487279843444227
+        },
+        {
+          "repo": "opencv/opencv",
+          "n_pairs": 69,
+          "mr_only_auc": 0.7317251461988303,
+          "mr_repo_auc": 0.7258771929824561,
+          "mr_plus_hub_auc": 0.6812865497076023,
+          "mr_repo_plus_hub_auc": 0.6754385964912281,
+          "full_global_auc": 0.6798245614035087,
+          "full_repo_auc": 0.7960526315789473,
+          "full_combined_auc": 0.7711988304093567
+        },
+        {
+          "repo": "pandas-dev/pandas",
+          "n_pairs": 96,
+          "mr_only_auc": 0.4557692307692308,
+          "mr_repo_auc": 0.44368131868131877,
+          "mr_plus_hub_auc": 0.5156593406593407,
+          "mr_repo_plus_hub_auc": 0.5126373626373627,
+          "full_global_auc": 0.520054945054945,
+          "full_repo_auc": 0.6109890109890109,
+          "full_combined_auc": 0.6346153846153846
+        },
+        {
+          "repo": "ray-project/ray",
+          "n_pairs": 114,
+          "mr_only_auc": 0.6448529411764705,
+          "mr_repo_auc": 0.6514705882352941,
+          "mr_plus_hub_auc": 0.6766544117647059,
+          "mr_repo_plus_hub_auc": 0.6887867647058823,
+          "full_global_auc": 0.6766544117647059,
+          "full_repo_auc": 0.7496323529411765,
+          "full_combined_auc": 0.7560661764705882
+        },
+        {
+          "repo": "run-llama/llama_index",
+          "n_pairs": 88,
+          "mr_only_auc": 0.5409638554216868,
+          "mr_repo_auc": 0.5963855421686747,
+          "mr_plus_hub_auc": 0.6409638554216868,
+          "mr_repo_plus_hub_auc": 0.6481927710843374,
+          "full_global_auc": 0.6867469879518071,
+          "full_repo_auc": 0.6674698795180722,
+          "full_combined_auc": 0.6566265060240963
+        },
+        {
+          "repo": "scikit-learn/scikit-learn",
+          "n_pairs": 78,
+          "mr_only_auc": 0.6608465608465608,
+          "mr_repo_auc": 0.6486772486772486,
+          "mr_plus_hub_auc": 0.6804232804232805,
+          "mr_repo_plus_hub_auc": 0.7132275132275133,
+          "full_global_auc": 0.6783068783068784,
+          "full_repo_auc": 0.7798941798941799,
+          "full_combined_auc": 0.7846560846560846
+        },
+        {
+          "repo": "tensorflow/tensorflow",
+          "n_pairs": 77,
+          "mr_only_auc": 0.7348484848484849,
+          "mr_repo_auc": 0.7334710743801653,
+          "mr_plus_hub_auc": 0.7524104683195593,
+          "mr_repo_plus_hub_auc": 0.7448347107438016,
+          "full_global_auc": 0.7537878787878788,
+          "full_repo_auc": 0.6515151515151516,
+          "full_combined_auc": 0.6876721763085399
+        },
+        {
+          "repo": "vllm-project/vllm",
+          "n_pairs": 71,
+          "mr_only_auc": 0.5519607843137255,
+          "mr_repo_auc": 0.5220588235294118,
+          "mr_plus_hub_auc": 0.5455882352941176,
+          "mr_repo_plus_hub_auc": 0.5372549019607843,
+          "full_global_auc": 0.5534313725490196,
+          "full_repo_auc": 0.5514705882352942,
+          "full_combined_auc": 0.5715686274509805
+        }
+      ],
+      "cutoff": "2024-01-01"
+    }
+  ],
+  "aggregated": {
+    "per_model": {
+      "mr_only": {
+        "mean_auc_roc": 0.5834406023048444,
+        "std_auc_roc": 0.052815976657899194,
+        "n_cutoffs": 6,
+        "mean_auc_pr": 0.843335872521183,
+        "std_auc_pr": 0.030454439345769763
+      },
+      "mr_repo": {
+        "mean_auc_roc": 0.6092952031568656,
+        "std_auc_roc": 0.023054981155737928,
+        "n_cutoffs": 6,
+        "mean_auc_pr": 0.8483207881905375,
+        "std_auc_pr": 0.0279251072538703
+      },
+      "mr_plus_hub": {
+        "mean_auc_roc": 0.47247320993012254,
+        "std_auc_roc": 0.20760296895887104,
+        "n_cutoffs": 6,
+        "mean_auc_pr": 0.8257045349369047,
+        "std_auc_pr": 0.0461921666198755
+      },
+      "mr_repo_plus_hub": {
+        "mean_auc_roc": 0.49584566039557615,
+        "std_auc_roc": 0.18008917606402153,
+        "n_cutoffs": 6,
+        "mean_auc_pr": 0.828641638129003,
+        "std_auc_pr": 0.04374511971589177
+      },
+      "full_global": {
+        "mean_auc_roc": 0.47182889720993537,
+        "std_auc_roc": 0.20892441371794696,
+        "n_cutoffs": 6,
+        "mean_auc_pr": 0.8259104021311088,
+        "std_auc_pr": 0.047154282795698346
+      },
+      "full_repo": {
+        "mean_auc_roc": 0.5602712852039726,
+        "std_auc_roc": 0.1675251985683434,
+        "n_cutoffs": 6,
+        "mean_auc_pr": 0.8649953818735043,
+        "std_auc_pr": 0.058674746811456145
+      },
+      "full_combined": {
+        "mean_auc_roc": 0.5572609661749367,
+        "std_auc_roc": 0.17192712476189262,
+        "n_cutoffs": 6,
+        "mean_auc_pr": 0.8639660038147369,
+        "std_auc_pr": 0.05642846698288114
+      }
+    },
+    "delong_summary": {
+      "mr_plus_hub_vs_mr_only": {
+        "n_significant": 3,
+        "n_tested": 6
+      },
+      "mr_repo_plus_hub_vs_mr_repo": {
+        "n_significant": 3,
+        "n_tested": 6
+      },
+      "full_combined_vs_full_repo": {
+        "n_significant": 0,
+        "n_tested": 6
+      },
+      "full_repo_vs_mr_only": {
+        "n_significant": 4,
+        "n_tested": 6
+      }
+    }
+  }
+}
