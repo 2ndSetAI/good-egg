@@ -1015,6 +1015,45 @@ This contrasts with stage13's cross-repo result (3mo AUC 0.675 >> alltime 0.542)
 
 **Conclusion for GE v3: keep alltime merge_rate.** There is no evidence that a recency window improves prediction for unknown contributors. The implementation complexity of windowed MR (minimum-PR-count fallback, window selection) is not justified. GE v3 should use alltime merge_rate as-is.
 
+## Iteration 12b: Account Age for Unknown Contributors (stage19)
+
+**Question:** Does `log_account_age` improve merge prediction for unknown contributors on top of merge_rate?
+
+PR #27 (validation study) found account_age was LRT-significant (LR = 19.16, p = 1.2e-5) against graph_score, but did not improve AUC when combined. The current scorer.py v2 formula uses `graph_score + merge_rate + log_account_age`. If we drop graph_score (per iteration 11b), does account_age still add value alongside merge_rate for the unknown-contributor population?
+
+**Method:** Same unknown-to-repo population as stage17/18. Three models: `mr_only` (merge_rate as univariate), `mr_age` (LR on merge_rate + log_account_age), `age_only` (log_account_age as univariate). 5-fold CV (LOO when n_pos < 30). DeLong tests with Holm-Bonferroni. Note: account_age_days is available for ~41% of authors in the parquet; analysis restricted to rows with non-null values.
+
+**Results (4 stable cutoffs, 5-fold CV):**
+
+| Cutoff | N | mr_only | age_only | mr+age | DeLong p (mr+age vs mr) |
+|---|---|---|---|---|---|
+| T_2022 | 130 | 0.584 | 0.505 | 0.576 | 0.807 |
+| T_2022-07 | 431 | 0.606 | 0.522 | 0.606 | 0.992 |
+| T_2023 | 474 | 0.552 | 0.516 | 0.534 | 0.076 |
+| T_2024 | 1014 | 0.580 | 0.516 | 0.569 | 0.111 |
+
+The two early cutoffs (T_2020 n=18, T_2021 n=34) used LOO-CV and showed wild instability (mr+age AUC 0.11-0.17), typical of overfitting on tiny samples.
+
+**By repo size tier (mean across 6 cutoffs):**
+
+| Tier | mr_only | mr+age | age_only |
+|---|---|---|---|
+| All (medium+) | **0.540** | 0.427 | 0.554 |
+| Large | **0.593** | 0.497 | 0.525 |
+| XL | **0.564** | 0.515 | 0.538 |
+
+**Key findings:**
+
+1. **mr+age never beats mr_only** at any stable cutoff. It ties (T_2022-07) or hurts (all others). DeLong p > 0.07 everywhere.
+2. **age_only** is barely above chance (0.505-0.522) for stable cutoffs, far worse than merge_rate.
+3. The mean across all 6 cutoffs is distorted by LOO instability at T_2020/T_2021, where mr+age collapses. Even excluding those, the LR adds nothing.
+
+**Why account_age doesn't help unknown contributors:** Account age weakly proxies "experience level" but doesn't distinguish between experienced contributors trying a new repo (high age, high merge likelihood) and inactive old accounts returning (high age, uncertain merge likelihood). For unknown contributors, the meaningful signal is "do your PRs get accepted elsewhere?" (merge_rate), not "how long has your GitHub account existed?"
+
+PR #27 found account_age useful as a cold-start tiebreaker when graph_score = 0 (14.2% of PRs from newcomers). But our population is already filtered to unknown contributors, where 100% are "cold" to the target repo. In this population, account_age adds noise.
+
+**Conclusion for GE v3: drop log_account_age from the scoring model.** The v2 formula (graph_score + merge_rate + log_account_age) simplifies to merge_rate alone for the unknown-contributor population. All three v2 features beyond merge_rate (graph_score, hub_score proxy, and account_age) have now been tested and eliminated.
+
 ### Remaining work: Bad Egg
 
 1. **Threshold calibration** -- the tier cutoffs (top 1%, top 5%) are arbitrary percentiles. Calibrate against a decision-theoretic cost model: what's the cost of a false positive (annoying a legitimate contributor) vs false negative (missing a bad actor)?
@@ -1023,8 +1062,8 @@ This contrasts with stage13's cross-repo result (3mo AUC 0.675 >> alltime 0.542)
 
 ### Remaining work: Good Egg v3
 
-1. **Remove hub_score from scoring formula** -- stage17 shows merge_rate alone outperforms merge_rate + hub_score for unknown contributors across all repo sizes. The graph is still built (needed for repo discovery and contributor mapping), but hub_score should not be a scoring input.
-2. **Scoring formula refit** -- refit v3 coefficients with alltime merge_rate as the sole input for unknown contributors. Stage18 confirms no recency window helps this population. The v2 formula weighted hub_score heavily; v3 eliminates it.
+1. **Remove hub_score and log_account_age from scoring formula** -- stage17 shows hub_score hurts for unknown contributors across all repo sizes. Stage19 shows account_age adds nothing on top of merge_rate for this population. The graph is still built (needed for repo discovery and contributor mapping), but neither hub_score nor account_age should be scoring inputs.
+2. **Scoring formula refit** -- replace the v2 3-feature LR (graph_score + merge_rate + log_account_age) with alltime merge_rate as the sole scoring input for unknown contributors. Stage18 confirms no recency window helps this population. The v2 LR is unnecessary when only one feature survives.
 
 ---
 

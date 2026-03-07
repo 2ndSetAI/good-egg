@@ -353,6 +353,25 @@ def run_hub_score_unknown(ctx: click.Context, cutoffs: str | None) -> None:
     run_stage17(ctx.obj["base_dir"], config, cutoffs=cutoff_list)
 
 
+@cli.command("run-account-age")
+@click.option(
+    "--cutoffs",
+    type=str,
+    default=None,
+    help="Comma-separated cutoff dates (YYYY-MM-DD) to override config.",
+)
+@click.pass_context
+def run_account_age(ctx: click.Context, cutoffs: str | None) -> None:
+    """Run account_age experiment on unknown contributors (Iteration 12b)."""
+    from experiments.bot_detection.stages.stage19_account_age import (
+        run_stage19,
+    )
+
+    config = ctx.obj["config"]
+    cutoff_list = cutoffs.split(",") if cutoffs else None
+    run_stage19(ctx.obj["base_dir"], config, cutoffs=cutoff_list)
+
+
 @cli.command("run-recency-window")
 @click.option(
     "--cutoffs",
