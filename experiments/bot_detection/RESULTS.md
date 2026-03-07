@@ -86,17 +86,19 @@ Inverted. Within-burst content similarity is higher for merged PRs (legitimate r
 | H12 | Campaign Detection | Time-clustered spam in anomalous repo-months |
 | H13 | Semi-Supervised | k-NN from suspended seeds + Isolation Forest |
 
-### Results: Primary Target (61 suspended / 31,296 authors)
+### Results: Multi-Repo Only (61 suspended / 3,208 authors)
+
+These results evaluate only multi-repo authors (2+ repos), the population where all features are expressive.
 
 | Hypothesis | P@10 | P@25 | P@50 | P@100 | AUC-ROC | AUC-PR |
 |------------|------|------|------|-------|---------|--------|
-| H8 (merge rate) | 0.00 | 0.00 | 0.00 | 0.00 | 0.520 | 0.002 |
-| H9 (temporal) | 0.00 | 0.00 | 0.00 | 0.00 | 0.518 | 0.005 |
-| H10 (network) | 0.10 | 0.08 | 0.04 | 0.03 | 0.952 | 0.023 |
-| **H11 (LLM)** | **0.50** | **0.40** | **0.22** | **0.15** | **0.704** | **0.127** |
+| H8 (merge rate) | 0.00 | 0.00 | 0.00 | 0.03 | 0.565 | 0.030 |
+| H9 (temporal) | 0.00 | 0.00 | 0.00 | 0.01 | 0.420 | 0.016 |
+| H10 (network) | 0.10 | 0.08 | 0.04 | 0.03 | 0.523 | 0.023 |
+| **H11 (LLM)** | **0.70** | **0.44** | **0.22** | **0.15** | **0.619** | **0.136** |
 | H13 k-NN | 1.00 | 1.00 | 1.00 | 0.61 | 1.000 | 1.000 |
-| H13 IF | 0.00 | 0.00 | 0.00 | 0.01 | 0.888 | 0.010 |
-| **Combined** | **0.90** | **0.60** | **0.56** | **0.43** | **0.999** | **0.592** |
+| H13 IF | 0.00 | 0.00 | 0.00 | 0.01 | 0.391 | 0.016 |
+| **Combined** | **0.60** | **0.52** | **0.38** | **0.28** | **0.948** | **0.323** |
 
 ### Results: Auxiliary Target (98 suspicious / 31,296 authors)
 
@@ -106,9 +108,9 @@ Inverted. Within-burst content similarity is higher for merged PRs (legitimate r
 | H9 (temporal) | 0.00 | 0.00 | 0.02 | 0.01 | 0.736 | 0.016 |
 | H10 (network) | 0.20 | 0.16 | 0.14 | 0.14 | 0.990 | 0.138 |
 | **H11 (LLM)** | **0.40** | **0.44** | **0.30** | **0.22** | **0.990** | **0.184** |
-| H13 k-NN | 0.10 | 0.12 | 0.16 | 0.09 | 0.456 | 0.017 |
-| H13 IF | 0.00 | 0.04 | 0.06 | 0.09 | 0.984 | 0.091 |
-| **Combined** | **0.70** | **0.44** | **0.32** | **0.20** | **0.994** | **0.262** |
+| H13 k-NN | 0.00 | 0.04 | 0.02 | 0.03 | 0.187 | 0.004 |
+| H13 IF | 0.00 | 0.04 | 0.02 | 0.07 | 0.982 | 0.082 |
+| **Combined** | **0.60** | **0.48** | **0.36** | **0.23** | **0.994** | **0.278** |
 
 ### Campaign Detection (H12)
 
@@ -118,54 +120,31 @@ Inverted. Within-burst content similarity is higher for merged PRs (legitimate r
 - Hacktoberfest 2020: 70.7% rejection rate (39 authors, 13 repos)
 - 0 of 609 campaign authors overlap with the 61 confirmed suspended accounts (different populations: campaigns are time-clustered, suspensions may be for other reasons)
 
-### Analysis
+### Analysis (Multi-Repo Population)
 
 #### What worked
 
-1. **The unit-of-analysis pivot was decisive.** Author-level features on the same 200K PR corpus produce AUC 0.952-1.000 against real ground truth. PR-level features on the same data produced AUC 0.479-0.503. Same data, different framing, completely different results.
+1. **The unit-of-analysis pivot was decisive.** Author-level features on the same 200K PR corpus produce AUC 0.619-1.000 against real ground truth. PR-level features on the same data produced AUC 0.479-0.503. Same data, different framing, completely different results.
 
-2. **H10 (network degree centrality) is the strongest unsupervised signal.** AUC-ROC 0.952 from graph topology alone. Suspended authors have high degree centrality (touch many repos) with low clustering (repos they touch don't share other contributors). This is the "star topology" spam pattern: one author touching many repos without being part of any repo's contributor community.
+2. **H11 (LLM content) is the strongest unsupervised signal for multi-repo authors.** P@10 = 0.70 (7 of the top 10 most suspicious authors by LLM score are actually suspended). AUC-ROC of 0.619 is moderate -- many suspended authors have titles that look legitimate in isolation. Cost: ~$0.15 for 820 authors.
 
-3. **H11 (LLM content) provides strong top-k precision.** P@10 = 0.50 against suspended accounts (half the authors Gemini considers most suspicious are actually banned). AUC-ROC of 0.704 is moderate -- indicating that many suspended authors have titles that look legitimate in isolation. Content analysis adds signal that network features miss, and vice versa. Cost: ~$0.15 for 820 authors.
+3. **The combined score is practical.** P@25 = 0.52, P@100 = 0.28, AUC 0.948. Rank all 3,208 multi-repo authors by this score, check the top 50, and 19 are confirmed suspended.
 
-4. **Scaling ground truth from 27 to 61 suspended accounts changes the picture.** H11 AUC dropped from 0.976 (27 seeds) to 0.704 (61 seeds). The original 27 were the easiest to detect -- they were multi-repo authors with the lowest merge rates. The additional 34 suspended accounts found by checking all 3,216 multi-repo authors include harder cases that don't have obviously spammy titles.
-
-5. **H13 k-NN is circular but useful.** Perfect AUC against primary target is expected -- seeds are the positives. Against the auxiliary target (different definition), k-NN drops to 0.456. Its value is in the combined score where it boosts features that correlate with known-bad accounts.
-
-6. **The combined score is practical.** P@10 = 0.90, P@50 = 0.56 means: rank all 31K authors by this score, check the top 50, and 28 of them are confirmed suspended accounts. For a trust-scoring tool, this false-positive rate is actionable.
+4. **H13 k-NN is circular but useful.** Perfect AUC against primary target is expected -- seeds are the positives. Its value is in the combined score where it boosts features that correlate with known-bad accounts.
 
 #### What didn't work
 
-1. **H8 (merge rate alone) is noise.** AUC 0.520, P@k = 0.00 everywhere. With 61 suspended accounts, merge rate cannot separate them from the mass of legitimate low-merge-rate authors (new contributors, experimental PRs, etc.).
+1. **H8 (merge rate alone) is weak.** AUC 0.565, P@k near zero. With 61 suspended accounts among 3,208 multi-repo authors, merge rate cannot separate them from legitimate low-merge-rate contributors.
 
-2. **H9 (temporal) is the weakest signal.** AUC 0.518, not significant (p = 0.61). Suspended accounts don't have distinctive timing patterns. They submit PRs at the same times and intervals as legitimate contributors.
+2. **H9 (temporal) is inverted.** AUC 0.420, below chance. Suspended accounts have *less* variable timing than legitimate authors, opposite of the hypothesis.
 
-3. **H13 Isolation Forest detects anomalies but not the right ones.** AUC 0.888 but P@100 = 0.01. It finds statistical outliers, most of which are prolific legitimate contributors who are unusual (many repos, high volume). The anomalies it detects are a superset that includes but isn't focused on spam.
+3. **H10 (network) collapsed from 0.952 to 0.523.** The earlier result (Iteration 5, 27 seeds) was inflated by the seed selection bias -- the first 27 suspended accounts were cherry-picked as the lowest-merge-rate multi-repo authors, who also happen to have extreme network topology. Checking all 3,216 multi-repo authors added 34 suspended accounts with more typical network profiles.
 
-4. **Campaign detection (H12) finds a different population than suspensions.** The 609 time-clustered campaign authors don't overlap with the 61 suspended accounts. GitHub may suspend accounts for reasons unrelated to time-clustered spam (ToS violations, automated abuse beyond PRs). Or the campaign authors simply haven't been suspended yet.
+4. **H13 Isolation Forest detects anomalies but not the right ones.** AUC 0.391 (below chance). It finds statistical outliers, most of which are prolific legitimate contributors.
 
-#### Comparison: 27 vs 61 suspended seeds
+5. **Campaign detection (H12) finds a different population.** The 609 time-clustered campaign authors don't overlap with the 61 suspended accounts.
 
-| Metric | 27 seeds (1K checked) | 61 seeds (3.2K checked) |
-|--------|----------------------|------------------------|
-| H10 AUC-ROC | 0.958 | 0.952 |
-| H11 AUC-ROC | 0.976 | 0.704 |
-| Combined AUC-ROC | 1.000 | 0.999 |
-| Combined P@10 | 0.90 | 0.90 |
-| Combined P@50 | 0.54 | 0.56 |
-| Combined P@100 | 0.27 | 0.43 |
-
-H10 (network) is robust to ground truth expansion. H11 (LLM) is sensitive -- the newly discovered suspended accounts don't have obviously spammy PR titles. The combined score improves at deeper k values (P@100 from 0.27 to 0.43) because the k-NN component has more seeds to work with.
-
-#### Caveats
-
-- **61 suspended accounts is still small.** 5-fold stratified CV was used. Results should be validated with a larger ground truth set (single-repo author round pending).
-- **H13 k-NN scores are partially circular.** The combined score's high AUC is partly driven by k-NN. Without k-NN, the combined score relies on H10 + H11 which have 0.952 and 0.704 AUC respectively.
-- **Only 3,216 of 31,296 authors checked for suspension status.** The unchecked 28,080 single-repo authors are assumed active. Some may be suspended, which would be false negatives in evaluation. This biases AUC downward (actual performance is likely better).
-- **LLM scores depend on model version.** Gemini 2.0 Flash results may not reproduce with other models or future versions.
-- **Campaign authors unchecked.** 603 of 609 campaign authors have unknown account status (single-repo, not checked). If many are suspended, H12 becomes a stronger signal.
-
-### Pipeline Details
+### Pipeline Details (Multi-Repo)
 
 - Ground truth: All 3,216 multi-repo authors checked via GitHub API (`--min-repos 2`). 61 suspended, 3,155 active. ~107 min.
 - Stage 5: Author aggregate features (H8) + bipartite network graph (H10) for 31,296 authors. ~1m45s.
@@ -175,11 +154,117 @@ H10 (network) is robust to ground truth expansion. H11 (LLM) is sensitive -- the
 - Stage 7: Author-level evaluation against primary (suspended) and auxiliary (suspicious) targets. Precision@k, AUC-ROC, AUC-PR, Mann-Whitney U. ~4s.
 - Stage 8: Campaign detection. 101 anomalous repo-months, 609 campaign authors. ~1s.
 
+---
+
+## Iteration 5b: Single-Repo Population
+
+### Motivation
+
+The multi-repo analysis (Iteration 5) established that author-level features work for the 3,208 authors who contribute to 2+ repos. But 28,088 authors (89.7%) only appear in a single repo. These are a structurally different population: network features are degenerate (every single-repo author has identical hub score), LLM pre-filtering excludes them, and cross-repo behavior doesn't exist. Do the same hypotheses work, or does this population need different approaches?
+
+### Ground Truth Expansion
+
+Checked 9,682 single-repo authors via GitHub API (`--min-repos 1 --limit 10000`), ordered by merge rate ascending. Found **262 suspended accounts** (2.7% of checked). Combined with the 61 multi-repo suspended, total ground truth is now **323 suspended / 12,898 checked**.
+
+The single-repo suspension rate (2.7%) is higher than multi-repo (1.9%). This makes sense: accounts that get suspended often don't survive long enough to contribute to multiple repos.
+
+18,398 single-repo authors remain unchecked (higher merge rates, outside top 10K by suspicion).
+
+### Results: Single-Repo (262 suspended / 28,088 authors)
+
+| Hypothesis | P@10 | P@25 | P@50 | P@100 | AUC-ROC | AUC-PR |
+|------------|------|------|------|-------|---------|--------|
+| **H8 (merge rate)** | **0.10** | **0.08** | **0.08** | **0.05** | **0.801** | **0.023** |
+| H9 (temporal) | 0.00 | 0.00 | 0.00 | 0.00 | 0.342 | 0.005 |
+| H10 (network) | 0.00 | 0.04 | 0.02 | 0.02 | 0.500 | 0.009 |
+| H11 (LLM) | 0.00 | 0.04 | 0.02 | 0.02 | 0.500 | 0.009 |
+| H13 k-NN | 1.00 | 1.00 | 1.00 | 1.00 | 1.000 | 1.000 |
+| H13 IF | 0.00 | 0.00 | 0.00 | 0.00 | 0.542 | 0.010 |
+| **Combined** | **0.70** | **0.72** | **0.82** | **0.86** | **0.999** | **0.860** |
+
+### Results: All Authors Combined (323 suspended / 31,296 authors)
+
+| Hypothesis | P@10 | P@25 | P@50 | P@100 | AUC-ROC | AUC-PR |
+|------------|------|------|------|-------|---------|--------|
+| H8 (merge rate) | 0.00 | 0.00 | 0.02 | 0.01 | 0.760 | 0.023 |
+| H9 (temporal) | 0.00 | 0.00 | 0.00 | 0.00 | 0.427 | 0.008 |
+| H10 (network) | 0.10 | 0.08 | 0.04 | 0.03 | 0.544 | 0.013 |
+| H11 (LLM) | 0.50 | 0.40 | 0.22 | 0.15 | 0.528 | 0.033 |
+| H13 k-NN | 1.00 | 1.00 | 1.00 | 1.00 | 1.000 | 1.000 |
+| H13 IF | 0.00 | 0.00 | 0.00 | 0.01 | 0.564 | 0.012 |
+| Combined | 0.50 | 0.48 | 0.28 | 0.14 | 0.981 | 0.214 |
+
+### Analysis: Two Populations, Two Detection Profiles
+
+The single-repo and multi-repo populations require fundamentally different detection approaches. Treating them as one population masks the strengths of each.
+
+#### Multi-repo detection profile
+
+- **Best unsupervised signal**: H11 (LLM content), AUC 0.619, P@10 = 0.70
+- **Network features**: Informative but weaker than initially thought (AUC 0.523 on full population vs 0.952 on biased seed set)
+- **Merge rate**: Weak (AUC 0.565) -- multi-repo authors with low merge rates are often legitimate explorers
+- **Combined (without k-NN)**: H11 carries most of the unsupervised signal
+
+#### Single-repo detection profile
+
+- **Best unsupervised signal**: H8 (merge rate), AUC 0.801
+- **Network features**: Degenerate (AUC 0.500 exactly). Every single-repo author has the same hub score by definition.
+- **LLM content**: Degenerate (AUC 0.500). Single-repo authors were excluded from LLM pre-filtering (requires repos >= 2), so all get default score 0.0.
+- **Combined**: Dominated by k-NN (AUC 0.999, P@100 = 0.86). The combined score here is almost entirely the semi-supervised component.
+
+#### Why merge rate works for single-repo but not multi-repo
+
+Among single-repo authors, merge rate is binary or near-binary: either all your PRs got merged or none did. A single-repo author with 0% merge rate is a much stronger signal than a multi-repo author with 0% merge rate, because the multi-repo case includes legitimate contributors who got some PRs merged in some repos.
+
+The AUC tells the story: H8 goes from 0.565 (multi-repo, weak) to 0.801 (single-repo, strong). The same feature, measured on different populations, behaves differently.
+
+#### The k-NN dominance problem
+
+The combined score for single-repo authors is almost entirely k-NN: P@250 = 1.00, AUC-PR = 0.860. This is because k-NN is the only feature with real discriminative power in this population -- merge rate has AUC 0.801 but terrible precision (P@100 = 0.05), while k-NN has both. But k-NN is semi-supervised (it uses the suspended labels as seeds), making the combined score partially circular.
+
+Without k-NN, single-repo detection reduces to merge rate alone -- better than chance but not actionable for ranking.
+
+#### Feature availability gap
+
+The core problem with single-repo authors is feature poverty:
+
+| Feature | Multi-repo | Single-repo |
+|---------|-----------|-------------|
+| H8 merge rate | Available (weak) | Available (strong) |
+| H9 temporal | Available (inverted) | Available where 2+ PRs (inverted) |
+| H10 network | Available (weak) | Degenerate (constant) |
+| H11 LLM | Available (strong) | Not computed (excluded by pre-filter) |
+| H13 k-NN | Available (circular) | Available (circular) |
+| H13 IF | Available (inverted) | Available (weak) |
+
+Two of the six features are structurally unavailable for single-repo authors: network topology is undefined for a single connection, and LLM content scoring was scoped to multi-repo authors. Extending LLM scoring to single-repo authors could help, but at 28K authors the cost and API time would be significant.
+
+### Population Comparison Summary
+
+| Metric | Multi-repo (3,208) | Single-repo (28,088) | All (31,296) |
+|--------|-------------------|---------------------|--------------|
+| Suspended | 61 (1.9%) | 262 (0.9%*) | 323 (1.0%*) |
+| Best unsupervised | H11 AUC 0.619 | H8 AUC 0.801 | H8 AUC 0.760 |
+| Combined AUC | 0.948 | 0.999 | 0.981 |
+| Combined P@10 | 0.60 | 0.70 | 0.50 |
+| Combined P@100 | 0.28 | 0.86 | 0.14 |
+
+*Rate among checked authors. 18,398 single-repo authors remain unchecked (assumed active).
+
+The single-repo combined score looks better, but it's almost entirely k-NN. The multi-repo combined score has more genuine unsupervised signal from H11.
+
+### Pipeline Details (Single-Repo)
+
+- Ground truth: 9,682 single-repo authors checked via GitHub API (`--min-repos 1 --limit 10000`), ordered by merge rate ascending. 262 suspended, 9,420 active. ~5.9 hours.
+- Features: Reused existing author_features.parquet (all 31,296 authors already had H8-H13 features from multi-repo round). Re-ran stages 6c (semi-supervised with 323 seeds) and stage 7 (evaluation with population segmentation).
+- New stage 7 variant: `run_stage7_by_population()` produces separate results for multi-repo, single-repo, and all populations.
+
 ## Data Limitations
 
-- Author metadata (account age, followers) only available for the 3,216 checked multi-repo authors
+- Author metadata (account age, followers) only available for the 12,898 checked authors
 - No labeled spam ground truth beyond account suspension status
 - Suspension may be for reasons unrelated to PR spam (ToS violations, other abuse)
 - LLM classification depends on PR title quality (bodies often empty)
-- 59% of authors are single-repo, limiting network feature expressiveness for that population
-- Single-repo authors (28,080) not yet checked for suspension status -- pending next round
+- LLM scores only computed for 820 multi-repo authors with merge_rate < 0.5 -- all 28,088 single-repo authors get default score 0.0
+- 18,398 single-repo authors remain unchecked for suspension status (higher merge rates)
+- Network features are degenerate for single-repo authors (89.7% of population)

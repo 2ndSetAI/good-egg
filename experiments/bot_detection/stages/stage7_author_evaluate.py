@@ -355,3 +355,91 @@ def run_stage7(base_dir: Path, config: StudyConfig) -> dict[str, Any]:
     )
 
     return results
+
+
+def run_stage7_by_population(
+    base_dir: Path,
+    config: StudyConfig,
+) -> dict[str, Any]:
+    """Evaluate author-level scores segmented by population (multi-repo vs single-repo).
+
+    Produces separate results for each population to show how features
+    behave differently across these structurally distinct groups.
+    """
+    features_dir = base_dir / config.paths.get("features", "data/features")
+    results_dir = base_dir / config.paths.get("results", "data/results")
+    results_dir.mkdir(parents=True, exist_ok=True)
+
+    author_cfg = config.author_analysis
+    k_values = author_cfg.get("precision_at_k", [10, 25, 50, 100, 250])
+
+    features_path = features_dir / "author_features.parquet"
+    logger.info("Loading author features from %s", features_path)
+    df = pd.read_parquet(features_path)
+
+    if "account_status" not in df.columns:
+        logger.error("No account_status column -- cannot evaluate")
+        return {}
+
+    populations = {
+        "multi_repo": df[df["total_repos"] >= 2].copy(),
+        "single_repo": df[df["total_repos"] == 1].copy(),
+        "all": df.copy(),
+    }
+
+    all_results: dict[str, Any] = {}
+
+    for pop_name, pop_df in populations.items():
+        y = (pop_df["account_status"] == "suspended").astype(int).values
+        n_pos = int(y.sum())
+        n_total = len(pop_df)
+
+        if n_pos == 0:
+            logger.info("Population '%s': 0 suspended in %d authors, skipping", pop_name, n_total)
+            all_results[pop_name] = {
+                "n_total": n_total,
+                "n_positive": 0,
+                "skipped": True,
+                "reason": "no suspended accounts in population",
+            }
+            continue
+
+        logger.info(
+            "Population '%s': %d suspended / %d total (%.2f%%)",
+            pop_name, n_pos, n_total, 100 * n_pos / n_total,
+        )
+
+        pop_results: dict[str, Any] = {
+            "n_total": n_total,
+            "n_positive": n_pos,
+            "base_rate": n_pos / n_total,
+            "hypotheses": {},
+        }
+
+        for h_name, h_def in HYPOTHESIS_SCORES.items():
+            col = h_def["column"]
+            if col not in pop_df.columns:
+                pop_results["hypotheses"][h_name] = {"skipped": True, "reason": f"{col} missing"}
+                continue
+
+            raw = pop_df[col].values.astype(float)
+            transform = h_def["transform"]
+            scores = transform(raw) if transform is not None else raw
+
+            eval_result = _evaluate_single_score(y, scores, k_values)
+            eval_result["description"] = h_def["description"]
+            pop_results["hypotheses"][h_name] = eval_result
+
+        # Combined
+        combined = _compute_combined_score(pop_df, HYPOTHESIS_SCORES)
+        combined_result = _evaluate_single_score(y, combined, k_values)
+        combined_result["description"] = "Mean of standardized hypothesis scores"
+        pop_results["hypotheses"]["Combined"] = combined_result
+
+        all_results[pop_name] = pop_results
+
+    output_path = results_dir / "author_evaluation_by_population.json"
+    write_json(output_path, all_results)
+    logger.info("Population-segmented evaluation written to %s", output_path)
+
+    return all_results
