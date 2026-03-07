@@ -353,5 +353,24 @@ def run_hub_score_unknown(ctx: click.Context, cutoffs: str | None) -> None:
     run_stage17(ctx.obj["base_dir"], config, cutoffs=cutoff_list)
 
 
+@cli.command("run-recency-window")
+@click.option(
+    "--cutoffs",
+    type=str,
+    default=None,
+    help="Comma-separated cutoff dates (YYYY-MM-DD) to override config.",
+)
+@click.pass_context
+def run_recency_window(ctx: click.Context, cutoffs: str | None) -> None:
+    """Run recency window experiment on unknown contributors (Iteration 12)."""
+    from experiments.bot_detection.stages.stage18_recency_window import (
+        run_stage18,
+    )
+
+    config = ctx.obj["config"]
+    cutoff_list = cutoffs.split(",") if cutoffs else None
+    run_stage18(ctx.obj["base_dir"], config, cutoffs=cutoff_list)
+
+
 if __name__ == "__main__":
     cli()

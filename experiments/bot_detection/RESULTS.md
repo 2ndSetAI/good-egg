@@ -986,6 +986,35 @@ The T_2024 cutoff (n=1096) shows the closest result: mr+hub 0.578 vs mr_only 0.5
 
 **Conclusion for GE v3: drop hub_score from the scoring model.** For the population GE actually scores (unknown contributors to the target repo), `merge_rate` alone outperforms every model that includes hub_score. This holds across all repo size tiers and all temporal cutoffs. hub_score should be removed from the v3 scoring formula, not just downweighted.
 
+## Iteration 12: Recency Window for Unknown Contributors (stage18)
+
+**Question:** Does a shorter merge_rate lookback window (3mo, 6mo, 1yr, 2yr) improve prediction over alltime for the GE scoring population?
+
+Stage13 Experiment D showed 3mo MR (AUC 0.675) dramatically outperformed alltime MR (0.542) for cross-repo prediction on all authors. But that included known contributors with rich activity histories. For unknown contributors, the picture is different.
+
+**Method:** Same unknown-to-repo population as stage17. Compare 5 raw MR variants (alltime, 2yr, 1yr, 6mo, 3mo) plus exponentially-weighted (half-life 180 days) as univariate predictors. Also test fallback variants (use window MR if >=2 PRs in window, else alltime). All 6 cutoffs, DeLong tests.
+
+**Results (mean AUC across cutoffs):**
+
+| Window | All (medium+) | Large | XL |
+|---|---|---|---|
+| alltime | 0.516 | 0.553 | 0.533 |
+| 2yr | 0.519 | 0.568 | 0.541 |
+| 1yr | 0.521 | 0.568 | 0.547 |
+| 6mo | 0.529 | 0.569 | 0.565 |
+| 3mo | 0.525 | 0.564 | 0.552 |
+| weighted | 0.516 | 0.550 | 0.537 |
+
+**Zero DeLong tests are significant** across any window, any tier, any cutoff.
+
+6mo is the best raw performer overall (0.529) and in XL repos (0.565), but the differences are tiny (0.01-0.03). The fallback variants (window MR if >=2 PRs, else alltime) don't help either -- all within 0.01 of alltime.
+
+**Why recency doesn't matter here:** At the T_2024 cutoff, only 29% of unknown contributors have >=2 PRs in the 6mo window, and only 20% have >=2 in the 3mo window. Most unknown contributors are too sparse for short windows to differentiate them. The signal in merge_rate for this population is "have you ever gotten PRs merged anywhere?" not "have you been active lately?" -- because someone new to a repo is, almost by definition, not a frequent recent contributor.
+
+This contrasts with stage13's cross-repo result (3mo AUC 0.675 >> alltime 0.542) because that tested all authors including known, active contributors where recent activity is highly informative.
+
+**Conclusion for GE v3: keep alltime merge_rate.** There is no evidence that a recency window improves prediction for unknown contributors. The implementation complexity of windowed MR (minimum-PR-count fallback, window selection) is not justified. GE v3 should use alltime merge_rate as-is.
+
 ### Remaining work: Bad Egg
 
 1. **Threshold calibration** -- the tier cutoffs (top 1%, top 5%) are arbitrary percentiles. Calibrate against a decision-theoretic cost model: what's the cost of a false positive (annoying a legitimate contributor) vs false negative (missing a bad actor)?
@@ -995,8 +1024,7 @@ The T_2024 cutoff (n=1096) shows the closest result: mr+hub 0.578 vs mr_only 0.5
 ### Remaining work: Good Egg v3
 
 1. **Remove hub_score from scoring formula** -- stage17 shows merge_rate alone outperforms merge_rate + hub_score for unknown contributors across all repo sizes. The graph is still built (needed for repo discovery and contributor mapping), but hub_score should not be a scoring input.
-2. **Recency window tuning** -- implement 3-6 month lookback in the scoring pipeline. Test on held-out data whether 3mo or 6mo generalizes better. May need a minimum-PR-count fallback (use all-time if <2 PRs in window).
-3. **Scoring formula refit** -- refit v3 coefficients on the full dataset with merge_rate as the primary (possibly sole) input for unknown contributors. The v2 formula weighted hub_score heavily; v3 should not.
+2. **Scoring formula refit** -- refit v3 coefficients with alltime merge_rate as the sole input for unknown contributors. Stage18 confirms no recency window helps this population. The v2 formula weighted hub_score heavily; v3 eliminates it.
 
 ---
 
