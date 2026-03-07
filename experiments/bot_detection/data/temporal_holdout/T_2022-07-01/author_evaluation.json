@@ -1,0 +1,277 @@
+{
+  "n_authors": 3465,
+  "primary_target": {
+    "name": "suspended",
+    "n_positive": 43,
+    "n_total": 3465
+  },
+  "primary_results": {
+    "H8_merge_rate": {
+      "n_total": 3465,
+      "n_positive": 43,
+      "n_valid_scores": 3465,
+      "precision_at_10": 0.1,
+      "recall_at_10": 0.023255813953488372,
+      "precision_at_25": 0.04,
+      "recall_at_25": 0.023255813953488372,
+      "precision_at_50": 0.04,
+      "recall_at_50": 0.046511627906976744,
+      "precision_at_100": 0.06,
+      "recall_at_100": 0.13953488372093023,
+      "precision_at_250": 0.04,
+      "recall_at_250": 0.23255813953488372,
+      "auc_roc": {
+        "auc": 0.7854138066953908,
+        "ci_lower": 0.7435238745938542,
+        "ci_upper": 0.8273037387969275,
+        "se": 0.021372807067864055
+      },
+      "auc_pr": 0.030565459219442096,
+      "mann_whitney": {
+        "u_statistic": 115570.5,
+        "p_value": 4.69436963559486e-12
+      },
+      "description": "1 - merge_rate (low merge rate = suspicious)",
+      "cv": {
+        "cv_method": "5-fold stratified",
+        "n_folds_evaluated": 5,
+        "mean_auc": 0.7848031829370669,
+        "std_auc": 0.03016105893374346
+      }
+    },
+    "H9_temporal": {
+      "n_total": 1269,
+      "n_positive": 7,
+      "n_valid_scores": 1269,
+      "precision_at_10": 0.0,
+      "recall_at_10": 0.0,
+      "precision_at_25": 0.0,
+      "recall_at_25": 0.0,
+      "precision_at_50": 0.0,
+      "recall_at_50": 0.0,
+      "precision_at_100": 0.0,
+      "recall_at_100": 0.0,
+      "precision_at_250": 0.004,
+      "recall_at_250": 0.14285714285714285,
+      "auc_roc": {
+        "auc": 0.3880461851935703,
+        "ci_lower": null,
+        "ci_upper": null
+      },
+      "auc_pr": 0.005181631507626428,
+      "mann_whitney": {
+        "u_statistic": 3428.0,
+        "p_value": 0.29257217285970405
+      },
+      "description": "Inter-PR coefficient of variation",
+      "cv": {
+        "cv_method": "leave-one-out",
+        "n_folds_evaluated": 0,
+        "mean_auc": NaN,
+        "std_auc": NaN
+      }
+    },
+    "H10_network": {
+      "n_total": 3465,
+      "n_positive": 43,
+      "n_valid_scores": 3465,
+      "precision_at_10": 0.0,
+      "recall_at_10": 0.0,
+      "precision_at_25": 0.0,
+      "recall_at_25": 0.0,
+      "precision_at_50": 0.02,
+      "recall_at_50": 0.023255813953488372,
+      "precision_at_100": 0.02,
+      "recall_at_100": 0.046511627906976744,
+      "precision_at_250": 0.012,
+      "recall_at_250": 0.06976744186046512,
+      "auc_roc": {
+        "auc": 0.500220869068816,
+        "ci_lower": 0.4686807474165913,
+        "ci_upper": 0.5317609907210407,
+        "se": 0.016092194500005687
+      },
+      "auc_pr": 0.012417663755970032,
+      "mann_whitney": {
+        "u_statistic": 73605.5,
+        "p_value": 0.9891947964805387
+      },
+      "description": "Degree centrality from bipartite author-repo graph",
+      "cv": {
+        "cv_method": "5-fold stratified",
+        "n_folds_evaluated": 5,
+        "mean_auc": 0.49921896861645865,
+        "std_auc": 0.030277402422344904
+      }
+    },
+    "H11_llm": {
+      "n_total": 3465,
+      "n_positive": 43,
+      "n_valid_scores": 3465,
+      "precision_at_10": 0.0,
+      "recall_at_10": 0.0,
+      "precision_at_25": 0.0,
+      "recall_at_25": 0.0,
+      "precision_at_50": 0.04,
+      "recall_at_50": 0.046511627906976744,
+      "precision_at_100": 0.02,
+      "recall_at_100": 0.046511627906976744,
+      "precision_at_250": 0.024,
+      "recall_at_250": 0.13953488372093023,
+      "auc_roc": {
+        "auc": 0.5188520245198648,
+        "ci_lower": 0.48736863056898727,
+        "ci_upper": 0.5503354184707423,
+        "se": 0.016063251263397964
+      },
+      "auc_pr": 0.01483336202015872,
+      "mann_whitney": {
+        "u_statistic": 76347.0,
+        "p_value": 0.010235088383574556
+      },
+      "description": "LLM spam classification score",
+      "cv": {
+        "cv_method": "5-fold stratified",
+        "n_folds_evaluated": 5,
+        "mean_auc": 0.5178225741428456,
+        "std_auc": 0.0266115023352193
+      }
+    },
+    "H11_tfidf": {
+      "n_total": 3465,
+      "n_positive": 43,
+      "n_valid_scores": 3465,
+      "precision_at_10": 0.0,
+      "recall_at_10": 0.0,
+      "precision_at_25": 0.0,
+      "recall_at_25": 0.0,
+      "precision_at_50": 0.02,
+      "recall_at_50": 0.023255813953488372,
+      "precision_at_100": 0.01,
+      "recall_at_100": 0.023255813953488372,
+      "precision_at_250": 0.008,
+      "recall_at_250": 0.046511627906976744,
+      "auc_roc": {
+        "auc": 0.47074674133173855,
+        "ci_lower": 0.3881451675284508,
+        "ci_upper": 0.5533483151350262,
+        "se": 0.04214443451759237
+      },
+      "auc_pr": 0.011947687390498854,
+      "mann_whitney": {
+        "u_statistic": 69268.5,
+        "p_value": 0.5091134051024266
+      },
+      "description": "TF-IDF title spam score (local, deterministic)",
+      "cv": {
+        "cv_method": "5-fold stratified",
+        "n_folds_evaluated": 5,
+        "mean_auc": 0.46706926480841193,
+        "std_auc": 0.09073576968052897
+      }
+    },
+    "H13_knn": {
+      "n_total": 3465,
+      "n_positive": 43,
+      "n_valid_scores": 3465,
+      "precision_at_10": 1.0,
+      "recall_at_10": 0.23255813953488372,
+      "precision_at_25": 1.0,
+      "recall_at_25": 0.5813953488372093,
+      "precision_at_50": 0.86,
+      "recall_at_50": 1.0,
+      "precision_at_100": 0.43,
+      "recall_at_100": 1.0,
+      "precision_at_250": 0.172,
+      "recall_at_250": 1.0,
+      "auc_roc": {
+        "auc": 1.0,
+        "ci_lower": 1.0,
+        "ci_upper": 1.0,
+        "se": 0.0
+      },
+      "auc_pr": 1.0,
+      "mann_whitney": {
+        "u_statistic": 147146.0,
+        "p_value": 1.548855039446858e-29
+      },
+      "description": "1 / (1 + knn_distance) to seed bots",
+      "cv": {
+        "cv_method": "5-fold stratified",
+        "n_folds_evaluated": 5,
+        "mean_auc": 1.0,
+        "std_auc": 0.0
+      }
+    },
+    "H13_if": {
+      "n_total": 3465,
+      "n_positive": 43,
+      "n_valid_scores": 3465,
+      "precision_at_10": 0.0,
+      "recall_at_10": 0.0,
+      "precision_at_25": 0.0,
+      "recall_at_25": 0.0,
+      "precision_at_50": 0.02,
+      "recall_at_50": 0.023255813953488372,
+      "precision_at_100": 0.02,
+      "recall_at_100": 0.046511627906976744,
+      "precision_at_250": 0.012,
+      "recall_at_250": 0.06976744186046512,
+      "auc_roc": {
+        "auc": 0.4516194799722725,
+        "ci_lower": 0.3722735545644494,
+        "ci_upper": 0.5309654053800956,
+        "se": 0.04048335889521116
+      },
+      "auc_pr": 0.011691409762587708,
+      "mann_whitney": {
+        "u_statistic": 66454.0,
+        "p_value": 0.27486839367944627
+      },
+      "description": "Negated isolation forest score (more negative = more anomalous)",
+      "cv": {
+        "cv_method": "5-fold stratified",
+        "n_folds_evaluated": 5,
+        "mean_auc": 0.44747596552885327,
+        "std_auc": 0.1275935596447412
+      }
+    },
+    "Combined": {
+      "n_total": 3465,
+      "n_positive": 43,
+      "n_valid_scores": 3465,
+      "precision_at_10": 0.2,
+      "recall_at_10": 0.046511627906976744,
+      "precision_at_25": 0.08,
+      "recall_at_25": 0.046511627906976744,
+      "precision_at_50": 0.08,
+      "recall_at_50": 0.09302325581395349,
+      "precision_at_100": 0.14,
+      "recall_at_100": 0.32558139534883723,
+      "precision_at_250": 0.164,
+      "recall_at_250": 0.9534883720930233,
+      "auc_roc": {
+        "auc": 0.9723607845269324,
+        "ci_lower": 0.9658741103665911,
+        "ci_upper": 0.9788474586872737,
+        "se": 0.0033095884472915476
+      },
+      "auc_pr": 0.18230633351749484,
+      "mann_whitney": {
+        "u_statistic": 143079.0,
+        "p_value": 1.5397093695328497e-26
+      },
+      "description": "Mean of standardized hypothesis scores",
+      "cv": {
+        "cv_method": "5-fold stratified",
+        "n_folds_evaluated": 5,
+        "mean_auc": 0.9714543760048947,
+        "std_auc": 0.0148627214452973
+      }
+    }
+  },
+  "auxiliary_target": {
+    "skipped": true,
+    "reason": "skip_auxiliary"
+  }
+}

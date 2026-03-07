@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -44,10 +45,15 @@ def _parse_llm_score(response: str) -> float:
         return 0.5
 
 
-def run_stage6_llm_content(base_dir: Path, config: StudyConfig) -> None:
+def run_stage6_llm_content(
+    base_dir: Path,
+    config: StudyConfig,
+    cutoff: datetime | None = None,
+    parquet_path: Path | None = None,
+) -> None:
     """H11: LLM-based spam/bot content analysis on PR titles."""
     features_dir = base_dir / config.paths.get("features", "data/features")
-    features_path = features_dir / "author_features.parquet"
+    features_path = parquet_path or (features_dir / "author_features.parquet")
     if not features_path.exists():
         logger.error("author_features.parquet not found at %s", features_path)
         return
@@ -80,8 +86,19 @@ def run_stage6_llm_content(base_dir: Path, config: StudyConfig) -> None:
     classified = 0
 
     try:
+        # If cutoff is set, bulk-fetch all pre-cutoff titles at once
+        if cutoff is not None:
+            all_titles_map = db.get_all_author_titles_before(
+                cutoff, limit_per_author=max_titles,
+            )
+        else:
+            all_titles_map = None
+
         for login in filtered_logins:
-            titles = db.get_author_pr_titles(login, limit=max_titles)
+            if all_titles_map is not None:
+                titles = all_titles_map.get(login, [])
+            else:
+                titles = db.get_author_pr_titles(login, limit=max_titles)
             if not titles:
                 scores[login] = 0.0
                 continue

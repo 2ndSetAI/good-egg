@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import math
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 
 import networkx as nx
@@ -181,6 +182,8 @@ def _compute_network_features(
 def run_stage5(
     base_dir: Path,
     config: StudyConfig,
+    cutoff: datetime | None = None,
+    output_dir: Path | None = None,
 ) -> None:
     """Compute author-level features (H8 aggregates + H10 network).
 
@@ -197,7 +200,10 @@ def run_stage5(
     with BotDetectionDB(db_path) as db:
         # H8: Author aggregate stats
         logger.info("Computing H8 author aggregate stats...")
-        agg_df = db.get_author_aggregate_stats()
+        if cutoff is not None:
+            agg_df = db.get_author_aggregate_stats_before(cutoff)
+        else:
+            agg_df = db.get_author_aggregate_stats()
         logger.info("  %d authors with aggregate stats", len(agg_df))
 
         # Author profile fields
@@ -206,9 +212,9 @@ def run_stage5(
 
         # Compute account_age_days from account_created_at
         if not profile_df.empty and "account_created_at" in profile_df.columns:
-            now = pd.Timestamp.now()
+            ref_time = pd.Timestamp(cutoff) if cutoff is not None else pd.Timestamp.now()
             profile_df["account_age_days"] = profile_df["account_created_at"].apply(
-                lambda x: (now - x).total_seconds() / 86400.0 if pd.notna(x) else None,
+                lambda x: (ref_time - x).total_seconds() / 86400.0 if pd.notna(x) else None,
             )
         else:
             profile_df["account_age_days"] = None
@@ -218,7 +224,10 @@ def run_stage5(
 
         # H10: Network features
         logger.info("Computing H10 network features...")
-        pairs = db.get_all_author_repo_pairs()
+        if cutoff is not None:
+            pairs = db.get_all_author_repo_pairs_before(cutoff)
+        else:
+            pairs = db.get_all_author_repo_pairs()
         logger.info("  %d author-repo pairs", len(pairs))
 
     network_df = _compute_network_features(pairs)
@@ -229,7 +238,11 @@ def run_stage5(
     merged = merged.merge(network_df, on="login", how="left")
 
     # Write parquet
-    output_path = features_dir / "author_features.parquet"
+    if output_dir is not None:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = output_dir / "author_features.parquet"
+    else:
+        output_path = features_dir / "author_features.parquet"
     merged.to_parquet(output_path, index=False)
     logger.info("Wrote %d author feature rows to %s", len(merged), output_path)
 

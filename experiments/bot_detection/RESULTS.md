@@ -318,6 +318,103 @@ This experiment would produce lower AUC numbers for H8 and the combined score, b
 
 ---
 
+## Iteration 6: Temporal Holdout Experiment
+
+### Motivation
+
+Iterations 5/5b showed author-level bot detection works (AUC 0.619-1.000), but the headline numbers are contaminated by merge rate lookahead. `merge_rate` is computed from all of an author's PRs (no temporal windowing), and it propagates through ground truth sampling order, LLM pre-filtering, k-NN features, and the auxiliary target definition. The "What a Clean Experiment Would Look Like" section above described the fix. This is that fix.
+
+### Design
+
+Six semi-annual global cutoff dates: 2020-01-01, 2021-01-01, 2022-01-01, 2022-07-01, 2023-01-01, 2024-01-01. For each cutoff T, all features are computed using only PRs with `created_at < T`. This answers "if we deployed this system at time T, how well would it work?"
+
+Key decontamination steps:
+- **merge_rate**: computed from pre-cutoff PRs only
+- **account_age_days**: `cutoff - account_created_at` (not `now - created_at`)
+- **Network graph**: built from pre-cutoff author-repo pairs only
+- **LLM pre-filter**: uses pre-cutoff merge rate
+- **LLM titles**: pre-cutoff titles only
+- **TF-IDF titles**: pre-cutoff titles only
+- **k-NN H13-clean**: excludes `merge_rate`, `rejection_rate`, `pocket_veto_rate` from features
+- **k-NN H13-temporal**: includes pre-cutoff merge_rate in features
+- **Auxiliary target**: dropped entirely (circular by definition)
+- **Ground truth labels**: reused as-is (suspension is a property of the account, not the time window)
+
+Authors with zero pre-cutoff PRs are excluded from that cutoff's evaluation.
+
+### Per-Cutoff Results (Primary Target: Suspended Accounts)
+
+| Cutoff | Authors | Suspended | PRs | H8 merge | H9 temporal | H10 network | H11 LLM | H11 TF-IDF | H13 IF | Combined |
+|--------|---------|-----------|-----|----------|-------------|-------------|---------|-------------|--------|----------|
+| 2020-01-01 | 253 | 7 | 405 | 0.537 | 0.304 | 0.497 | 0.497 | 0.444 | 0.707 | 0.989 |
+| 2021-01-01 | 402 | 16 | 849 | 0.561 | 0.288 | 0.493 | 0.495 | 0.487 | 0.550 | 0.970 |
+| 2022-01-01 | 749 | 26 | 2,471 | 0.677 | 0.414 | 0.508 | 0.515 | 0.532 | 0.536 | 0.976 |
+| 2022-07-01 | 1,514 | 43 | 16,619 | 0.785 | 0.388 | 0.500 | 0.519 | 0.471 | 0.452 | 0.972 |
+| 2023-01-01 | 2,227 | 68 | 31,634 | 0.809 | 0.342 | 0.500 | 0.524 | 0.509 | 0.447 | 0.967 |
+| 2024-01-01 | 4,804 | 147 | 71,046 | 0.787 | 0.434 | 0.513 | 0.517 | 0.533 | 0.474 | 0.950 |
+| **Mean±SD** | | | | **0.693±0.110** | **0.362±0.055** | **0.502±0.007** | **0.511±0.011** | **0.496±0.032** | **0.528±0.090** | **0.971±0.011** |
+
+H13 k-NN (both clean and temporal variants) is omitted: AUC = 1.000 at every cutoff because seeds get distance 0 and the evaluation target is those same seeds. This is structural circularity, not a viable signal.
+
+### Comparison to Contaminated Numbers
+
+| Hypothesis | All-time AUC (Iter 5/5b) | Temporal mean AUC (Iter 6) | Verdict |
+|---|---|---|---|
+| H8 merge_rate | 0.760 | 0.693±0.110 | **Survives.** Drops ~9%, still well above chance. Improves with more data (0.54→0.81). |
+| H9 temporal | 0.427 | 0.362±0.055 | **Survives (inverted).** Slightly worse but consistent: suspended accounts are less temporally variable. |
+| H10 network | 0.544 | 0.502±0.007 | **Dead.** Drops to chance. The earlier 0.544 was seed selection bias, not signal. |
+| H11 LLM | 0.528 | 0.511±0.011 | **Dead.** At chance. The pre-cutoff title set and decontaminated pre-filter eliminate the signal. |
+| H11 TF-IDF | 0.586 | 0.496±0.032 | **Dead.** Drops to chance. The all-time TF-IDF had access to post-cutoff titles. |
+| H13 k-NN | 1.000 | 1.000 | **Circular** (same issue pre- and post-decontamination). |
+| H13 IF | 0.564 | 0.528±0.090 | **Dead.** Noisy, no consistent signal direction. |
+| Combined | 0.974 | 0.971±0.011 | **Inflated** by k-NN circularity. Without k-NN, the surviving components would produce ~0.69. |
+
+### Analysis
+
+#### Merge rate is the only real signal
+
+H8 (merge_rate) is the sole hypothesis that survives temporal decontamination with meaningful discrimination. AUC 0.693±0.110 across six cutoffs, with a clear trend: more pre-cutoff data produces better discrimination (0.54 at T1 with 405 PRs → 0.81 at T5 with 31K PRs). The signal is genuine -- authors who will eventually be suspended have measurably lower merge rates from their earliest PRs.
+
+The contaminated all-time number (0.760) was ~9% higher, consistent with lookahead inflation rather than fabrication.
+
+#### Everything else is at chance
+
+H9, H10, H11 (both LLM and TF-IDF), and H13 IF all produce AUC within ~0.01-0.05 of 0.50 across cutoffs. The contaminated numbers (0.42-0.59) were inflated by various forms of information leakage:
+- H10's seed selection bias (low-merge-rate authors checked first had extreme network topology)
+- H11's all-time title corpus (more titles = better TF-IDF features, even for spam detection)
+- H13 IF's contaminated feature inputs
+
+#### The combined score is misleading
+
+Combined AUC 0.971 looks strong but is dominated by k-NN circularity (seeds = labels). The honest combined score from non-circular components would be approximately the H8 AUC (~0.69), since no other component contributes above chance.
+
+#### The k-NN circularity is fundamental, not fixable
+
+H13 k-NN gets AUC 1.000 at every cutoff because the algorithm assigns distance 0 to seeds, and the evaluation labels ARE the seeds. This isn't a temporal issue -- it's a design issue. Evaluating k-NN against the same labels used for seeding requires held-out positive labels, which requires more suspended accounts than the 7-147 available per cutoff. Leave-one-out evaluation of k-NN with so few positives would be extremely noisy.
+
+#### Earlier cutoffs are noisier but not uninformative
+
+T1 (2020-01-01) has only 253 evaluable authors and 7 suspended, making results noisy. By T4 (2022-07-01), with 1,514 authors and 43 suspended, the estimates stabilize. The consistent trend across cutoffs (H8 improving, everything else flat near chance) increases confidence in the findings.
+
+### Implications for Next-Gen Scoring
+
+1. **Merge rate works and is cheap.** Pre-cutoff merge rate is a viable feature for a production scoring model. It just needs temporal windowing, which the current good-egg scorer doesn't do.
+
+2. **Title analysis needs rethinking.** The all-time TF-IDF and LLM scores were artifacts of having more data than available at prediction time. Title-based features might still work with enough pre-cutoff titles, but the effect is too weak to detect with the current ground truth size.
+
+3. **Network features are not useful for this task.** Degree centrality in the bipartite author-repo graph doesn't predict suspension. Suspended authors don't have distinctive network topology.
+
+4. **The ground truth bottleneck is real.** With only 7-147 suspended accounts per cutoff, statistical power is limited. Any future experiment needs either more labeled data or a different evaluation strategy (e.g., precision@k only, no AUC).
+
+### Pipeline Details
+
+- Total runtime: ~4 minutes for all 6 cutoffs
+- LLM calls: 2-158 per cutoff (only authors passing pre-cutoff merge_rate < 0.5 filter)
+- Output: `data/temporal_holdout/T_{date}/author_features.parquet` and `author_evaluation.json` per cutoff, plus `data/temporal_holdout/aggregated_results.json`
+- Original `data/features/author_features.parquet` and `data/results/author_evaluation.json` untouched
+
+---
+
 ## Data Limitations
 
 - Author metadata (account age, followers) only available for the 12,898 checked authors

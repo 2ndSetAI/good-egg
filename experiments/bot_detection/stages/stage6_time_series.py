@@ -110,12 +110,20 @@ def compute_time_series_features(
     }
 
 
-def run_stage6_time_series(base_dir: Path, config: StudyConfig) -> None:
+def run_stage6_time_series(
+    base_dir: Path,
+    config: StudyConfig,
+    cutoff: datetime | None = None,
+    parquet_path: Path | None = None,
+) -> None:
     """Compute H9 temporal features for all authors and merge into parquet."""
     from experiments.bot_detection.cache import BotDetectionDB
 
     features_dir = base_dir / config.paths.get("features", "data/features")
-    author_parquet = features_dir / "author_features.parquet"
+    if parquet_path is not None:
+        author_parquet = parquet_path
+    else:
+        author_parquet = features_dir / "author_features.parquet"
 
     burst_gap_days = config.author_analysis.get("burst_gap_days", 7)
 
@@ -123,7 +131,10 @@ def run_stage6_time_series(base_dir: Path, config: StudyConfig) -> None:
     db_path = base_dir / config.paths.get("local_db", "data/bot_detection.duckdb")
     logger.info("Loading author PR timestamps from %s", db_path)
     with BotDetectionDB(db_path) as db:
-        all_timestamps = db.get_all_author_pr_timestamps()
+        if cutoff is not None:
+            all_timestamps = db.get_all_author_pr_timestamps_before(cutoff)
+        else:
+            all_timestamps = db.get_all_author_pr_timestamps()
 
     logger.info("Computing H9 features for %d authors", len(all_timestamps))
 

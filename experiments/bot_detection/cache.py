@@ -654,6 +654,100 @@ class BotDetectionDB:
             result.setdefault(author, []).append(title)
         return result
 
+    def get_author_aggregate_stats_before(self, cutoff: datetime) -> Any:
+        """Compute per-author aggregate features from PRs before cutoff.
+
+        Returns a pandas DataFrame with one row per author.
+        Only includes PRs with created_at < cutoff.
+        """
+        return self.con.execute("""
+            SELECT
+                author AS login,
+                COUNT(*) AS total_prs,
+                COUNT(DISTINCT repo) AS total_repos,
+                COALESCE(SUM(CASE WHEN state = 'MERGED' THEN 1 ELSE 0 END)::DOUBLE
+                    / NULLIF(COUNT(*), 0), 0) AS merge_rate,
+                COALESCE(SUM(CASE WHEN outcome = 'rejected' THEN 1 ELSE 0 END)::DOUBLE
+                    / NULLIF(COUNT(*), 0), 0) AS rejection_rate,
+                COALESCE(SUM(CASE WHEN outcome = 'pocket_veto' THEN 1 ELSE 0 END)::DOUBLE
+                    / NULLIF(COUNT(*), 0), 0) AS pocket_veto_rate,
+                MEDIAN(additions) AS median_additions,
+                MEDIAN(deletions) AS median_deletions,
+                MEDIAN(files_changed) AS median_files_changed,
+                AVG(LENGTH(title)) AS mean_title_length,
+                AVG(LENGTH(body)) AS mean_body_length,
+                COALESCE(SUM(CASE WHEN body = '' OR body IS NULL THEN 1 ELSE 0 END)::DOUBLE
+                    / NULLIF(COUNT(*), 0), 0) AS empty_body_rate,
+                COUNT(DISTINCT DATE_TRUNC('day', created_at)) AS active_days,
+                EXTRACT(EPOCH FROM (MAX(created_at) - MIN(created_at))) / 86400.0
+                    AS career_span_days,
+                COUNT(*)::DOUBLE
+                    / NULLIF(COUNT(DISTINCT DATE_TRUNC('day', created_at)), 0)
+                    AS prs_per_active_day,
+                COUNT(DISTINCT repo)::DOUBLE
+                    / NULLIF(COUNT(DISTINCT DATE_TRUNC('day', created_at)), 0)
+                    AS repos_per_active_day
+            FROM prs
+            WHERE created_at < ?
+            GROUP BY author
+            ORDER BY author
+        """, [cutoff]).fetchdf()
+
+    def get_all_author_repo_pairs_before(
+        self, cutoff: datetime,
+    ) -> list[tuple[str, str, int]]:
+        """Get (author, repo, pr_count) triples from PRs before cutoff.
+
+        Returns list of (author, repo, count) tuples.
+        """
+        rows = self.con.execute("""
+            SELECT author, repo, COUNT(*) AS pr_count
+            FROM prs
+            WHERE created_at < ?
+            GROUP BY author, repo
+            ORDER BY author, repo
+        """, [cutoff]).fetchall()
+        return [(r[0], r[1], r[2]) for r in rows]
+
+    def get_all_author_pr_timestamps_before(
+        self, cutoff: datetime,
+    ) -> dict[str, list[datetime]]:
+        """Get sorted PR timestamps for all authors before cutoff, keyed by login."""
+        rows = self.con.execute(
+            "SELECT author, created_at FROM prs WHERE created_at < ? "
+            "ORDER BY author, created_at",
+            [cutoff],
+        ).fetchall()
+        result: dict[str, list[datetime]] = {}
+        for author, ts in rows:
+            result.setdefault(author, []).append(ts)
+        return result
+
+    def get_all_author_titles_before(
+        self, cutoff: datetime, limit_per_author: int = 50,
+    ) -> dict[str, list[str]]:
+        """Get PR titles for all authors from PRs before cutoff.
+
+        Returns dict mapping login -> list of titles (up to limit_per_author each).
+        """
+        rows = self.con.execute(
+            """SELECT author, title FROM (
+                SELECT author, title,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY author ORDER BY created_at DESC
+                    ) AS rn
+                FROM prs
+                WHERE created_at < ?
+            ) sub
+            WHERE rn <= ?
+            ORDER BY author""",
+            [cutoff, limit_per_author],
+        ).fetchall()
+        result: dict[str, list[str]] = {}
+        for author, title in rows:
+            result.setdefault(author, []).append(title)
+        return result
+
     def get_author_pr_titles(self, login: str, limit: int = 50) -> list[str]:
         """Get PR titles for an author, up to limit."""
         rows = self.con.execute(

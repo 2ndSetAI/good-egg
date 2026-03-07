@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import re
 from collections import Counter
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -142,10 +143,15 @@ def compute_title_features(
     return df
 
 
-def run_stage6_title_analysis(base_dir: Path, config: StudyConfig) -> None:
+def run_stage6_title_analysis(
+    base_dir: Path,
+    config: StudyConfig,
+    cutoff: datetime | None = None,
+    parquet_path: Path | None = None,
+) -> None:
     """H11 alternative: TF-IDF-based title spam scoring for all authors."""
     features_dir = base_dir / config.paths.get("features", "data/features")
-    features_path = features_dir / "author_features.parquet"
+    features_path = parquet_path or (features_dir / "author_features.parquet")
     if not features_path.exists():
         logger.error("author_features.parquet not found at %s", features_path)
         return
@@ -157,7 +163,10 @@ def run_stage6_title_analysis(base_dir: Path, config: StudyConfig) -> None:
     db_path = base_dir / config.paths.get("local_db", "data/bot_detection.duckdb")
     db = BotDetectionDB(db_path)
     try:
-        all_titles = db.get_all_author_titles(limit_per_author=50)
+        if cutoff is not None:
+            all_titles = db.get_all_author_titles_before(cutoff, limit_per_author=50)
+        else:
+            all_titles = db.get_all_author_titles(limit_per_author=50)
     finally:
         db.close()
 
@@ -187,8 +196,8 @@ def run_stage6_title_analysis(base_dir: Path, config: StudyConfig) -> None:
 
     df.to_parquet(features_path, index=False)
     logger.info(
-        "Wrote title_spam_score for %d authors (%d with titles)",
-        len(df), len(title_df),
+        "Wrote title_spam_score for %d authors (%d with titles) to %s",
+        len(df), len(title_df), features_path,
     )
 
     write_stage_checkpoint(

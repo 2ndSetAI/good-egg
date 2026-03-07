@@ -182,5 +182,30 @@ def run_author_pipeline(ctx: click.Context) -> None:
     logger.info("=== Author pipeline complete ===")
 
 
+@cli.command("run-temporal-holdout")
+@click.option(
+    "--cutoffs",
+    type=str,
+    default=None,
+    help="Comma-separated cutoff dates (YYYY-MM-DD) to override config.",
+)
+@click.pass_context
+def run_temporal_holdout(ctx: click.Context, cutoffs: str | None) -> None:
+    """Run temporal holdout experiment (Iteration 6)."""
+    from experiments.bot_detection.stages.stage9_temporal_holdout import (
+        run_temporal_holdout as _run_holdout,
+    )
+
+    config = ctx.obj["config"]
+
+    # Allow CLI override of cutoff dates
+    if cutoffs:
+        if "temporal_holdout" not in config.author_analysis:
+            config.author_analysis["temporal_holdout"] = {}
+        config.author_analysis["temporal_holdout"]["cutoffs"] = cutoffs.split(",")
+
+    _run_holdout(ctx.obj["base_dir"], config)
+
+
 if __name__ == "__main__":
     cli()

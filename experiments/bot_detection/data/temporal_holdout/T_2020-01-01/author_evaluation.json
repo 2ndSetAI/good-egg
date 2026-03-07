@@ -1,0 +1,262 @@
+{
+  "n_authors": 321,
+  "primary_target": {
+    "name": "suspended",
+    "n_positive": 7,
+    "n_total": 321
+  },
+  "primary_results": {
+    "H8_merge_rate": {
+      "n_total": 321,
+      "n_positive": 7,
+      "n_valid_scores": 321,
+      "precision_at_10": 0.0,
+      "recall_at_10": 0.0,
+      "precision_at_25": 0.0,
+      "recall_at_25": 0.0,
+      "precision_at_50": 0.04,
+      "recall_at_50": 0.2857142857142857,
+      "precision_at_100": 0.05,
+      "recall_at_100": 0.7142857142857143,
+      "precision_at_250": 0.024,
+      "recall_at_250": 0.8571428571428571,
+      "auc_roc": {
+        "auc": 0.536624203821656,
+        "ci_lower": null,
+        "ci_upper": null
+      },
+      "auc_pr": 0.02348993288590604,
+      "mann_whitney": {
+        "u_statistic": 1179.5,
+        "p_value": 0.46105303520291274
+      },
+      "description": "1 - merge_rate (low merge rate = suspicious)",
+      "cv": {
+        "cv_method": "leave-one-out",
+        "n_folds_evaluated": 0,
+        "mean_auc": NaN,
+        "std_auc": NaN
+      }
+    },
+    "H9_temporal": {
+      "n_total": 47,
+      "n_positive": 1,
+      "n_valid_scores": 47,
+      "precision_at_10": 0.0,
+      "recall_at_10": 0.0,
+      "precision_at_25": 0.0,
+      "recall_at_25": 0.0,
+      "auc_roc": {
+        "auc": 0.30434782608695654,
+        "ci_lower": null,
+        "ci_upper": null
+      },
+      "auc_pr": 0.02127659574468085,
+      "mann_whitney": {
+        "u_statistic": 14.0,
+        "p_value": 0.4737964312815377
+      },
+      "description": "Inter-PR coefficient of variation",
+      "cv": {
+        "cv_method": "skipped",
+        "reason": "insufficient class balance"
+      }
+    },
+    "H10_network": {
+      "n_total": 321,
+      "n_positive": 7,
+      "n_valid_scores": 321,
+      "precision_at_10": 0.0,
+      "recall_at_10": 0.0,
+      "precision_at_25": 0.0,
+      "recall_at_25": 0.0,
+      "precision_at_50": 0.0,
+      "recall_at_50": 0.0,
+      "precision_at_100": 0.01,
+      "recall_at_100": 0.14285714285714285,
+      "precision_at_250": 0.016,
+      "recall_at_250": 0.5714285714285714,
+      "auc_roc": {
+        "auc": 0.4968152866242038,
+        "ci_lower": null,
+        "ci_upper": null
+      },
+      "auc_pr": 0.021806853582554516,
+      "mann_whitney": {
+        "u_statistic": 1092.0,
+        "p_value": 0.8443138454052729
+      },
+      "description": "Degree centrality from bipartite author-repo graph",
+      "cv": {
+        "cv_method": "leave-one-out",
+        "n_folds_evaluated": 0,
+        "mean_auc": NaN,
+        "std_auc": NaN
+      }
+    },
+    "H11_llm": {
+      "n_total": 321,
+      "n_positive": 7,
+      "n_valid_scores": 321,
+      "precision_at_10": 0.0,
+      "recall_at_10": 0.0,
+      "precision_at_25": 0.0,
+      "recall_at_25": 0.0,
+      "precision_at_50": 0.0,
+      "recall_at_50": 0.0,
+      "precision_at_100": 0.01,
+      "recall_at_100": 0.14285714285714285,
+      "precision_at_250": 0.016,
+      "recall_at_250": 0.5714285714285714,
+      "auc_roc": {
+        "auc": 0.4968152866242038,
+        "ci_lower": null,
+        "ci_upper": null
+      },
+      "auc_pr": 0.021806853582554516,
+      "mann_whitney": {
+        "u_statistic": 1092.0,
+        "p_value": 0.8443145958715509
+      },
+      "description": "LLM spam classification score",
+      "cv": {
+        "cv_method": "leave-one-out",
+        "n_folds_evaluated": 0,
+        "mean_auc": NaN,
+        "std_auc": NaN
+      }
+    },
+    "H11_tfidf": {
+      "n_total": 321,
+      "n_positive": 7,
+      "n_valid_scores": 321,
+      "precision_at_10": 0.0,
+      "recall_at_10": 0.0,
+      "precision_at_25": 0.04,
+      "recall_at_25": 0.14285714285714285,
+      "precision_at_50": 0.02,
+      "recall_at_50": 0.14285714285714285,
+      "precision_at_100": 0.03,
+      "recall_at_100": 0.42857142857142855,
+      "precision_at_250": 0.016,
+      "recall_at_250": 0.5714285714285714,
+      "auc_roc": {
+        "auc": 0.4444949954504095,
+        "ci_lower": null,
+        "ci_upper": null
+      },
+      "auc_pr": 0.031908030685879954,
+      "mann_whitney": {
+        "u_statistic": 977.0,
+        "p_value": 0.6168311873836461
+      },
+      "description": "TF-IDF title spam score (local, deterministic)",
+      "cv": {
+        "cv_method": "leave-one-out",
+        "n_folds_evaluated": 0,
+        "mean_auc": NaN,
+        "std_auc": NaN
+      }
+    },
+    "H13_knn": {
+      "n_total": 321,
+      "n_positive": 7,
+      "n_valid_scores": 321,
+      "precision_at_10": 0.7,
+      "recall_at_10": 1.0,
+      "precision_at_25": 0.28,
+      "recall_at_25": 1.0,
+      "precision_at_50": 0.14,
+      "recall_at_50": 1.0,
+      "precision_at_100": 0.07,
+      "recall_at_100": 1.0,
+      "precision_at_250": 0.028,
+      "recall_at_250": 1.0,
+      "auc_roc": {
+        "auc": 1.0,
+        "ci_lower": null,
+        "ci_upper": null
+      },
+      "auc_pr": 1.0,
+      "mann_whitney": {
+        "u_statistic": 2198.0,
+        "p_value": 6.0895685017613624e-06
+      },
+      "description": "1 / (1 + knn_distance) to seed bots",
+      "cv": {
+        "cv_method": "leave-one-out",
+        "n_folds_evaluated": 0,
+        "mean_auc": NaN,
+        "std_auc": NaN
+      }
+    },
+    "H13_if": {
+      "n_total": 321,
+      "n_positive": 7,
+      "n_valid_scores": 321,
+      "precision_at_10": 0.2,
+      "recall_at_10": 0.2857142857142857,
+      "precision_at_25": 0.08,
+      "recall_at_25": 0.2857142857142857,
+      "precision_at_50": 0.06,
+      "recall_at_50": 0.42857142857142855,
+      "precision_at_100": 0.03,
+      "recall_at_100": 0.42857142857142855,
+      "precision_at_250": 0.028,
+      "recall_at_250": 1.0,
+      "auc_roc": {
+        "auc": 0.7074613284804367,
+        "ci_lower": null,
+        "ci_upper": null
+      },
+      "auc_pr": 0.1249655556725842,
+      "mann_whitney": {
+        "u_statistic": 1555.0,
+        "p_value": 0.05968988021953848
+      },
+      "description": "Negated isolation forest score (more negative = more anomalous)",
+      "cv": {
+        "cv_method": "leave-one-out",
+        "n_folds_evaluated": 0,
+        "mean_auc": NaN,
+        "std_auc": NaN
+      }
+    },
+    "Combined": {
+      "n_total": 321,
+      "n_positive": 7,
+      "n_valid_scores": 321,
+      "precision_at_10": 0.5,
+      "recall_at_10": 0.7142857142857143,
+      "precision_at_25": 0.28,
+      "recall_at_25": 1.0,
+      "precision_at_50": 0.14,
+      "recall_at_50": 1.0,
+      "precision_at_100": 0.07,
+      "recall_at_100": 1.0,
+      "precision_at_250": 0.028,
+      "recall_at_250": 1.0,
+      "auc_roc": {
+        "auc": 0.9886260236578708,
+        "ci_lower": null,
+        "ci_upper": null
+      },
+      "auc_pr": 0.5047928262213977,
+      "mann_whitney": {
+        "u_statistic": 2173.0,
+        "p_value": 1.5359198231086084e-10
+      },
+      "description": "Mean of standardized hypothesis scores",
+      "cv": {
+        "cv_method": "leave-one-out",
+        "n_folds_evaluated": 0,
+        "mean_auc": NaN,
+        "std_auc": NaN
+      }
+    }
+  },
+  "auxiliary_target": {
+    "skipped": true,
+    "reason": "skip_auxiliary"
+  }
+}

@@ -360,3 +360,98 @@ class TestParquetImport:
         assert counts["prs"] == 0
         assert counts["skipped_repos"] == 1
         assert db.get_pr_count() == 0
+
+
+class TestTemporalQueries:
+    """Tests for the _before() temporal query methods."""
+
+    def test_aggregate_stats_before(self, populated_db: BotDetectionDB) -> None:
+        cutoff = datetime(2024, 2, 15)
+        df = populated_db.get_author_aggregate_stats_before(cutoff)
+        # Only alice has PRs before 2024-02-15 (3 PRs: #1, #2, #3)
+        assert len(df) == 1
+        row = df.iloc[0]
+        assert row["login"] == "alice"
+        assert row["total_prs"] == 3
+        assert row["total_repos"] == 2
+
+    def test_aggregate_stats_before_all_data(self, populated_db: BotDetectionDB) -> None:
+        """Cutoff after all data includes both authors."""
+        cutoff = datetime(2025, 1, 1)
+        df = populated_db.get_author_aggregate_stats_before(cutoff)
+        logins = set(df["login"])
+        assert logins == {"alice", "bob"}
+
+    def test_aggregate_stats_before_no_data(self, populated_db: BotDetectionDB) -> None:
+        """Cutoff before all data returns empty."""
+        cutoff = datetime(2023, 1, 1)
+        df = populated_db.get_author_aggregate_stats_before(cutoff)
+        assert len(df) == 0
+
+    def test_repo_pairs_before(self, populated_db: BotDetectionDB) -> None:
+        cutoff = datetime(2024, 2, 15)
+        pairs = populated_db.get_all_author_repo_pairs_before(cutoff)
+        # alice has PRs in repo-a (2) and repo-b (1) before cutoff; bob has none
+        assert ("alice", "org/repo-a", 2) in pairs
+        assert ("alice", "org/repo-b", 1) in pairs
+        assert all(author != "bob" for author, _, _ in pairs)
+
+    def test_repo_pairs_before_no_data(self, populated_db: BotDetectionDB) -> None:
+        cutoff = datetime(2023, 1, 1)
+        pairs = populated_db.get_all_author_repo_pairs_before(cutoff)
+        assert pairs == []
+
+    def test_timestamps_before(self, populated_db: BotDetectionDB) -> None:
+        cutoff = datetime(2024, 2, 15)
+        result = populated_db.get_all_author_pr_timestamps_before(cutoff)
+        assert "alice" in result
+        assert "bob" not in result
+        assert len(result["alice"]) == 3
+        # Timestamps should be sorted
+        assert result["alice"] == sorted(result["alice"])
+
+    def test_timestamps_before_no_data(self, populated_db: BotDetectionDB) -> None:
+        cutoff = datetime(2023, 1, 1)
+        result = populated_db.get_all_author_pr_timestamps_before(cutoff)
+        assert result == {}
+
+    def test_titles_before(self, populated_db: BotDetectionDB) -> None:
+        cutoff = datetime(2024, 2, 15)
+        result = populated_db.get_all_author_titles_before(cutoff)
+        assert "alice" in result
+        assert "bob" not in result
+        assert len(result["alice"]) == 3
+
+    def test_titles_before_no_data(self, populated_db: BotDetectionDB) -> None:
+        cutoff = datetime(2023, 1, 1)
+        result = populated_db.get_all_author_titles_before(cutoff)
+        assert result == {}
+
+    def test_titles_before_limit(self, populated_db: BotDetectionDB) -> None:
+        cutoff = datetime(2025, 1, 1)
+        result = populated_db.get_all_author_titles_before(cutoff, limit_per_author=1)
+        # Each author should have at most 1 title
+        for titles in result.values():
+            assert len(titles) <= 1
+
+    def test_strict_less_than_aggregate(self, populated_db: BotDetectionDB) -> None:
+        """Cutoff exactly on a PR's created_at should exclude that PR."""
+        # Alice's PR #1 created at 2024-01-10
+        cutoff = datetime(2024, 1, 10)
+        df = populated_db.get_author_aggregate_stats_before(cutoff)
+        assert len(df) == 0  # No PRs strictly before 2024-01-10
+
+    def test_strict_less_than_repo_pairs(self, populated_db: BotDetectionDB) -> None:
+        cutoff = datetime(2024, 1, 10)
+        pairs = populated_db.get_all_author_repo_pairs_before(cutoff)
+        assert pairs == []
+
+    def test_strict_less_than_timestamps(self, populated_db: BotDetectionDB) -> None:
+        cutoff = datetime(2024, 1, 10)
+        result = populated_db.get_all_author_pr_timestamps_before(cutoff)
+        assert result == {}
+
+    def test_strict_less_than_titles(self, populated_db: BotDetectionDB) -> None:
+        cutoff = datetime(2024, 1, 10)
+        result = populated_db.get_all_author_titles_before(cutoff)
+        assert result == {}

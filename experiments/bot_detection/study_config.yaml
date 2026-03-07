@@ -114,6 +114,20 @@ author_analysis:
   cv_folds: 5
   random_seed: 42
 
+  # Iteration 6: Temporal holdout
+  temporal_holdout:
+    cutoffs:
+      - "2020-01-01"
+      - "2021-01-01"
+      - "2022-01-01"
+      - "2022-07-01"
+      - "2023-01-01"
+      - "2024-01-01"
+    knn_exclude_features:
+      - "merge_rate"
+      - "rejection_rate"
+      - "pocket_veto_rate"
+
 # ----------------------------------------------------------
 # Paths (relative to experiments/bot-detection/)
 # ----------------------------------------------------------

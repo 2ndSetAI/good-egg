@@ -238,7 +238,13 @@ def _cv_evaluation(
 # Entry point
 # ---------------------------------------------------------------------------
 
-def run_stage7(base_dir: Path, config: StudyConfig) -> dict[str, Any]:
+def run_stage7(
+    base_dir: Path,
+    config: StudyConfig,
+    parquet_path: Path | None = None,
+    output_path: Path | None = None,
+    skip_auxiliary: bool = False,
+) -> dict[str, Any]:
     """Evaluate author-level hypothesis scores against ground truth."""
     features_dir = base_dir / config.paths.get("features", "data/features")
     results_dir = base_dir / config.paths.get("results", "data/results")
@@ -250,7 +256,7 @@ def run_stage7(base_dir: Path, config: StudyConfig) -> dict[str, Any]:
     seed = author_cfg.get("random_seed", 42)
 
     # Load author features
-    features_path = features_dir / "author_features.parquet"
+    features_path = parquet_path or (features_dir / "author_features.parquet")
     logger.info("Loading author features from %s", features_path)
     df = pd.read_parquet(features_path)
     logger.info("Loaded %d authors", len(df))
@@ -303,50 +309,56 @@ def run_stage7(base_dir: Path, config: StudyConfig) -> dict[str, Any]:
         results["primary_target"] = {"skipped": True}
 
     # --------------- Auxiliary target: suspicious authors ---------------
-    has_repos = "total_repos" in df.columns
-    has_merge = "merge_rate" in df.columns
-    if has_repos and has_merge:
-        y_suspicious = (
-            (df["total_repos"] >= 3) & (df["merge_rate"] < 0.30)
-        ).astype(int).values
-        n_suspicious = int(y_suspicious.sum())
-        logger.info(
-            "Auxiliary target (suspicious): %d positives / %d total",
-            n_suspicious, len(df),
-        )
-        results["auxiliary_target"] = {
-            "name": "suspicious (total_repos>=3, merge_rate<0.30)",
-            "n_positive": n_suspicious,
-            "n_total": len(df),
-        }
-
-        aux_results: dict[str, Any] = {}
-        for h_name, h_def in HYPOTHESIS_SCORES.items():
-            col = h_def["column"]
-            if col not in df.columns:
-                aux_results[h_name] = {"skipped": True, "reason": f"{col} missing"}
-                continue
-
-            raw = df[col].values.astype(float)
-            transform = h_def["transform"]
-            scores = transform(raw) if transform is not None else raw
-
-            logger.info("Evaluating %s (auxiliary target)", h_name)
-            aux_results[h_name] = _evaluate_single_score(y_suspicious, scores, k_values)
-
-        combined = _compute_combined_score(df, HYPOTHESIS_SCORES)
-        aux_results["Combined"] = _evaluate_single_score(
-            y_suspicious, combined, k_values,
-        )
-        results["auxiliary_results"] = aux_results
+    if skip_auxiliary:
+        logger.info("Skipping auxiliary target (skip_auxiliary=True)")
+        results["auxiliary_target"] = {"skipped": True, "reason": "skip_auxiliary"}
     else:
-        logger.warning("Missing total_repos/merge_rate -- skipping auxiliary target")
-        results["auxiliary_target"] = {"skipped": True}
+        has_repos = "total_repos" in df.columns
+        has_merge = "merge_rate" in df.columns
+        if has_repos and has_merge:
+            y_suspicious = (
+                (df["total_repos"] >= 3) & (df["merge_rate"] < 0.30)
+            ).astype(int).values
+            n_suspicious = int(y_suspicious.sum())
+            logger.info(
+                "Auxiliary target (suspicious): %d positives / %d total",
+                n_suspicious, len(df),
+            )
+            results["auxiliary_target"] = {
+                "name": "suspicious (total_repos>=3, merge_rate<0.30)",
+                "n_positive": n_suspicious,
+                "n_total": len(df),
+            }
+
+            aux_results: dict[str, Any] = {}
+            for h_name, h_def in HYPOTHESIS_SCORES.items():
+                col = h_def["column"]
+                if col not in df.columns:
+                    aux_results[h_name] = {"skipped": True, "reason": f"{col} missing"}
+                    continue
+
+                raw = df[col].values.astype(float)
+                transform = h_def["transform"]
+                scores = transform(raw) if transform is not None else raw
+
+                logger.info("Evaluating %s (auxiliary target)", h_name)
+                aux_results[h_name] = _evaluate_single_score(
+                    y_suspicious, scores, k_values,
+                )
+
+            combined = _compute_combined_score(df, HYPOTHESIS_SCORES)
+            aux_results["Combined"] = _evaluate_single_score(
+                y_suspicious, combined, k_values,
+            )
+            results["auxiliary_results"] = aux_results
+        else:
+            logger.warning("Missing total_repos/merge_rate -- skipping auxiliary target")
+            results["auxiliary_target"] = {"skipped": True}
 
     # Write results
-    output_path = results_dir / "author_evaluation.json"
-    write_json(output_path, results)
-    logger.info("Author evaluation written to %s", output_path)
+    eval_output = output_path or (results_dir / "author_evaluation.json")
+    write_json(eval_output, results)
+    logger.info("Author evaluation written to %s", eval_output)
 
     # Checkpoint
     write_stage_checkpoint(

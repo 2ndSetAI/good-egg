@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -55,13 +56,19 @@ FEATURE_COLS = [
 ]
 
 
-def _build_feature_matrix(df: pd.DataFrame) -> tuple[np.ndarray, list[str]]:
+def _build_feature_matrix(
+    df: pd.DataFrame,
+    exclude: list[str] | None = None,
+) -> tuple[np.ndarray, list[str]]:
     """Build a scaled feature matrix from the dataframe.
 
     Missing values are filled with column medians before scaling.
     Returns (scaled_matrix, list of columns actually used).
     """
-    available = [c for c in FEATURE_COLS if c in df.columns]
+    cols = FEATURE_COLS
+    if exclude:
+        cols = [c for c in cols if c not in exclude]
+    available = [c for c in cols if c in df.columns]
     raw = df[available].copy()
 
     # Fill NaN with column medians
@@ -125,10 +132,16 @@ def compute_isolation_forest_scores(
     return iso.decision_function(features)
 
 
-def run_stage6_semi_supervised(base_dir: Path, config: StudyConfig) -> None:
+def run_stage6_semi_supervised(
+    base_dir: Path,
+    config: StudyConfig,
+    cutoff: datetime | None = None,
+    parquet_path: Path | None = None,
+    exclude_features: list[str] | None = None,
+) -> None:
     """Compute H13 semi-supervised features and merge into parquet."""
     features_dir = base_dir / config.paths.get("features", "data/features")
-    author_parquet = features_dir / "author_features.parquet"
+    author_parquet = parquet_path or (features_dir / "author_features.parquet")
 
     knn_k = config.author_analysis.get("knn_k", 5)
     contamination = config.author_analysis.get("isolation_forest_contamination", 0.05)
@@ -139,7 +152,7 @@ def run_stage6_semi_supervised(base_dir: Path, config: StudyConfig) -> None:
     logger.info("Loaded %d authors", len(df))
 
     # Build feature matrix
-    feat_matrix, used_cols = _build_feature_matrix(df)
+    feat_matrix, used_cols = _build_feature_matrix(df, exclude=exclude_features)
     logger.info(
         "Feature matrix: %d x %d (columns: %s)",
         feat_matrix.shape[0], feat_matrix.shape[1], len(used_cols),
