@@ -61,7 +61,15 @@ def cli(ctx: click.Context, base_dir: Path, scale: str, verbose: bool) -> None:
     ctx.obj["config"] = _load_study_config(base_dir)
 
 
-def _run_stage(stage_num: int, ctx_obj: dict) -> None:
+_STAGE6_SUBSTAGES = {
+    "6a": "time_series",
+    "6b": "llm_content",
+    "6c": "semi_supervised",
+    "6d": "title_analysis",
+}
+
+
+def _run_stage(stage_num: int, ctx_obj: dict, substage: str | None = None) -> None:
     """Run a single pipeline stage."""
     base_dir = ctx_obj["base_dir"]
     config = ctx_obj["config"]
@@ -83,8 +91,7 @@ def _run_stage(stage_num: int, ctx_obj: dict) -> None:
         from experiments.bot_detection.stages.stage5_author_features import run_stage5
         run_stage5(base_dir, config)
     elif stage_num == 6:
-        from experiments.bot_detection.stages.stage6_time_series import run_stage6_time_series
-        run_stage6_time_series(base_dir, config)
+        _run_stage6(base_dir, config, substage)
     elif stage_num == 7:
         from experiments.bot_detection.stages.stage7_author_evaluate import run_stage7
         run_stage7(base_dir, config)
@@ -94,6 +101,35 @@ def _run_stage(stage_num: int, ctx_obj: dict) -> None:
     else:
         logger.error("Unknown stage: %d", stage_num)
         sys.exit(1)
+
+
+def _run_stage6(base_dir: Path, config: StudyConfig, substage: str | None = None) -> None:
+    """Run stage 6 sub-stages.
+
+    Sub-stages:
+        6a (time_series) -- always runs, cheap
+        6b (llm_content) -- Gemini-based, opt-in
+        6c (semi_supervised) -- k-NN + Isolation Forest, opt-in
+        6d (title_analysis) -- TF-IDF title features, opt-in
+
+    If substage is None, only 6a runs (default for run-all / run-author-pipeline).
+    """
+    if substage is None or substage == "6a":
+        from experiments.bot_detection.stages.stage6_time_series import run_stage6_time_series
+        run_stage6_time_series(base_dir, config)
+    if substage == "6b":
+        from experiments.bot_detection.stages.stage6_llm_content import run_stage6_llm_content
+        run_stage6_llm_content(base_dir, config)
+    elif substage == "6c":
+        from experiments.bot_detection.stages.stage6_semi_supervised import (
+            run_stage6_semi_supervised,
+        )
+        run_stage6_semi_supervised(base_dir, config)
+    elif substage == "6d":
+        from experiments.bot_detection.stages.stage6_title_analysis import (
+            run_stage6_title_analysis,
+        )
+        run_stage6_title_analysis(base_dir, config)
 
 
 @cli.command("run-all")
@@ -107,13 +143,33 @@ def run_all(ctx: click.Context) -> None:
 
 
 @cli.command("run-stage")
-@click.argument("stage", type=int)
+@click.argument("stage", type=str)
 @click.pass_context
-def run_stage(ctx: click.Context, stage: int) -> None:
-    """Run a specific pipeline stage (1-8)."""
-    logger.info("=== Running Stage %d ===", stage)
-    _run_stage(stage, ctx.obj)
-    logger.info("=== Stage %d complete ===", stage)
+def run_stage(ctx: click.Context, stage: str) -> None:
+    """Run a specific pipeline stage.
+
+    STAGE can be an integer (1-8) or a stage-6 sub-stage like "6a", "6b", "6c", "6d".
+
+    Sub-stages:
+        6a  Time-series features (H9) -- default when running stage 6
+        6b  LLM content analysis (H11) -- requires Gemini API
+        6c  Semi-supervised k-NN + Isolation Forest (H13)
+        6d  TF-IDF title analysis (H11 alternative) -- local, deterministic
+    """
+    substage = None
+    if stage in _STAGE6_SUBSTAGES:
+        substage = stage
+        stage_num = 6
+    else:
+        try:
+            stage_num = int(stage)
+        except ValueError:
+            logger.error("Unknown stage: %s", stage)
+            sys.exit(1)
+
+    logger.info("=== Running Stage %s ===", stage)
+    _run_stage(stage_num, ctx.obj, substage=substage)
+    logger.info("=== Stage %s complete ===", stage)
 
 
 @cli.command("run-author-pipeline")

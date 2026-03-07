@@ -3,7 +3,7 @@
 # ============================================================
 
 # ----------------------------------------------------------
-# Data sources
+# Data sources (absolute paths are machine-specific; update for your environment)
 # ----------------------------------------------------------
 data_sources:
   oss_parquet: "/home/jeff/Documents/neoteny/code/neoteny/data/oss_data/parquet"

@@ -17,3 +17,13 @@ venv/
 htmlcov/
 .coverage
 src/good_egg/_version.py
+
+# Bot detection experiment data
+experiments/bot_detection/data/*.duckdb
+experiments/bot_detection/data/embeddings/
+experiments/bot_detection/data/features/*.parquet
+experiments/bot_detection/data/features/stage6*.json
+experiments/bot_detection/data/llm_cache/
+experiments/bot_detection/data/results/
+experiments/bot_detection/data/stage*.json
+blog/

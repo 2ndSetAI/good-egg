@@ -631,6 +631,29 @@ class BotDetectionDB:
             FROM authors
         """).fetchdf()
 
+    def get_all_author_titles(self, limit_per_author: int = 50) -> dict[str, list[str]]:
+        """Get PR titles for all authors, grouped by login.
+
+        Returns dict mapping login -> list of titles (up to limit_per_author each).
+        Uses a single SQL query with ROW_NUMBER windowing for efficiency.
+        """
+        rows = self.con.execute(
+            """SELECT author, title FROM (
+                SELECT author, title,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY author ORDER BY created_at DESC
+                    ) AS rn
+                FROM prs
+            ) sub
+            WHERE rn <= ?
+            ORDER BY author""",
+            [limit_per_author],
+        ).fetchall()
+        result: dict[str, list[str]] = {}
+        for author, title in rows:
+            result.setdefault(author, []).append(title)
+        return result
+
     def get_author_pr_titles(self, login: str, limit: int = 50) -> list[str]:
         """Get PR titles for an author, up to limit."""
         rows = self.con.execute(

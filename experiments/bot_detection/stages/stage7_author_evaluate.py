@@ -35,12 +35,17 @@ HYPOTHESIS_SCORES: dict[str, dict[str, Any]] = {
     "H10_network": {
         "column": "hub_score",
         "transform": None,
-        "description": "HITS hub score from bipartite graph",
+        "description": "Degree centrality from bipartite author-repo graph",
     },
     "H11_llm": {
         "column": "llm_spam_score",
         "transform": None,
         "description": "LLM spam classification score",
+    },
+    "H11_tfidf": {
+        "column": "title_spam_score",
+        "transform": None,
+        "description": "TF-IDF title spam score (local, deterministic)",
     },
     "H13_knn": {
         "column": "knn_distance_to_seed",
