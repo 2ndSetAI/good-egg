@@ -27,23 +27,24 @@ Configuration values are resolved in this order (highest priority first):
 
 ## Scoring Model
 
-Good Egg supports two scoring models. Set the model at the top level of the
-config file:
+Good Egg supports three scoring models. Set the model at the top level of
+the config file:
 
 ```yaml
-scoring_model: v1   # default -- graph-based scoring only
+scoring_model: v3   # default -- Diet Egg -- alltime merge rate as sole signal
 scoring_model: v2   # Better Egg -- graph + external features via logistic regression
+scoring_model: v1   # Good Egg -- graph-based scoring only
 ```
 
-When using v2, PR comments are branded "Better Egg" instead of "Good Egg".
-See [methodology.md](methodology.md#better-egg-v2) for how the v2 model
+PR comments are branded "Diet Egg", "Better Egg", or "Good Egg" depending
+on the model. See [methodology.md](methodology.md) for how each model
 works.
 
 ## Full YAML Schema
 
 ```yaml
-# Scoring model selection: v1 (default) or v2
-scoring_model: v1
+# Scoring model selection: v3 (default), v2, or v1
+scoring_model: v3
 
 # Skip scoring for authors who already have merged PRs in the target repo.
 # When true (the default), existing contributors get an EXISTING_CONTRIBUTOR
@@ -127,12 +128,19 @@ v2:
 
 ### scoring_model
 
-Selects the scoring model. Set to `v1` (default) for graph-only scoring or
-`v2` for the Better Egg combined model. When set to `v2`, the parameters
-under the `v2:` block are used and the graph construction is simplified
-(no self-contribution penalty, no language normalization in repo quality, no
-diversity/volume adjustment). Language match personalization weighting
-(`same_language_weight`) is retained in v2.
+Selects the scoring model. `v3` (default, Diet Egg) uses alltime merge rate
+as the sole signal with no graph construction. `v2` (Better Egg) combines a
+simplified graph score with merge rate and account age via logistic
+regression. `v1` (Good Egg) uses graph-based scoring only.
+
+When set to `v2`, the parameters under the `v2:` block are used and the
+graph construction is simplified (no self-contribution penalty, no language
+normalization in repo quality, no diversity/volume adjustment). Language
+match personalization weighting (`same_language_weight`) is retained in v2.
+
+v3 does not use graph construction, so the `graph_scoring`, `recency`,
+`edge_weights`, and `language_normalization` sections have no effect. The
+`thresholds` section still controls trust level classification.
 
 ### v2 (Better Egg)
 
@@ -215,7 +223,7 @@ The following environment variables override individual config values:
 | `GOOD_EGG_HIGH_TRUST` | `thresholds.high_trust` | float |
 | `GOOD_EGG_MEDIUM_TRUST` | `thresholds.medium_trust` | float |
 | `GOOD_EGG_HALF_LIFE_DAYS` | `recency.half_life_days` | int |
-| `GOOD_EGG_SCORING_MODEL` | `scoring_model` | str (`v1` or `v2`) |
+| `GOOD_EGG_SCORING_MODEL` | `scoring_model` | str (`v1`, `v2`, or `v3`) |
 | `GOOD_EGG_SKIP_KNOWN_CONTRIBUTORS` | `skip_known_contributors` | bool (`true`/`false`) |
 
 ## Programmatic Configuration

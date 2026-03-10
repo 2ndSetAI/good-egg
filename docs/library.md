@@ -114,26 +114,22 @@ result = await score_pr_author(
 )
 ```
 
-### v2 (Better Egg) Configuration
+### Scoring Model Selection
 
-To use the v2 scoring model, set `scoring_model` on the config:
+The default model is v3 (Diet Egg). To use an older model, set
+`scoring_model` on the config:
 
 ```python
 from good_egg import GoodEggConfig, score_pr_author
 
-config = GoodEggConfig(
-    scoring_model="v2",
-    v2={
-        "graph": {"half_life_days": 180, "max_age_days": 730},
-        "features": {"merge_rate": True, "account_age": True},
-        "combined_model": {
-            "intercept": -0.8094,
-            "graph_score_weight": 1.9138,
-            "merge_rate_weight": -0.7783,
-            "account_age_weight": 0.1493,
-        },
-    },
-)
+# v3 (default) -- merge rate only
+config = GoodEggConfig()
+
+# v2 -- graph + merge rate + account age
+config = GoodEggConfig(scoring_model="v2")
+
+# v1 -- graph only
+config = GoodEggConfig(scoring_model="v1")
 
 result = await score_pr_author(
     login="octocat",
@@ -142,12 +138,13 @@ result = await score_pr_author(
     config=config,
 )
 
-# v2 results include component scores
+# v3 and v2 results include component scores
 if result.component_scores:
-    print(f"Graph score: {result.component_scores['graph_score']:.3f}")
-    print(f"Merge rate: {result.component_scores['merge_rate']:.3f}")
-    print(f"Log account age: {result.component_scores['log_account_age']:.3f}")
-    print(f"Normalized score: {result.normalized_score:.3f}")
+    print(f"Merge rate: {result.component_scores.get('merge_rate')}")
+
+# v3 includes a fresh account advisory
+if result.fresh_account and result.fresh_account.is_fresh:
+    print(f"Fresh account: {result.fresh_account.account_age_days} days old")
 
 print(f"Scoring model: {result.scoring_model}")
 ```
@@ -176,7 +173,7 @@ the following fields:
 |-------|------|-------------|
 | `user_login` | `str` | GitHub username that was scored |
 | `context_repo` | `str` | Repository used as scoring context |
-| `raw_score` | `float` | Pre-normalization score: graph score (v1) or logit (v2) |
+| `raw_score` | `float` | Pre-normalization score: merge rate (v3), logit (v2), or graph score (v1) |
 | `normalized_score` | `float` | Normalized score (0.0 - 1.0) |
 | `trust_level` | `TrustLevel` | HIGH, MEDIUM, LOW, UNKNOWN, BOT, or EXISTING_CONTRIBUTOR |
 | `account_age_days` | `int` | Age of the GitHub account in days |
@@ -185,9 +182,10 @@ the following fields:
 | `top_contributions` | `list[ContributionSummary]` | Top repositories contributed to |
 | `language_match` | `bool` | Whether the user's top language matches the context repo |
 | `flags` | `dict[str, bool]` | Flags (is_bot, is_new_account, etc.) |
-| `scoring_model` | `str` | Scoring model used: `v1` or `v2` |
-| `component_scores` | `dict[str, float] \| None` | Component breakdown (v2 only): `graph_score`, `merge_rate`, `log_account_age` |
+| `scoring_model` | `str` | Scoring model used: `v1`, `v2`, or `v3` |
+| `component_scores` | `dict[str, float]` | Component breakdown (v3: `merge_rate`; v2: `graph_score`, `merge_rate`, `log_account_age`) |
 | `scoring_metadata` | `dict[str, Any]` | Internal scoring details |
+| `fresh_account` | `FreshAccountAdvisory \| None` | Advisory for accounts under 365 days old (None for bots and existing contributors) |
 
 `TrustScore` is a Pydantic model, so you can serialize it:
 

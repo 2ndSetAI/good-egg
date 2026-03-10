@@ -1,0 +1,27 @@
+# Diet Egg (v3) workflow -- uses alltime merge rate as the sole scoring
+# signal. This is the default model, so scoring-model does not need to be
+# set explicitly. Shown here for clarity.
+name: Diet Egg
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    steps:
+      - id: egg
+        uses: 2ndSetAI/good-egg@v0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Print results
+        run: |
+          echo "Score: ${{ steps.egg.outputs.score }}"
+          echo "Trust level: ${{ steps.egg.outputs.trust-level }}"
+          echo "Model: ${{ steps.egg.outputs.scoring-model }}"
+          echo "User: ${{ steps.egg.outputs.user }}"

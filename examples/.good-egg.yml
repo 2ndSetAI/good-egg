@@ -1,6 +1,11 @@
 # Good Egg configuration
 # Copy this file to your repository root as .good-egg.yml
 
+# Scoring model: v3 (Diet Egg, default), v2 (Better Egg), or v1 (Good Egg)
+# v3 uses alltime merge rate as the sole signal. v2 adds graph scoring and
+# account age. v1 uses graph scoring only.
+# scoring_model: v3
+
 # Skip scoring for authors who already have merged PRs in the target repo.
 # Set to false to always run full scoring.
 # skip_known_contributors: true
@@ -84,7 +89,7 @@ language_normalization:
 # --------------------------------------------------------------------------
 # v2 (Better Egg) scoring model
 # --------------------------------------------------------------------------
-# Uncomment the lines below to enable the v2 combined model.
+# Uncomment the lines below to use the v2 combined model instead of v3.
 # See docs/methodology.md for how v2 works.
 
 # scoring_model: v2
