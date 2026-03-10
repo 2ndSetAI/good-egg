@@ -11,9 +11,7 @@ jobs:
   score:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: ./
+      - uses: 2ndSetAI/good-egg@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          scoring-model: v3
           skip-known-contributors: 'false'
