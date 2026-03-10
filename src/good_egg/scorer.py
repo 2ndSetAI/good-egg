@@ -12,6 +12,7 @@ from good_egg.config import GoodEggConfig, load_config
 from good_egg.graph_builder import TrustGraphBuilder
 from good_egg.models import (
     ContributionSummary,
+    FreshAccountAdvisory,
     TrustLevel,
     TrustScore,
     UserContributionData,
@@ -40,6 +41,8 @@ class TrustScorer:
         }
         model_name = self.config.scoring_model
 
+        fresh_account = self._build_fresh_account_advisory(user_data)
+
         # ---- Bot short-circuit ----
         if user_data.profile.is_bot:
             return TrustScore(
@@ -65,15 +68,18 @@ class TrustScorer:
                 account_age_days=user_data.profile.account_age_days,
                 flags=flags,
                 scoring_model=model_name,
+                fresh_account=fresh_account,
             )
 
         # ---- Suspected bot flag ----
         if user_data.profile.is_suspected_bot:
             flags["is_suspected_bot"] = True
 
+        if model_name == "v3":
+            return self._score_v3(user_data, context_repo, flags, fresh_account)
         if model_name == "v2":
-            return self._score_v2(user_data, context_repo, flags)
-        return self._score_v1(user_data, context_repo, flags)
+            return self._score_v2(user_data, context_repo, flags, fresh_account)
+        return self._score_v1(user_data, context_repo, flags, fresh_account)
 
     # ------------------------------------------------------------------
     # v1 scoring path
@@ -84,6 +90,7 @@ class TrustScorer:
         user_data: UserContributionData,
         context_repo: str,
         flags: dict[str, bool],
+        fresh_account: FreshAccountAdvisory | None = None,
     ) -> TrustScore:
         """Original graph-based scoring pipeline."""
         login = user_data.profile.login
@@ -130,6 +137,7 @@ class TrustScorer:
                 "graph_nodes": graph.number_of_nodes(),
                 "graph_edges": graph.number_of_edges(),
             },
+            fresh_account=fresh_account,
         )
 
     # ------------------------------------------------------------------
@@ -141,6 +149,7 @@ class TrustScorer:
         user_data: UserContributionData,
         context_repo: str,
         flags: dict[str, bool],
+        fresh_account: FreshAccountAdvisory | None = None,
     ) -> TrustScore:
         """v2 scoring: simplified graph + logistic regression combined model."""
         login = user_data.profile.login
@@ -222,6 +231,71 @@ class TrustScorer:
             },
             scoring_model="v2",
             component_scores=component_scores,
+            fresh_account=fresh_account,
+        )
+
+    # ------------------------------------------------------------------
+    # v3 scoring path (Diet Egg)
+    # ------------------------------------------------------------------
+
+    def _score_v3(
+        self,
+        user_data: UserContributionData,
+        context_repo: str,
+        flags: dict[str, bool],
+        fresh_account: FreshAccountAdvisory | None = None,
+    ) -> TrustScore:
+        """v3 scoring: merge rate as sole signal."""
+        login = user_data.profile.login
+        total_prs = len(user_data.merged_prs)
+        unique_repos = len({pr.repo_name_with_owner for pr in user_data.merged_prs})
+
+        merged_count = len(user_data.merged_prs)
+        closed_count = user_data.closed_pr_count
+        total_author_prs = merged_count + closed_count
+        merge_rate = (
+            merged_count / total_author_prs if total_author_prs > 0 else 0.0
+        )
+
+        trust_level = self._classify(merge_rate, flags)
+        context_language = self._resolve_context_language(user_data, context_repo)
+        top_contributions = self._build_top_contributions(user_data)
+        language_match = self._check_language_match(user_data, context_language)
+
+        return TrustScore(
+            user_login=login,
+            context_repo=context_repo,
+            raw_score=merge_rate,
+            normalized_score=merge_rate,
+            trust_level=trust_level,
+            account_age_days=user_data.profile.account_age_days,
+            total_merged_prs=total_prs,
+            unique_repos_contributed=unique_repos,
+            top_contributions=top_contributions,
+            language_match=language_match,
+            flags=flags,
+            scoring_metadata={
+                "closed_pr_count": closed_count,
+            },
+            scoring_model="v3",
+            component_scores={"merge_rate": merge_rate},
+            fresh_account=fresh_account,
+        )
+
+    # ------------------------------------------------------------------
+    # Fresh account advisory
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _build_fresh_account_advisory(
+        user_data: UserContributionData,
+    ) -> FreshAccountAdvisory:
+        """Build a fresh account advisory from user profile data."""
+        age_days = user_data.profile.account_age_days
+        return FreshAccountAdvisory(
+            is_fresh=age_days < 365,
+            account_age_days=age_days,
+            created_at=user_data.profile.created_at,
         )
 
     # ------------------------------------------------------------------

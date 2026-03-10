@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 from good_egg.models import (
+    FreshAccountAdvisory,
     MergedPR,
     RepoMetadata,
     TrustLevel,
@@ -156,6 +157,58 @@ class TestTrustScore:
         assert score.scoring_model == "v1"
         assert score.component_scores == {}
 
+    def test_fresh_account_field_default_none(self) -> None:
+        score = TrustScore(user_login="u", context_repo="o/r")
+        assert score.fresh_account is None
+
+    def test_fresh_account_field_set(self) -> None:
+        advisory = FreshAccountAdvisory(
+            is_fresh=True,
+            account_age_days=100,
+            created_at=datetime(2025, 12, 1, tzinfo=UTC),
+        )
+        score = TrustScore(
+            user_login="u",
+            context_repo="o/r",
+            fresh_account=advisory,
+        )
+        assert score.fresh_account is not None
+        assert score.fresh_account.is_fresh is True
+        assert score.fresh_account.account_age_days == 100
+        assert score.fresh_account.threshold_days == 365
+
     def test_top_contributions(self, sample_trust_score: TrustScore) -> None:
         assert len(sample_trust_score.top_contributions) == 2
         assert sample_trust_score.top_contributions[0].repo_name == "elixir-lang/elixir"
+
+
+class TestFreshAccountAdvisory:
+    def test_construction_fresh(self) -> None:
+        advisory = FreshAccountAdvisory(is_fresh=True, account_age_days=100)
+        assert advisory.is_fresh is True
+        assert advisory.account_age_days == 100
+        assert advisory.created_at is None
+        assert advisory.threshold_days == 365
+
+    def test_construction_not_fresh(self) -> None:
+        advisory = FreshAccountAdvisory(is_fresh=False, account_age_days=500)
+        assert advisory.is_fresh is False
+
+    def test_construction_with_created_at(self) -> None:
+        dt = datetime(2025, 6, 1, tzinfo=UTC)
+        advisory = FreshAccountAdvisory(
+            is_fresh=True, account_age_days=100, created_at=dt
+        )
+        assert advisory.created_at == dt
+
+    def test_serialization_roundtrip(self) -> None:
+        import json
+        advisory = FreshAccountAdvisory(
+            is_fresh=True,
+            account_age_days=200,
+            created_at=datetime(2025, 9, 1, tzinfo=UTC),
+        )
+        data = json.loads(advisory.model_dump_json())
+        restored = FreshAccountAdvisory(**data)
+        assert restored.is_fresh is True
+        assert restored.account_age_days == 200

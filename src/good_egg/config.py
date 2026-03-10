@@ -147,7 +147,7 @@ class V2Config(BaseModel):
 
 class GoodEggConfig(BaseModel):
     """Top-level configuration composing all sub-configs."""
-    scoring_model: Literal["v1", "v2"] = "v1"
+    scoring_model: Literal["v1", "v2", "v3"] = "v3"
     skip_known_contributors: bool = True
     graph_scoring: GraphScoringConfig = Field(default_factory=GraphScoringConfig)
     edge_weights: EdgeWeightConfig = Field(default_factory=EdgeWeightConfig)

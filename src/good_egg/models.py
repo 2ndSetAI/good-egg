@@ -77,6 +77,14 @@ class ContributionSummary(BaseModel):
     stars: int = 0
 
 
+class FreshAccountAdvisory(BaseModel):
+    """Advisory for accounts less than one year old."""
+    is_fresh: bool
+    account_age_days: int
+    created_at: datetime | None = None
+    threshold_days: int = 365
+
+
 class TrustScore(BaseModel):
     """Complete trust score result."""
     user_login: str
@@ -94,3 +102,4 @@ class TrustScore(BaseModel):
     scoring_metadata: dict[str, Any] = {}
     scoring_model: str = "v1"
     component_scores: dict[str, float] = {}
+    fresh_account: FreshAccountAdvisory | None = None

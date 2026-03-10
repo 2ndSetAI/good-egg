@@ -11,7 +11,12 @@ from good_egg.formatter import (
     format_json,
     format_markdown_comment,
 )
-from good_egg.models import ContributionSummary, TrustLevel, TrustScore
+from good_egg.models import (
+    ContributionSummary,
+    FreshAccountAdvisory,
+    TrustLevel,
+    TrustScore,
+)
 
 
 def _make_score(**kwargs) -> TrustScore:
@@ -332,3 +337,152 @@ class TestExistingContributorFormatting:
         parsed = json.loads(result)
         assert parsed["trust_level"] == "EXISTING_CONTRIBUTOR"
         assert parsed["flags"]["is_existing_contributor"] is True
+
+
+class TestDietEggFormatting:
+    def _make_v3_score(self, **kwargs) -> TrustScore:
+        defaults = {
+            "user_login": "testuser",
+            "context_repo": "owner/repo",
+            "raw_score": 0.75,
+            "normalized_score": 0.75,
+            "trust_level": TrustLevel.HIGH,
+            "account_age_days": 500,
+            "total_merged_prs": 30,
+            "unique_repos_contributed": 8,
+            "top_contributions": [
+                ContributionSummary(
+                    repo_name="cool/project",
+                    pr_count=15,
+                    language="Python",
+                    stars=1200,
+                ),
+            ],
+            "language_match": True,
+            "flags": {},
+            "scoring_metadata": {"closed_pr_count": 10},
+            "scoring_model": "v3",
+            "component_scores": {"merge_rate": 0.75},
+        }
+        defaults.update(kwargs)
+        return TrustScore(**defaults)
+
+    def test_markdown_diet_egg_header(self) -> None:
+        score = self._make_v3_score()
+        md = format_markdown_comment(score)
+        assert "Diet Egg" in md
+        assert "Better Egg" not in md
+        assert "Good Egg" not in md
+
+    def test_markdown_component_breakdown(self) -> None:
+        score = self._make_v3_score()
+        md = format_markdown_comment(score)
+        assert "Score Breakdown" in md
+        assert "Merge Rate" in md
+        # graph_score and log_account_age should not appear
+        assert "Graph Score" not in md
+        assert "Account Age" not in md
+
+    def test_cli_diet_egg_header(self) -> None:
+        score = self._make_v3_score()
+        out = format_cli_output(score)
+        assert "Diet Egg" in out
+
+    def test_cli_verbose_component_scores(self) -> None:
+        score = self._make_v3_score()
+        out = format_cli_output(score, verbose=True)
+        assert "Component scores" in out
+        assert "Merge Rate" in out
+        assert "Graph Score" not in out
+
+    def test_check_run_diet_egg_title(self) -> None:
+        score = self._make_v3_score()
+        title, summary = format_check_run_summary(score)
+        assert "Diet Egg" in title
+        assert "Score Breakdown" in summary
+        assert "Merge Rate" in summary
+
+    def test_json_includes_v3_fields(self) -> None:
+        score = self._make_v3_score()
+        result = format_json(score)
+        parsed = json.loads(result)
+        assert parsed["scoring_model"] == "v3"
+        assert "merge_rate" in parsed["component_scores"]
+        assert "graph_score" not in parsed["component_scores"]
+
+
+class TestFreshAccountFormatting:
+    def _make_fresh_score(self, is_fresh: bool = True, **kwargs) -> TrustScore:
+        fresh = FreshAccountAdvisory(
+            is_fresh=is_fresh,
+            account_age_days=200 if is_fresh else 500,
+        )
+        defaults = {
+            "user_login": "newbie",
+            "context_repo": "owner/repo",
+            "raw_score": 0.6,
+            "normalized_score": 0.6,
+            "trust_level": TrustLevel.MEDIUM,
+            "account_age_days": 200 if is_fresh else 500,
+            "total_merged_prs": 5,
+            "unique_repos_contributed": 2,
+            "flags": {},
+            "scoring_model": "v3",
+            "component_scores": {"merge_rate": 0.6},
+            "fresh_account": fresh,
+        }
+        defaults.update(kwargs)
+        return TrustScore(**defaults)
+
+    def test_markdown_fresh_account_shown(self) -> None:
+        score = self._make_fresh_score(is_fresh=True)
+        md = format_markdown_comment(score)
+        assert "Fresh Account" in md
+        assert "200 days old" in md
+
+    def test_markdown_fresh_account_hidden(self) -> None:
+        score = self._make_fresh_score(is_fresh=False)
+        md = format_markdown_comment(score)
+        assert "Fresh Account" not in md
+
+    def test_cli_fresh_account_shown(self) -> None:
+        score = self._make_fresh_score(is_fresh=True)
+        out = format_cli_output(score, verbose=True)
+        assert "Fresh account" in out
+        assert "200 days old" in out
+
+    def test_cli_fresh_account_hidden_non_verbose(self) -> None:
+        score = self._make_fresh_score(is_fresh=True)
+        out = format_cli_output(score, verbose=False)
+        assert "Fresh account" not in out
+
+    def test_cli_fresh_account_hidden_not_fresh(self) -> None:
+        score = self._make_fresh_score(is_fresh=False)
+        out = format_cli_output(score, verbose=True)
+        assert "Fresh account" not in out
+
+    def test_check_run_fresh_account_shown(self) -> None:
+        score = self._make_fresh_score(is_fresh=True)
+        _, summary = format_check_run_summary(score)
+        assert "Fresh Account" in summary
+        assert "200 days old" in summary
+
+    def test_check_run_fresh_account_hidden(self) -> None:
+        score = self._make_fresh_score(is_fresh=False)
+        _, summary = format_check_run_summary(score)
+        assert "Fresh Account" not in summary
+
+    def test_json_fresh_account_serialized(self) -> None:
+        score = self._make_fresh_score(is_fresh=True)
+        result = format_json(score)
+        parsed = json.loads(result)
+        assert parsed["fresh_account"]["is_fresh"] is True
+        assert parsed["fresh_account"]["account_age_days"] == 200
+
+    def test_json_fresh_account_none(self) -> None:
+        score = TrustScore(
+            user_login="u", context_repo="o/r", fresh_account=None
+        )
+        result = format_json(score)
+        parsed = json.loads(result)
+        assert parsed["fresh_account"] is None

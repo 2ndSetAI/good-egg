@@ -36,7 +36,11 @@ def _existing_contributor_context(score: TrustScore) -> tuple[int, str]:
 
 def _brand_name(score: TrustScore) -> str:
     """Return 'Better Egg' for v2, 'Good Egg' for v1."""
-    return "Better Egg" if score.scoring_model == "v2" else "Good Egg"
+    if score.scoring_model == "v3":
+        return "Diet Egg"
+    if score.scoring_model == "v2":
+        return "Better Egg"
+    return "Good Egg"
 
 
 def format_markdown_comment(score: TrustScore) -> str:
@@ -67,7 +71,7 @@ def format_markdown_comment(score: TrustScore) -> str:
     ]
 
     # v2 component score breakdown
-    if score.scoring_model == "v2" and score.component_scores:
+    if score.scoring_model in ("v2", "v3") and score.component_scores:
         lines.append("### Score Breakdown")
         lines.append("")
         lines.append("| Component | Value |")
@@ -122,6 +126,17 @@ def format_markdown_comment(score: TrustScore) -> str:
             lines.append(f"- {flag}")
         lines.append("")
 
+    # Fresh account advisory
+    if score.fresh_account and score.fresh_account.is_fresh:
+        lines.append("### Fresh Account")
+        lines.append("")
+        lines.append(
+            f"\U0001f423 Account is {score.fresh_account.account_age_days} days old"
+            f" (< {score.fresh_account.threshold_days} days)."
+            " Fresh accounts correlate with lower merge rates."
+        )
+        lines.append("")
+
     # Low trust note
     if score.trust_level == TrustLevel.LOW:
         lines.append("> **First-time contributor -- review manually**")
@@ -163,7 +178,7 @@ def format_cli_output(score: TrustScore, verbose: bool = False) -> str:
             f"Repos: {score.unique_repos_contributed}"
         )
 
-        if score.scoring_model == "v2" and score.component_scores:
+        if score.scoring_model in ("v2", "v3") and score.component_scores:
             lines.append("")
             lines.append("Component scores:")
             if "graph_score" in score.component_scores:
@@ -190,6 +205,13 @@ def format_cli_output(score: TrustScore, verbose: bool = False) -> str:
             for flag, value in score.flags.items():
                 if value:
                     lines.append(f"  - {flag}")
+
+        if score.fresh_account and score.fresh_account.is_fresh:
+            lines.append("")
+            lines.append(
+                f"Fresh account: {score.fresh_account.account_age_days} days old"
+                f" (< {score.fresh_account.threshold_days} days)"
+            )
 
         if score.scoring_metadata:
             lines.append("")
@@ -234,7 +256,7 @@ def format_check_run_summary(score: TrustScore) -> tuple[str, str]:
         f"Repos contributed to: {score.unique_repos_contributed}",
     ]
 
-    if score.scoring_model == "v2" and score.component_scores:
+    if score.scoring_model in ("v2", "v3") and score.component_scores:
         summary_lines.append("")
         summary_lines.append("**Score Breakdown:**")
         if "graph_score" in score.component_scores:
@@ -260,6 +282,13 @@ def format_check_run_summary(score: TrustScore) -> tuple[str, str]:
         if active_flags:
             summary_lines.append("")
             summary_lines.append(f"**Flags:** {', '.join(active_flags)}")
+
+    if score.fresh_account and score.fresh_account.is_fresh:
+        summary_lines.append("")
+        summary_lines.append(
+            f"**Fresh Account:** {score.fresh_account.account_age_days} days old"
+            f" (< {score.fresh_account.threshold_days} days)"
+        )
 
     summary = "\n".join(summary_lines)
     return title, summary

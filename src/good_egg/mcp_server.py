@@ -57,7 +57,7 @@ async def _scoring_resources(
     is closed on exit.
     """
     config = _get_config()
-    if scoring_model is not None and scoring_model in ("v1", "v2"):
+    if scoring_model is not None and scoring_model in ("v1", "v2", "v3"):
         config = config.model_copy(update={"scoring_model": scoring_model})
     if force_score:
         config = config.model_copy(update={"skip_known_contributors": False})
@@ -96,7 +96,7 @@ async def score_user(
     Args:
         username: GitHub username to score.
         repo: Target repository in owner/repo format.
-        scoring_model: Optional scoring model override (v1 or v2).
+        scoring_model: Optional scoring model override (v1, v2, or v3).
         force_score: Force full scoring even for known contributors.
     """
     try:
@@ -128,7 +128,7 @@ async def check_pr_author(
     Args:
         username: GitHub username to check.
         repo: Target repository in owner/repo format.
-        scoring_model: Optional scoring model override (v1 or v2).
+        scoring_model: Optional scoring model override (v1, v2, or v3).
         force_score: Force full scoring even for known contributors.
     """
     try:
@@ -169,7 +169,7 @@ async def get_trust_details(
     Args:
         username: GitHub username to analyse.
         repo: Target repository in owner/repo format.
-        scoring_model: Optional scoring model override (v1 or v2).
+        scoring_model: Optional scoring model override (v1, v2, or v3).
         force_score: Force full scoring even for known contributors.
     """
     try:
