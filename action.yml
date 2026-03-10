@@ -23,7 +23,7 @@ inputs:
     required: false
     default: 'false'
   scoring-model:
-    description: 'Scoring model to use (v1 or v2)'
+    description: 'Scoring model to use (v1, v2, or v3)'
     required: false
   skip-known-contributors:
     description: 'Skip scoring for authors with merged PRs in the repo (true/false)'
@@ -40,7 +40,7 @@ outputs:
     description: 'GitHub username that was scored'
     value: ${{ steps.score.outputs.user }}
   scoring-model:
-    description: 'Scoring model that was used (v1 or v2)'
+    description: 'Scoring model that was used (v1, v2, or v3)'
     value: ${{ steps.score.outputs.scoring-model }}
   skipped:
     description: 'Whether scoring was skipped for an existing contributor (true/false)'
