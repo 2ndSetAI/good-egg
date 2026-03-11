@@ -844,6 +844,18 @@ class TestV3Scoring:
         assert result.trust_level == TrustLevel.UNKNOWN
         assert result.scoring_model == "v3"
 
+    def test_v3_medium_merge_rate(self) -> None:
+        """A 50% merge rate lands in the MEDIUM trust band."""
+        config = GoodEggConfig(scoring_model="v3")
+        scorer = TrustScorer(config)
+        prs, repos = _sample_prs_and_repos()
+        # 3 merged + 3 closed = 3/6 = 0.5
+        data = _make_contribution_data(merged_prs=prs, repos=repos, closed_pr_count=3)
+        result = scorer.score(data, "my-org/my-app")
+
+        assert abs(result.normalized_score - 0.5) < 1e-9
+        assert result.trust_level == TrustLevel.MEDIUM
+
     def test_v3_zero_total_prs(self) -> None:
         """Edge case: merged_prs present but closed_pr_count causes 0 denominator."""
         config = GoodEggConfig(scoring_model="v3")
@@ -894,6 +906,19 @@ class TestFreshAccountAdvisory:
 
         assert result.fresh_account is not None
         assert result.fresh_account.is_fresh is False
+
+    def test_fresh_account_flagged_at_364(self) -> None:
+        """364 days is strictly less than 365, so the account is fresh."""
+        config = GoodEggConfig(scoring_model="v3")
+        scorer = TrustScorer(config)
+        prs, repos = _sample_prs_and_repos()
+        data = _make_contribution_data(
+            days_old=364, merged_prs=prs, repos=repos
+        )
+        result = scorer.score(data, "org/repo")
+
+        assert result.fresh_account is not None
+        assert result.fresh_account.is_fresh is True
 
     def test_fresh_account_boundary_exactly_365(self) -> None:
         config = GoodEggConfig(scoring_model="v3")

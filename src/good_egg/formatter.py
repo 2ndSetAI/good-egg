@@ -70,7 +70,7 @@ def format_markdown_comment(score: TrustScore) -> str:
         "",
     ]
 
-    # v2 component score breakdown
+    # Component score breakdown (v2 and v3)
     if score.scoring_model in ("v2", "v3") and score.component_scores:
         lines.append("### Score Breakdown")
         lines.append("")

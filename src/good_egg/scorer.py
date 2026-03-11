@@ -44,6 +44,8 @@ class TrustScorer:
         fresh_account = self._build_fresh_account_advisory(user_data)
 
         # ---- Bot short-circuit ----
+        # fresh_account is intentionally omitted: bot profiles have
+        # unreliable age data so the advisory is not meaningful.
         if user_data.profile.is_bot:
             return TrustScore(
                 user_login=login,
@@ -137,6 +139,7 @@ class TrustScorer:
                 "graph_nodes": graph.number_of_nodes(),
                 "graph_edges": graph.number_of_edges(),
             },
+            scoring_model="v1",
             fresh_account=fresh_account,
         )
 
