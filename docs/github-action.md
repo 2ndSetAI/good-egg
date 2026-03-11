@@ -37,7 +37,7 @@ This posts a trust score comment on each pull request:
 | `comment` | No | `true` | Post a PR comment with the trust score |
 | `check-run` | No | `false` | Create a check run with the trust score |
 | `fail-on-low` | No | `false` | Fail the action if trust level is LOW |
-| `scoring-model` | No | `v1` | Scoring model: `v1` (Good Egg) or `v2` (Better Egg) |
+| `scoring-model` | No | `v3` | Scoring model: `v3` (Diet Egg), `v2` (Better Egg), or `v1` (Good Egg) |
 | `skip-known-contributors` | No | `true` | Skip scoring for authors with merged PRs in the repo |
 
 ## Outputs
@@ -47,7 +47,7 @@ This posts a trust score comment on each pull request:
 | `score` | Normalized trust score (0.0 - 1.0) |
 | `trust-level` | Trust level: HIGH, MEDIUM, LOW, UNKNOWN, BOT, or EXISTING_CONTRIBUTOR |
 | `user` | GitHub username that was scored |
-| `scoring-model` | Scoring model used: `v1` (Good Egg) or `v2` (Better Egg) |
+| `scoring-model` | Scoring model used: `v3` (Diet Egg), `v2` (Better Egg), or `v1` (Good Egg) |
 | `skipped` | Whether scoring was skipped for an existing contributor (`true`/`false`) |
 
 ## Custom Configuration
@@ -179,9 +179,10 @@ jobs:
 
 You can check whether scoring was skipped via the `skipped` output.
 
-## Using Better Egg (v2)
+## Selecting a Scoring Model
 
-To use the v2 scoring model, set the `scoring-model` input:
+The default model is v3 (Diet Egg), which scores by alltime merge rate. To
+use an older model, set the `scoring-model` input:
 
 ```yaml
 jobs:
@@ -191,12 +192,12 @@ jobs:
       - uses: 2ndSetAI/good-egg@v0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          scoring-model: v2
+          scoring-model: v2  # or v1
 ```
 
-When using v2, PR comments are branded "Better Egg" and include a component
-score breakdown showing graph score, merge rate, and account age
-contributions. The `scoring-model` output reflects which model was used.
+PR comments are branded according to the model: "Diet Egg" for v3, "Better
+Egg" for v2, "Good Egg" for v1. v2 and v3 include a component score
+breakdown. The `scoring-model` output reflects which model was used.
 
 You can also set `scoring-model` via the `GOOD_EGG_SCORING_MODEL` environment
 variable, but the input takes precedence.
@@ -209,5 +210,7 @@ See the [examples/](../examples/) directory for complete workflow files:
   that posts a PR comment
 - [strict-workflow.yml](../examples/strict-workflow.yml) -- comment, check
   run, and fail-on-low
+- [diet-egg-workflow.yml](../examples/diet-egg-workflow.yml) -- v3
+  scoring model (default) with component breakdown
 - [better-egg-workflow.yml](../examples/better-egg-workflow.yml) -- v2
   scoring model with component breakdown

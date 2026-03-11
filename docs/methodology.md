@@ -101,9 +101,14 @@ These raw weights are normalized to sum to 1.0, so actual values in the random w
 
 ### Scoring and Normalization
 
-The directed graph is scored using personalized graph-based ranking with a damping factor (alpha) of 0.85. This produces a raw score for the user node.
+**v3 (default):** The score is the alltime merge rate: merged PRs divided
+by total PRs (merged + closed). This value is used directly as both
+`raw_score` and `normalized_score`, since it is already in [0, 1]. No
+graph construction is performed.
 
-**v1:** Normalization converts the raw graph score to a 0-1 range:
+**v1:** The directed graph is scored using personalized graph-based ranking
+with a damping factor (alpha) of 0.85. Normalization converts the raw
+graph score to a 0-1 range:
 
 ```
 baseline = 1 / num_nodes
@@ -162,11 +167,57 @@ GitHub rate limits bound how much data can be fetched per user. Good Egg is desi
 
 ---
 
+## Diet Egg (v3)
+
+The v3 scoring model -- branded "Diet Egg" in PR comments -- is the default
+since v3 was introduced. It uses alltime merge rate as the sole scoring
+input, dropping graph score and log account age from the v2 logistic
+regression.
+
+### Motivation
+
+Experimental data from the validation study showed that:
+
+1. **Graph score (hub_score) hurts performance for unknown contributors.**
+   The graph is most useful for contributors with extensive cross-project
+   history, but for the primary use case -- evaluating unfamiliar PR
+   authors -- it adds noise.
+2. **Log account age adds nothing significant.** While statistically
+   significant in isolation, account age does not improve ranking
+   performance when combined with merge rate.
+
+Merge rate alone provides a simple, fast, and effective signal. v3 requires
+no graph construction, no pagerank computation, and no logistic regression.
+
+### Fresh Egg Advisory
+
+Accounts less than 365 days old receive a "Fresh Egg" advisory in the
+output. This is informational only and does not affect the score. In the
+validation data, fresh accounts correlate with approximately 16 percentage
+points lower merge rates.
+
+The advisory is attached to all scoring paths (v1, v2, v3) and to the
+insufficient-data short circuit. It is not attached to bot accounts (whose
+synthetic profiles have unreliable age data) or to existing contributor
+early returns (where no profile data is fetched).
+
+### Component Scores
+
+v3 output includes a single component:
+
+| Component | Description |
+|-----------|-------------|
+| `merge_rate` | Fraction of PRs that were merged: `merged / (merged + closed)` |
+
+The `scoring_metadata` contains `closed_pr_count` for transparency.
+
+---
+
 ## Better Egg (v2)
 
 The v2 scoring model -- branded "Better Egg" in PR comments -- extends the
 graph-based approach with external features combined via logistic regression.
-It is opt-in via `scoring_model: v2` in configuration; v1 remains the default.
+It is available via `scoring_model: v2` in configuration.
 
 ### Motivation
 

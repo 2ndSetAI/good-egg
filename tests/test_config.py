@@ -157,9 +157,9 @@ class TestV2Config:
 
 
 class TestScoringModelConfig:
-    def test_default_is_v1(self) -> None:
+    def test_default_is_v3(self) -> None:
         config = GoodEggConfig()
-        assert config.scoring_model == "v1"
+        assert config.scoring_model == "v3"
 
     def test_set_to_v2(self) -> None:
         config = GoodEggConfig(scoring_model="v2")

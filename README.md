@@ -3,8 +3,7 @@
   Good Egg
 </h1>
 
-Trust scoring for GitHub PR authors using graph-based analysis of
-contribution history.
+Trust scoring for GitHub PR authors based on contribution history.
 
 ## Why
 
@@ -122,23 +121,31 @@ See [docs/mcp-server.md](https://github.com/2ndSetAI/good-egg/blob/main/docs/mcp
 
 ## Scoring Models
 
-Good Egg supports two scoring models:
+Good Egg supports three scoring models:
 
 | Model | Name | Description |
 |-------|------|-------------|
-| `v1` | Good Egg (default) | Graph-based scoring from contribution history |
+| `v3` | Diet Egg (default) | Alltime merge rate as sole signal |
 | `v2` | Better Egg | Graph score + merge rate + account age via logistic regression |
+| `v1` | Good Egg | Graph-based scoring from contribution history |
 
-To use v2, set `scoring_model: v2` in your `.good-egg.yml`, pass
-`--scoring-model v2` on the CLI, or set `scoring-model: v2` in the action
-input. See [Methodology](https://github.com/2ndSetAI/good-egg/blob/main/docs/methodology.md#better-egg-v2) for how the
-v2 model works.
+v3 is the default. To use an older model, set `scoring_model: v1` or
+`scoring_model: v2` in your `.good-egg.yml`, pass `--scoring-model v1` on
+the CLI, or set `scoring-model: v1` in the action input. See
+[Methodology](https://github.com/2ndSetAI/good-egg/blob/main/docs/methodology.md) for how each model works.
+
+### Fresh Egg Advisory
+
+Accounts less than 365 days old receive a "Fresh Egg" advisory in the
+output. This is informational only and does not affect the score. Fresh
+accounts correlate with lower merge rates in the validation data.
 
 ## How It Works
 
-Good Egg builds a weighted contribution graph from a user's merged PRs and
-runs personalized graph scoring to produce a trust score relative to your
-project. See [Methodology](https://github.com/2ndSetAI/good-egg/blob/main/docs/methodology.md) for details.
+The default v3 model (Diet Egg) scores contributors by their alltime merge
+rate: merged PRs divided by total PRs (merged + closed). Older models (v1,
+v2) build a weighted contribution graph and run personalized graph scoring.
+See [Methodology](https://github.com/2ndSetAI/good-egg/blob/main/docs/methodology.md) for details.
 
 ## Trust Levels
 

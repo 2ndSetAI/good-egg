@@ -80,7 +80,7 @@ async def run_action() -> None:
         os.environ.get("INPUT_SCORING_MODEL")
         or os.environ.get("INPUT_SCORING-MODEL")
     )
-    if scoring_model_input and scoring_model_input in ("v1", "v2"):
+    if scoring_model_input and scoring_model_input in ("v1", "v2", "v3"):
         config = config.model_copy(update={"scoring_model": scoring_model_input})
     if skip_known_input is not None:
         config = config.model_copy(

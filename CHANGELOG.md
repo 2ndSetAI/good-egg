@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Diet Egg (v3) scoring model** -- uses alltime merge rate as the sole
+  scoring signal, dropping graph score and log account age from v2.
+- **Fresh Egg advisory** -- accounts under 365 days old receive an
+  informational "Fresh Egg" note in all output formats. Does not affect
+  the score. Bots are excluded since their synthetic profiles have
+  unreliable age data.
+- `FreshAccountAdvisory` model and `fresh_account` field on `TrustScore`.
+- "Diet Egg" branding on PR comments when using v3.
+- Example workflow for v3: `examples/diet-egg-workflow.yml`.
+
+### Changed
+
+- Default `scoring_model` changed from `v1` to `v3`.
+
 ## [1.0.0] - 2026-02-23
 
 ### Added

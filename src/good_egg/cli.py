@@ -28,9 +28,9 @@ def main() -> None:
 @click.option("--json", "output_json", is_flag=True, help="Output as JSON")
 @click.option(
     "--scoring-model",
-    type=click.Choice(["v1", "v2"]),
+    type=click.Choice(["v1", "v2", "v3"]),
     default=None,
-    help="Scoring model (v1 or v2)",
+    help="Scoring model (v1, v2, or v3)",
 )
 @click.option(
     "--force-score",

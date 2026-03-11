@@ -20,6 +20,8 @@ from good_egg.scorer import TrustScorer, score_pr_author
 
 
 def _make_config(**overrides: object) -> GoodEggConfig:
+    if "scoring_model" not in overrides:
+        overrides["scoring_model"] = "v1"
     return GoodEggConfig(**overrides)  # type: ignore[arg-type]
 
 
@@ -659,7 +661,7 @@ class TestExistingContributorSkip:
         mock_client.__aexit__ = AsyncMock(return_value=False)
         mock_client_cls.return_value = mock_client
 
-        config = GoodEggConfig(skip_known_contributors=True)
+        config = GoodEggConfig(skip_known_contributors=True, scoring_model="v1")
         result = await score_pr_author(
             login="testuser",
             repo_owner="my-org",
@@ -690,7 +692,7 @@ class TestExistingContributorSkip:
         mock_client.__aexit__ = AsyncMock(return_value=False)
         mock_client_cls.return_value = mock_client
 
-        config = GoodEggConfig(skip_known_contributors=True)
+        config = GoodEggConfig(skip_known_contributors=True, scoring_model="v1")
         result = await score_pr_author(
             login="testuser",
             repo_owner="my-org",
@@ -716,7 +718,7 @@ class TestExistingContributorSkip:
         mock_client.__aexit__ = AsyncMock(return_value=False)
         mock_client_cls.return_value = mock_client
 
-        config = GoodEggConfig(skip_known_contributors=False)
+        config = GoodEggConfig(skip_known_contributors=False, scoring_model="v1")
         result = await score_pr_author(
             login="testuser",
             repo_owner="my-org",
@@ -728,3 +730,246 @@ class TestExistingContributorSkip:
         assert result.trust_level != TrustLevel.EXISTING_CONTRIBUTOR
         mock_client.check_existing_contributor.assert_not_called()
         mock_client.get_user_contribution_data.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch("good_egg.github_client.GitHubClient")
+    async def test_existing_contributor_has_no_fresh_account(
+        self, mock_client_cls: AsyncMock
+    ) -> None:
+        """Existing contributor early return should have fresh_account=None."""
+        mock_client = AsyncMock()
+        mock_client.check_existing_contributor = AsyncMock(return_value=3)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client_cls.return_value = mock_client
+
+        config = GoodEggConfig(skip_known_contributors=True, scoring_model="v1")
+        result = await score_pr_author(
+            login="testuser",
+            repo_owner="my-org",
+            repo_name="my-repo",
+            config=config,
+            token="fake-token",
+        )
+
+        assert result.trust_level == TrustLevel.EXISTING_CONTRIBUTOR
+        assert result.fresh_account is None
+
+
+class TestV3Scoring:
+    def test_v3_merge_rate_as_score(self) -> None:
+        config = GoodEggConfig(scoring_model="v3")
+        scorer = TrustScorer(config)
+        prs, repos = _sample_prs_and_repos()
+        # 3 merged + 2 closed = 3/5 = 0.6
+        data = _make_contribution_data(merged_prs=prs, repos=repos, closed_pr_count=2)
+        result = scorer.score(data, "my-org/my-app")
+
+        assert abs(result.raw_score - 0.6) < 1e-9
+        assert abs(result.normalized_score - 0.6) < 1e-9
+        assert result.scoring_model == "v3"
+
+    def test_v3_component_scores_shape(self) -> None:
+        config = GoodEggConfig(scoring_model="v3")
+        scorer = TrustScorer(config)
+        prs, repos = _sample_prs_and_repos()
+        data = _make_contribution_data(merged_prs=prs, repos=repos, closed_pr_count=5)
+        result = scorer.score(data, "my-org/my-app")
+
+        assert list(result.component_scores.keys()) == ["merge_rate"]
+        assert 0.0 <= result.component_scores["merge_rate"] <= 1.0
+
+    def test_v3_no_graph_metadata(self) -> None:
+        config = GoodEggConfig(scoring_model="v3")
+        scorer = TrustScorer(config)
+        prs, repos = _sample_prs_and_repos()
+        data = _make_contribution_data(merged_prs=prs, repos=repos, closed_pr_count=5)
+        result = scorer.score(data, "my-org/my-app")
+
+        assert "graph_nodes" not in result.scoring_metadata
+        assert "graph_edges" not in result.scoring_metadata
+        assert "closed_pr_count" in result.scoring_metadata
+
+    def test_v3_trust_level_classification(self) -> None:
+        config = GoodEggConfig(scoring_model="v3")
+        scorer = TrustScorer(config)
+        prs, repos = _sample_prs_and_repos()
+        # 3 merged + 0 closed = 100% merge rate -> HIGH
+        data = _make_contribution_data(merged_prs=prs, repos=repos, closed_pr_count=0)
+        result = scorer.score(data, "my-org/my-app")
+
+        assert result.trust_level == TrustLevel.HIGH
+
+    def test_v3_low_merge_rate(self) -> None:
+        config = GoodEggConfig(scoring_model="v3")
+        scorer = TrustScorer(config)
+        prs = [
+            MergedPR(
+                repo_name_with_owner="org/repo",
+                title="PR",
+                merged_at=datetime.now(UTC) - timedelta(days=1),
+            ),
+        ]
+        repos = {
+            "org/repo": RepoMetadata(
+                name_with_owner="org/repo",
+                stargazer_count=100,
+            ),
+        }
+        # 1 merged + 10 closed = 1/11 ~ 0.09 -> LOW
+        data = _make_contribution_data(merged_prs=prs, repos=repos, closed_pr_count=10)
+        result = scorer.score(data, "org/repo")
+
+        assert result.trust_level == TrustLevel.LOW
+
+    def test_v3_is_default_model(self) -> None:
+        config = GoodEggConfig()
+        assert config.scoring_model == "v3"
+
+    def test_v3_bot_short_circuit(self) -> None:
+        config = GoodEggConfig(scoring_model="v3")
+        scorer = TrustScorer(config)
+        data = _make_contribution_data(is_bot=True)
+        result = scorer.score(data, "org/repo")
+
+        assert result.trust_level == TrustLevel.BOT
+        assert result.scoring_model == "v3"
+
+    def test_v3_insufficient_data_short_circuit(self) -> None:
+        config = GoodEggConfig(scoring_model="v3")
+        scorer = TrustScorer(config)
+        data = _make_contribution_data(merged_prs=[])
+        result = scorer.score(data, "org/repo")
+
+        assert result.trust_level == TrustLevel.UNKNOWN
+        assert result.scoring_model == "v3"
+
+    def test_v3_medium_merge_rate(self) -> None:
+        """A 50% merge rate lands in the MEDIUM trust band."""
+        config = GoodEggConfig(scoring_model="v3")
+        scorer = TrustScorer(config)
+        prs, repos = _sample_prs_and_repos()
+        # 3 merged + 3 closed = 3/6 = 0.5
+        data = _make_contribution_data(merged_prs=prs, repos=repos, closed_pr_count=3)
+        result = scorer.score(data, "my-org/my-app")
+
+        assert abs(result.normalized_score - 0.5) < 1e-9
+        assert result.trust_level == TrustLevel.MEDIUM
+
+    def test_v3_zero_total_prs(self) -> None:
+        """Edge case: merged_prs present but closed_pr_count causes 0 denominator."""
+        config = GoodEggConfig(scoring_model="v3")
+        scorer = TrustScorer(config)
+        prs = [
+            MergedPR(
+                repo_name_with_owner="org/repo",
+                title="PR",
+                merged_at=datetime.now(UTC) - timedelta(days=1),
+            ),
+        ]
+        repos = {
+            "org/repo": RepoMetadata(
+                name_with_owner="org/repo",
+                stargazer_count=100,
+            ),
+        }
+        data = _make_contribution_data(merged_prs=prs, repos=repos, closed_pr_count=0)
+        result = scorer.score(data, "org/repo")
+
+        assert result.raw_score == 1.0
+        assert result.normalized_score == 1.0
+
+
+class TestFreshAccountAdvisory:
+    def test_fresh_account_flagged_under_365(self) -> None:
+        config = GoodEggConfig(scoring_model="v3")
+        scorer = TrustScorer(config)
+        prs, repos = _sample_prs_and_repos()
+        data = _make_contribution_data(
+            days_old=200, merged_prs=prs, repos=repos
+        )
+        result = scorer.score(data, "org/repo")
+
+        assert result.fresh_account is not None
+        assert result.fresh_account.is_fresh is True
+        assert result.fresh_account.account_age_days == 200
+        assert result.fresh_account.threshold_days == 365
+
+    def test_fresh_account_not_flagged_over_365(self) -> None:
+        config = GoodEggConfig(scoring_model="v3")
+        scorer = TrustScorer(config)
+        prs, repos = _sample_prs_and_repos()
+        data = _make_contribution_data(
+            days_old=500, merged_prs=prs, repos=repos
+        )
+        result = scorer.score(data, "org/repo")
+
+        assert result.fresh_account is not None
+        assert result.fresh_account.is_fresh is False
+
+    def test_fresh_account_flagged_at_364(self) -> None:
+        """364 days is strictly less than 365, so the account is fresh."""
+        config = GoodEggConfig(scoring_model="v3")
+        scorer = TrustScorer(config)
+        prs, repos = _sample_prs_and_repos()
+        data = _make_contribution_data(
+            days_old=364, merged_prs=prs, repos=repos
+        )
+        result = scorer.score(data, "org/repo")
+
+        assert result.fresh_account is not None
+        assert result.fresh_account.is_fresh is True
+
+    def test_fresh_account_boundary_exactly_365(self) -> None:
+        config = GoodEggConfig(scoring_model="v3")
+        scorer = TrustScorer(config)
+        prs, repos = _sample_prs_and_repos()
+        data = _make_contribution_data(
+            days_old=365, merged_prs=prs, repos=repos
+        )
+        result = scorer.score(data, "org/repo")
+
+        assert result.fresh_account is not None
+        assert result.fresh_account.is_fresh is False
+
+    def test_fresh_account_none_on_bot_short_circuit(self) -> None:
+        config = GoodEggConfig(scoring_model="v3")
+        scorer = TrustScorer(config)
+        data = _make_contribution_data(is_bot=True, days_old=100)
+        result = scorer.score(data, "org/repo")
+
+        assert result.trust_level == TrustLevel.BOT
+        assert result.fresh_account is None
+
+    def test_fresh_account_on_insufficient_data(self) -> None:
+        config = GoodEggConfig(scoring_model="v3")
+        scorer = TrustScorer(config)
+        data = _make_contribution_data(merged_prs=[], days_old=100)
+        result = scorer.score(data, "org/repo")
+
+        assert result.trust_level == TrustLevel.UNKNOWN
+        assert result.fresh_account is not None
+        assert result.fresh_account.is_fresh is True
+
+    def test_fresh_account_populated_in_v1(self) -> None:
+        scorer = TrustScorer(_make_config())
+        prs, repos = _sample_prs_and_repos()
+        data = _make_contribution_data(
+            days_old=200, merged_prs=prs, repos=repos
+        )
+        result = scorer.score(data, "org/repo")
+
+        assert result.fresh_account is not None
+        assert result.fresh_account.is_fresh is True
+
+    def test_fresh_account_populated_in_v2(self) -> None:
+        config = GoodEggConfig(scoring_model="v2")
+        scorer = TrustScorer(config)
+        prs, repos = _sample_prs_and_repos()
+        data = _make_contribution_data(
+            days_old=200, merged_prs=prs, repos=repos
+        )
+        result = scorer.score(data, "org/repo")
+
+        assert result.fresh_account is not None
+        assert result.fresh_account.is_fresh is True
