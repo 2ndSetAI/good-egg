@@ -291,9 +291,10 @@ class TrustScorer:
         user_data: UserContributionData,
     ) -> FreshAccountAdvisory:
         """Build a fresh account advisory from user profile data."""
+        threshold = FreshAccountAdvisory.model_fields["threshold_days"].default
         age_days = user_data.profile.account_age_days
         return FreshAccountAdvisory(
-            is_fresh=age_days < 365,
+            is_fresh=age_days < threshold,
             account_age_days=age_days,
             created_at=user_data.profile.created_at,
         )

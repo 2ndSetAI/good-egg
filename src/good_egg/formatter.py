@@ -35,7 +35,7 @@ def _existing_contributor_context(score: TrustScore) -> tuple[int, str]:
 
 
 def _brand_name(score: TrustScore) -> str:
-    """Return 'Better Egg' for v2, 'Good Egg' for v1."""
+    """Return 'Diet Egg' for v3, 'Better Egg' for v2, or 'Good Egg' for v1."""
     if score.scoring_model == "v3":
         return "Diet Egg"
     if score.scoring_model == "v2":
