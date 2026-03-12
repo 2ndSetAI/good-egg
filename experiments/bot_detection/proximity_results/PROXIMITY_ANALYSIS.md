@@ -241,12 +241,78 @@ Behavioral LR baseline: AUC = 0.5727
 **Verdict**: SUPPORTED — F10+graph_combined: delta=+0.0493, p=0.0000; F10+both_combined: delta=+0.0209, p=0.0014; F16+graph_combined: delta=+0.0336, p=0.0000; F16+both_combined: delta=+0.0148, p=0.0011
 
 
-## 5. Summary
+## 5. LLM Scoring Results (H5)
+
+Tests whether LLM (Gemini 3.1 Pro) scoring of PR titles and bodies adds signal
+beyond behavioral and graph-proximity features. Uses temporal cutoffs (Strategy C)
+to prevent lookahead bias: the LLM only sees PR titles and bodies created before
+the cutoff date.
+
+### Prompt Variants
+
+- **V1** (title-only): Up to 20 merged PR titles, cheapest
+- **V2** (titles + bodies): Titles + first 500 chars of body for up to 10 PRs
+- **V3** (full profile): V2 + author metadata (total_prs, merge_rate, total_repos, career_span)
+
+Model: `gemini/gemini-3.1-pro-preview`, temperature=1.0, 30,131 total API calls
+across 3 cutoffs × 3 variants. Score failures dropped (not defaulted).
+
+### Standalone LLM Scoring
+
+| Cutoff | Population | V1 AUC | V2 AUC | V3 AUC |
+|--------|-----------|--------|--------|--------|
+| 2022-07-01 | 2,235 (58 susp) | 0.5444 | 0.5695 | 0.5209 |
+| 2023-01-01 | 3,619 (92 susp) | 0.5168 | 0.5167 | 0.5045 |
+| 2024-01-01 | 7,642 (204 susp) | 0.5372 | 0.5469 | 0.5408 |
+
+V2 (titles + bodies) is the best or tied-best variant at every cutoff. Standalone
+AUC ranges 0.50–0.57, comparable to behavioral feature baselines but not strong
+on its own. V3 (full profile) does not improve over V2, suggesting the metadata
+block does not help the LLM beyond what it can infer from PR text.
+
+### Combined Models (LR + LLM ± Jaccard, F10 features)
+
+| Cutoff | LR Baseline | + Jaccard | + LLM (V2) | + LLM + Jaccard |
+|--------|-------------|-----------|------------|-----------------|
+| 2022-07-01 | 0.4600 | 0.4612 | 0.4914 | 0.4958 |
+| 2023-01-01 | 0.5277 | 0.5321 | 0.5160 | 0.5222 |
+| 2024-01-01 | 0.5357 | 0.5510 | 0.5630 | 0.5771 |
+
+At the 2024-01-01 cutoff (largest population), LLM+Jaccard combined reaches
+AUC 0.577, a +0.026 improvement over Jaccard alone (0.551). Three of 24 DeLong
+tests are significant after Holm-Bonferroni correction — all from the 2024-01-01
+cutoff. At earlier cutoffs with smaller populations, no tests reach significance.
+
+### Second-Phase Re-ranking
+
+LLM re-ranking of top-N candidates from the first-phase model (LR+Jaccard) was
+tested at top-100, top-200, and top-500 with alpha sweeps blending first-phase
+and LLM scores (z-normalized). Results are uniformly negative: LLM re-ranking
+does not improve precision at any operating point across any cutoff or variant.
+
+### H5 Verdict
+
+**H5**: LLM scoring of PR text adds signal beyond behavioral + graph features
+
+**Verdict**: WEAKLY SUPPORTED — On the largest population (2024-01-01, 7,642
+authors), LLM combined with Jaccard achieves the best single-cutoff AUC (0.577)
+and 3/24 DeLong tests survive Holm-Bonferroni correction. However, the effect
+is small (+0.026 over Jaccard alone), does not replicate at earlier cutoffs with
+smaller populations, and second-phase re-ranking is ineffective. The LLM provides
+marginal incremental value as a combined LR feature but is not useful as a
+standalone detector or re-ranker on the merged-PR population.
+
+## 6. Summary
 
 **Best overall method**: jaccard_max (Strategy B merged (Graph)), AUC = 0.5952
 
+**Best combined method**: LR(F10) + LLM(V2) + Jaccard at 2024-01-01 cutoff,
+AUC = 0.5771
 
-The best method exceeds the AUC > 0.55 threshold, suggesting proximity-based detection has *some* signal on the merged-PR population. However, the practical value depends on the magnitude and precision at operational thresholds.
-
+The best methods exceed the AUC > 0.55 threshold, suggesting proximity-based
+detection has *some* signal on the merged-PR population. However, the practical
+value is limited — precision at operational thresholds (P@25, P@50) remains low
+across all methods. LLM scoring provides marginal incremental value when combined
+with Jaccard but is not useful standalone or for re-ranking.
 
 **Stage 12 replication** (all-authors, F16, cosine, k=5): AUC = 0.5573 (original stage 12: 0.595)
