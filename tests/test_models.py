@@ -8,6 +8,8 @@ from good_egg.models import (
     FreshAccountAdvisory,
     MergedPR,
     RepoMetadata,
+    SuspicionLevel,
+    SuspicionScore,
     TrustLevel,
     TrustScore,
     UserContributionData,
@@ -177,6 +179,22 @@ class TestTrustScore:
         assert score.fresh_account.account_age_days == 100
         assert score.fresh_account.threshold_days == 365
 
+    def test_suspicion_score_default_none(self) -> None:
+        score = TrustScore(user_login="u", context_repo="o/r")
+        assert score.suspicion_score is None
+
+    def test_suspicion_score_attached(self) -> None:
+        ss = SuspicionScore(
+            raw_score=1.0,
+            probability=0.12,
+            suspicion_level=SuspicionLevel.HIGH,
+        )
+        score = TrustScore(
+            user_login="u", context_repo="o/r", suspicion_score=ss
+        )
+        assert score.suspicion_score is not None
+        assert score.suspicion_score.suspicion_level == SuspicionLevel.HIGH
+
     def test_top_contributions(self, sample_trust_score: TrustScore) -> None:
         assert len(sample_trust_score.top_contributions) == 2
         assert sample_trust_score.top_contributions[0].repo_name == "elixir-lang/elixir"
@@ -212,3 +230,64 @@ class TestFreshAccountAdvisory:
         restored = FreshAccountAdvisory(**data)
         assert restored.is_fresh is True
         assert restored.account_age_days == 200
+
+
+class TestSuspicionLevel:
+    def test_values(self) -> None:
+        assert SuspicionLevel.HIGH.value == "HIGH"
+        assert SuspicionLevel.ELEVATED.value == "ELEVATED"
+        assert SuspicionLevel.NORMAL.value == "NORMAL"
+
+    def test_all_members(self) -> None:
+        assert len(SuspicionLevel) == 3
+
+
+class TestSuspicionScore:
+    def test_defaults(self) -> None:
+        ss = SuspicionScore()
+        assert ss.raw_score == 0.0
+        assert ss.probability == 0.0
+        assert ss.suspicion_level == SuspicionLevel.NORMAL
+        assert ss.component_scores == {}
+
+    def test_creation(self) -> None:
+        ss = SuspicionScore(
+            raw_score=1.5,
+            probability=0.12,
+            suspicion_level=SuspicionLevel.HIGH,
+            component_scores={"merge_rate": 0.95, "isolation_score": 0.8},
+        )
+        assert ss.raw_score == 1.5
+        assert ss.probability == 0.12
+        assert ss.suspicion_level == SuspicionLevel.HIGH
+        assert ss.component_scores["merge_rate"] == 0.95
+
+    def test_serialization_roundtrip(self) -> None:
+        import json
+        ss = SuspicionScore(
+            raw_score=1.0,
+            probability=0.08,
+            suspicion_level=SuspicionLevel.ELEVATED,
+            component_scores={"merge_rate": 0.7},
+        )
+        data = json.loads(ss.model_dump_json())
+        restored = SuspicionScore(**data)
+        assert restored.suspicion_level == SuspicionLevel.ELEVATED
+        assert restored.probability == 0.08
+
+
+class TestUserContributionDataRepoContributors:
+    def test_repo_contributors_default_empty(
+        self, sample_user_profile: UserProfile
+    ) -> None:
+        data = UserContributionData(profile=sample_user_profile)
+        assert data.repo_contributors == {}
+
+    def test_repo_contributors_set(
+        self, sample_user_profile: UserProfile
+    ) -> None:
+        data = UserContributionData(
+            profile=sample_user_profile,
+            repo_contributors={"org/repo": ["alice", "bob"]},
+        )
+        assert data.repo_contributors["org/repo"] == ["alice", "bob"]

@@ -48,6 +48,7 @@ class CacheTTLConfig(BaseModel):
     repo_metadata_hours: int = 168  # 7 days
     user_profile_hours: int = 24   # 1 day
     user_prs_hours: int = 336      # 14 days
+    repo_contributors_hours: int = 168  # 7 days
 
     def to_seconds(self) -> dict[str, int]:
         """Convert TTLs to seconds for the cache layer."""
@@ -55,6 +56,7 @@ class CacheTTLConfig(BaseModel):
             "repo_metadata": self.repo_metadata_hours * 3600,
             "user_profile": self.user_profile_hours * 3600,
             "user_prs": self.user_prs_hours * 3600,
+            "repo_contributors": self.repo_contributors_hours * 3600,
         }
 
 
@@ -145,6 +147,48 @@ class V2Config(BaseModel):
     )
 
 
+class BadEggModelConfig(BaseModel):
+    """Balanced LR coefficients for the 8-feature suspension advisory model.
+
+    Features (log1p-transformed where noted):
+      merge_rate, log1p(total_prs), log1p(career_span_days),
+      mean_title_length, isolation_score, total_repos,
+      log1p(median_additions), log1p(median_files_changed).
+
+    Fitted on 12,898 labeled authors (323 suspended / 12,575 active)
+    with balanced class weights.  CV AUC 0.643.
+    """
+    intercept: float = 1.8988
+    merge_rate_weight: float = -0.1699
+    total_prs_weight: float = 0.0845
+    career_span_days_weight: float = -0.3109
+    mean_title_length_weight: float = -0.0156
+    isolation_score_weight: float = -0.9883
+    total_repos_weight: float = 0.0365
+    median_additions_weight: float = -0.1200
+    median_files_changed_weight: float = 0.1413
+
+
+class BadEggThresholds(BaseModel):
+    """Fixed probability thresholds for advisory tiers.
+
+    HIGH (>= 0.75) flags the highest-risk scored users.
+    ELEVATED (>= 0.65) flags the next tier.
+    """
+    high: float = 0.75
+    elevated: float = 0.65
+
+
+class BadEggConfig(BaseModel):
+    """Configuration for the Bad Egg suspension advisory score."""
+    enabled: bool = True
+    model: BadEggModelConfig = Field(default_factory=BadEggModelConfig)
+    thresholds: BadEggThresholds = Field(default_factory=BadEggThresholds)
+    max_contributors_per_repo: int = 30
+    skip_popular_repo_stars: int = 5000
+    max_contributor_fetch_concurrency: int = 5
+
+
 class GoodEggConfig(BaseModel):
     """Top-level configuration composing all sub-configs."""
     scoring_model: Literal["v1", "v2", "v3"] = "v3"
@@ -159,6 +203,7 @@ class GoodEggConfig(BaseModel):
     )
     fetch: FetchConfig = Field(default_factory=FetchConfig)
     v2: V2Config = Field(default_factory=V2Config)
+    bad_egg: BadEggConfig = Field(default_factory=BadEggConfig)
 
 
 def load_config(path: str | Path | None = None) -> GoodEggConfig:
@@ -217,6 +262,14 @@ def load_config(path: str | Path | None = None) -> GoodEggConfig:
     skip_known = os.environ.get("GOOD_EGG_SKIP_KNOWN_CONTRIBUTORS")
     if skip_known is not None:
         config_data["skip_known_contributors"] = skip_known.lower() in (
+            "true", "1", "yes",
+        )
+
+    bad_egg_enabled = os.environ.get("GOOD_EGG_BAD_EGG_ENABLED")
+    if bad_egg_enabled is not None:
+        if "bad_egg" not in config_data:
+            config_data["bad_egg"] = {}
+        config_data["bad_egg"]["enabled"] = bad_egg_enabled.lower() in (
             "true", "1", "yes",
         )
 

@@ -28,6 +28,10 @@ inputs:
   skip-known-contributors:
     description: 'Skip scoring for authors with merged PRs in the repo (true/false)'
     required: false
+  bad-egg:
+    description: 'Enable suspension advisory score (true/false)'
+    required: false
+    default: 'true'
 
 outputs:
   score:
@@ -45,6 +49,9 @@ outputs:
   skipped:
     description: 'Whether scoring was skipped for an existing contributor (true/false)'
     value: ${{ steps.score.outputs.skipped }}
+  suspicion-level:
+    description: 'Suspension advisory level (HIGH, ELEVATED, NORMAL, or empty)'
+    value: ${{ steps.score.outputs.suspicion-level }}
 
 runs:
   using: 'composite'
@@ -76,6 +83,7 @@ runs:
         INPUT_FAIL-ON-LOW: ${{ inputs.fail-on-low }}
         INPUT_SCORING_MODEL: ${{ inputs.scoring-model }}
         INPUT_SKIP_KNOWN_CONTRIBUTORS: ${{ inputs.skip-known-contributors }}
+        INPUT_BAD_EGG: ${{ inputs.bad-egg }}
       run: |
         cd ${{ github.action_path }}
         uv run python -m good_egg.action

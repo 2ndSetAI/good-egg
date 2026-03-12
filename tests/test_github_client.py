@@ -1270,3 +1270,97 @@ class TestCheckExistingContributor:
             )
 
         assert count == 0
+
+
+# ---------------------------------------------------------------------------
+# fetch_repo_contributors_batch
+# ---------------------------------------------------------------------------
+
+
+class TestFetchRepoContributorsBatch:
+    @respx.mock
+    async def test_fetches_contributors(self) -> None:
+        """Should fetch contributor logins from REST API."""
+        respx.get(f"{BASE_URL}/repos/org/repo-a/contributors").mock(
+            return_value=httpx.Response(
+                200,
+                json=[
+                    {"login": "alice", "contributions": 50},
+                    {"login": "bob", "contributions": 30},
+                ],
+            )
+        )
+
+        async with _make_client() as client:
+            result = await client.fetch_repo_contributors_batch(["org/repo-a"])
+
+        assert result == {"org/repo-a": ["alice", "bob"]}
+
+    @respx.mock
+    async def test_handles_error_gracefully(self) -> None:
+        """Should return empty list for repos that error out."""
+        respx.get(f"{BASE_URL}/repos/org/private-repo/contributors").mock(
+            return_value=httpx.Response(404, json={"message": "Not Found"})
+        )
+
+        async with _make_client() as client:
+            result = await client.fetch_repo_contributors_batch(
+                ["org/private-repo"]
+            )
+
+        assert result == {"org/private-repo": []}
+
+    @respx.mock
+    async def test_multiple_repos(self) -> None:
+        """Should handle multiple repos concurrently."""
+        respx.get(f"{BASE_URL}/repos/org/repo-a/contributors").mock(
+            return_value=httpx.Response(
+                200, json=[{"login": "alice"}]
+            )
+        )
+        respx.get(f"{BASE_URL}/repos/org/repo-b/contributors").mock(
+            return_value=httpx.Response(
+                200, json=[{"login": "bob"}, {"login": "charlie"}]
+            )
+        )
+
+        async with _make_client() as client:
+            result = await client.fetch_repo_contributors_batch(
+                ["org/repo-a", "org/repo-b"]
+            )
+
+        assert result["org/repo-a"] == ["alice"]
+        assert result["org/repo-b"] == ["bob", "charlie"]
+
+    @respx.mock
+    async def test_uses_cache(self, tmp_path) -> None:
+        """Should use cached data when available."""
+        cache = Cache(db_path=tmp_path / "cache.db")
+        cache.set("repo_contributors:org/cached-repo", ["cached-user"], "repo_contributors")
+
+        # No mock needed -- should not hit API for cached repo
+        async with _make_client(cache=cache) as client:
+            result = await client.fetch_repo_contributors_batch(
+                ["org/cached-repo"]
+            )
+
+        assert result == {"org/cached-repo": ["cached-user"]}
+        cache.close()
+
+    @respx.mock
+    async def test_caches_fetched_data(self, tmp_path) -> None:
+        """Should cache freshly fetched contributor data."""
+        cache = Cache(db_path=tmp_path / "cache.db")
+        respx.get(f"{BASE_URL}/repos/org/new-repo/contributors").mock(
+            return_value=httpx.Response(
+                200, json=[{"login": "fresh-user"}]
+            )
+        )
+
+        async with _make_client(cache=cache) as client:
+            await client.fetch_repo_contributors_batch(["org/new-repo"])
+
+        # Verify it was cached
+        cached = cache.get("repo_contributors:org/new-repo")
+        assert cached == ["fresh-user"]
+        cache.close()

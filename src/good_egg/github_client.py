@@ -532,11 +532,27 @@ class GitHubClient:
             ctx_meta = await self.fetch_repo_metadata_batch([context_repo])
             contributed_repos.update(ctx_meta)
 
+        # Step 6: fetch repo contributors for Bad Egg isolation score
+        repo_contributors: dict[str, list[str]] = {}
+        if self._config.bad_egg.enabled and prs:
+            bad_egg_cfg = self._config.bad_egg
+            repos_to_fetch = [
+                name for name, meta in contributed_repos.items()
+                if meta.stargazer_count < bad_egg_cfg.skip_popular_repo_stars
+            ]
+            if repos_to_fetch:
+                repo_contributors = await self.fetch_repo_contributors_batch(
+                    repos_to_fetch,
+                    max_per_repo=bad_egg_cfg.max_contributors_per_repo,
+                    concurrency=bad_egg_cfg.max_contributor_fetch_concurrency,
+                )
+
         contrib_data = UserContributionData(
             profile=profile,
             merged_prs=prs,
             contributed_repos=contributed_repos,
             closed_pr_count=closed_pr_count,
+            repo_contributors=repo_contributors,
         )
 
         # Cache the full contribution data
@@ -548,6 +564,59 @@ class GitHubClient:
             )
 
         return contrib_data
+
+    async def fetch_repo_contributors_batch(
+        self,
+        repos: list[str],
+        max_per_repo: int = 30,
+        concurrency: int = 5,
+    ) -> dict[str, list[str]]:
+        """Fetch top contributor logins for multiple repos.
+
+        Uses REST GET /repos/{owner}/{name}/contributors with concurrency
+        limiting and per-repo caching.
+        """
+        result: dict[str, list[str]] = {}
+        to_fetch: list[str] = []
+
+        for repo_name in repos:
+            if self._cache is not None:
+                cached = self._cache.get(f"repo_contributors:{repo_name}")
+                if cached is not None:
+                    result[repo_name] = cached
+                    continue
+            to_fetch.append(repo_name)
+
+        if not to_fetch:
+            return result
+
+        sem = asyncio.Semaphore(concurrency)
+
+        async def fetch_one(repo_name: str) -> tuple[str, list[str]]:
+            async with sem:
+                try:
+                    resp = await self._rest_request_with_retry(
+                        "GET",
+                        f"/repos/{repo_name}/contributors",
+                        params={"per_page": max_per_repo, "anon": "false"},
+                    )
+                    logins = [c["login"] for c in resp.json() if "login" in c]
+                except (httpx.HTTPStatusError, GitHubAPIError):
+                    logins = []
+                if self._cache is not None:
+                    self._cache.set(
+                        f"repo_contributors:{repo_name}",
+                        logins,
+                        "repo_contributors",
+                    )
+                return repo_name, logins
+
+        tasks = [fetch_one(name) for name in to_fetch]
+        for coro in asyncio.as_completed(tasks):
+            name, logins = await coro
+            result[name] = logins
+
+        return result
 
     async def check_existing_contributor(
         self, login: str, repo_owner: str, repo_name: str

@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from good_egg.action import _set_output, run_action
-from good_egg.models import TrustLevel, TrustScore
+from good_egg.models import SuspicionLevel, SuspicionScore, TrustLevel, TrustScore
 
 
 @pytest.fixture
@@ -318,3 +318,89 @@ class TestExistingContributorAction:
 
         output_content = output_file.read_text()
         assert "skipped=false" in output_content
+
+
+class TestBadEggAction:
+    @pytest.mark.asyncio
+    async def test_bad_egg_input_disables_scoring(self, mock_env, tmp_path):
+        """INPUT_BAD_EGG=false should disable bad egg scoring."""
+        output_file = tmp_path / "output.txt"
+        output_file.touch()
+        mock_env_no_bad_egg = {
+            **mock_env,
+            "INPUT_BAD_EGG": "false",
+            "GITHUB_OUTPUT": str(output_file),
+        }
+        mock_score = _make_mock_score()
+        mock_client = AsyncMock()
+        mock_client.find_existing_comment = AsyncMock(return_value=None)
+        mock_client.post_pr_comment = AsyncMock(return_value={})
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch.dict(os.environ, mock_env_no_bad_egg, clear=False), \
+             patch("good_egg.action.GitHubClient", return_value=mock_client), \
+             patch("good_egg.action.score_pr_author", new_callable=AsyncMock,
+                   return_value=mock_score) as mock_score_fn:
+            await run_action()
+
+        # Verify config has bad_egg disabled
+        call_kwargs = mock_score_fn.call_args
+        config_passed = call_kwargs.kwargs.get("config")
+        assert config_passed.bad_egg.enabled is False
+
+        output_content = output_file.read_text()
+        assert "suspicion-level=" in output_content
+
+    @pytest.mark.asyncio
+    async def test_suspicion_level_output_set(self, mock_env, tmp_path):
+        """suspicion-level output should be set when suspicion_score is present."""
+        output_file = tmp_path / "output.txt"
+        output_file.touch()
+        mock_env["GITHUB_OUTPUT"] = str(output_file)
+
+        ss = SuspicionScore(
+            raw_score=1.0,
+            probability=0.12,
+            suspicion_level=SuspicionLevel.HIGH,
+        )
+        mock_score = TrustScore(
+            **{**_make_mock_score().model_dump(), "suspicion_score": ss}
+        )
+        mock_client = AsyncMock()
+        mock_client.find_existing_comment = AsyncMock(return_value=None)
+        mock_client.post_pr_comment = AsyncMock(return_value={})
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch.dict(os.environ, mock_env, clear=False), \
+             patch("good_egg.action.GitHubClient", return_value=mock_client), \
+             patch("good_egg.action.score_pr_author", new_callable=AsyncMock,
+                   return_value=mock_score):
+            await run_action()
+
+        output_content = output_file.read_text()
+        assert "suspicion-level=HIGH" in output_content
+
+    @pytest.mark.asyncio
+    async def test_suspicion_level_empty_when_no_score(self, mock_env, tmp_path):
+        """suspicion-level output should be empty when no suspicion score."""
+        output_file = tmp_path / "output.txt"
+        output_file.touch()
+        mock_env["GITHUB_OUTPUT"] = str(output_file)
+
+        mock_score = _make_mock_score()
+        mock_client = AsyncMock()
+        mock_client.find_existing_comment = AsyncMock(return_value=None)
+        mock_client.post_pr_comment = AsyncMock(return_value={})
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch.dict(os.environ, mock_env, clear=False), \
+             patch("good_egg.action.GitHubClient", return_value=mock_client), \
+             patch("good_egg.action.score_pr_author", new_callable=AsyncMock,
+                   return_value=mock_score):
+            await run_action()
+
+        output_content = output_file.read_text()
+        assert "suspicion-level=\n" in output_content

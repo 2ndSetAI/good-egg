@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import click
 
-from good_egg.models import TrustLevel, TrustScore
+from good_egg.models import SuspicionLevel, TrustLevel, TrustScore
 
 COMMENT_MARKER = "<!-- good-egg-trust-score -->"
 
@@ -137,6 +137,27 @@ def format_markdown_comment(score: TrustScore) -> str:
         )
         lines.append("")
 
+    # Suspension advisory
+    if (
+        score.suspicion_score is not None
+        and score.suspicion_score.suspicion_level != SuspicionLevel.NORMAL
+    ):
+        pct_s = score.suspicion_score.probability * 100
+        lines.append("### Suspension Advisory")
+        lines.append("")
+        lines.append("| | |")
+        lines.append("|---|---|")
+        lines.append(
+            f"| Risk Level | **{score.suspicion_score.suspicion_level.value}** |"
+        )
+        lines.append(f"| Probability | {pct_s:.0f}% |")
+        lines.append("")
+        lines.append(
+            "> Advisory signal based on behavioral patterns."
+            " Does not confirm malicious intent."
+        )
+        lines.append("")
+
     # Low trust note
     if score.trust_level == TrustLevel.LOW:
         lines.append("> **First-time contributor -- review manually**")
@@ -169,6 +190,21 @@ def format_cli_output(score: TrustScore, verbose: bool = False) -> str:
         f"User: {score.user_login}",
         f"Context: {score.context_repo}",
     ]
+
+    # Suspension advisory line
+    if score.suspicion_score is not None:
+        s_level = score.suspicion_score.suspicion_level
+        s_pct = score.suspicion_score.probability * 100
+        if s_level == SuspicionLevel.HIGH:
+            lines.append(
+                click.style(f"Suspicion: HIGH ({s_pct:.0f}%)", fg="red")
+            )
+        elif s_level == SuspicionLevel.ELEVATED:
+            lines.append(
+                click.style(f"Suspicion: ELEVATED ({s_pct:.0f}%)", fg="yellow")
+            )
+        elif verbose:
+            lines.append(f"Suspicion: NORMAL ({s_pct:.0f}%)")
 
     if verbose:
         lines.append("")
@@ -288,6 +324,18 @@ def format_check_run_summary(score: TrustScore) -> tuple[str, str]:
         summary_lines.append(
             f"**Fresh Account:** {score.fresh_account.account_age_days} days old"
             f" (< {score.fresh_account.threshold_days} days)"
+        )
+
+    # Suspension advisory
+    if (
+        score.suspicion_score is not None
+        and score.suspicion_score.suspicion_level != SuspicionLevel.NORMAL
+    ):
+        s_pct = score.suspicion_score.probability * 100
+        summary_lines.append("")
+        summary_lines.append(
+            f"**Suspension Advisory:** {score.suspicion_score.suspicion_level.value}"
+            f" ({s_pct:.0f}%)"
         )
 
     summary = "\n".join(summary_lines)

@@ -141,6 +141,29 @@ class TestScoreCommand:
         assert config_passed.skip_known_contributors is False
 
 
+    @patch("good_egg.cli.score_pr_author", new_callable=AsyncMock)
+    @patch("good_egg.cli.load_config")
+    def test_no_bad_egg_disables_suspicion(
+        self, mock_load_config: MagicMock, mock_score: AsyncMock
+    ) -> None:
+        """--no-bad-egg should disable the bad egg scoring."""
+        from good_egg.config import GoodEggConfig
+        mock_load_config.return_value = GoodEggConfig()
+        trust_score = _make_trust_score()
+        mock_score.return_value = trust_score
+
+        runner = CliRunner(env={"GITHUB_TOKEN": "ghp_fake123"})
+        result = runner.invoke(
+            main,
+            ["score", "testuser", "--repo", "owner/repo", "--no-bad-egg"],
+        )
+        assert result.exit_code == 0
+        # Verify the config passed to score_pr_author has bad_egg disabled
+        call_kwargs = mock_score.call_args
+        config_passed = call_kwargs.kwargs.get("config") or call_kwargs[1].get("config")
+        assert config_passed.bad_egg.enabled is False
+
+
 class TestCacheCommands:
     @patch("good_egg.cli.Cache")
     def test_cache_stats(self, mock_cache_cls: MagicMock) -> None:

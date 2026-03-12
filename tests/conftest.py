@@ -10,6 +10,8 @@ from good_egg.models import (
     ContributionSummary,
     MergedPR,
     RepoMetadata,
+    SuspicionLevel,
+    SuspicionScore,
     TrustLevel,
     TrustScore,
     UserContributionData,
@@ -212,6 +214,77 @@ def sample_v2_trust_score() -> TrustScore:
             "merge_rate": 0.85,
             "log_account_age": 7.5,
         },
+    )
+
+
+@pytest.fixture
+def sample_suspicion_score_high() -> SuspicionScore:
+    return SuspicionScore(
+        raw_score=1.5,
+        probability=0.82,
+        suspicion_level=SuspicionLevel.HIGH,
+        component_scores={
+            "merge_rate": 0.5,
+            "log_total_prs": 2.0,
+            "log_career_span_days": 2.0,
+            "mean_title_length": 12.0,
+            "isolation_score": 0.8,
+            "total_repos": 2.0,
+            "log_median_additions": 3.0,
+            "log_median_files_changed": 1.5,
+        },
+    )
+
+
+@pytest.fixture
+def sample_suspicion_score_normal() -> SuspicionScore:
+    return SuspicionScore(
+        raw_score=-1.0,
+        probability=0.27,
+        suspicion_level=SuspicionLevel.NORMAL,
+        component_scores={
+            "merge_rate": 0.95,
+            "log_total_prs": 4.0,
+            "log_career_span_days": 6.5,
+            "mean_title_length": 45.0,
+            "isolation_score": 0.2,
+            "total_repos": 5.0,
+            "log_median_additions": 4.5,
+            "log_median_files_changed": 2.0,
+        },
+    )
+
+
+@pytest.fixture
+def sample_trust_score_with_suspicion(
+    sample_suspicion_score_high: SuspicionScore,
+) -> TrustScore:
+    return TrustScore(
+        user_login="testuser",
+        context_repo="my-org/my-elixir-app",
+        raw_score=0.0045,
+        normalized_score=0.72,
+        trust_level=TrustLevel.HIGH,
+        account_age_days=1800,
+        total_merged_prs=3,
+        unique_repos_contributed=3,
+        top_contributions=[
+            ContributionSummary(
+                repo_name="elixir-lang/elixir",
+                pr_count=1,
+                language="Elixir",
+                stars=23000,
+            ),
+        ],
+        language_match=True,
+        flags={
+            "is_bot": False,
+            "is_new_account": False,
+            "has_insufficient_data": False,
+            "used_cached_data": False,
+        },
+        scoring_metadata={"graph_nodes": 7, "graph_edges": 6},
+        suspicion_score=sample_suspicion_score_high,
     )
 
 

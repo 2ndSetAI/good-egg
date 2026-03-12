@@ -151,6 +151,13 @@ async def check_pr_author(
             }
             if result.component_scores:
                 summary["component_scores"] = result.component_scores
+            if result.suspicion_score is not None:
+                summary["suspicion_level"] = (
+                    result.suspicion_score.suspicion_level.value
+                )
+                summary["suspicion_probability"] = (
+                    result.suspicion_score.probability
+                )
             return json.dumps(summary)
     except Exception as exc:
         return _error_json(str(exc))
