@@ -1,0 +1,119 @@
+{
+  "strategy_a": {
+    "jaccard_max": {
+      "auc_roc": 0.5465033049768726,
+      "auc_pr": 0.022465416583062413,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "jaccard_mean_k5": {
+      "auc_roc": 0.5313560126314678,
+      "auc_pr": 0.02100632239510252,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "ppr": {
+      "auc_roc": 0.46065574274587245,
+      "auc_pr": 0.016452914378080687,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "baseline_merge_rate": {
+      "auc_roc": 0.4257166071261594,
+      "auc_pr": 0.017834975292600683,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.02
+    }
+  },
+  "strategy_b_merged": {
+    "jaccard_max": {
+      "auc_roc": 0.5951759316179817,
+      "auc_pr": 0.026553332206537373,
+      "precision_at_25": 0.08,
+      "precision_at_50": 0.06
+    },
+    "jaccard_mean_k5": {
+      "auc_roc": 0.5905733679049149,
+      "auc_pr": 0.026626411660334037,
+      "precision_at_25": 0.08,
+      "precision_at_50": 0.06
+    },
+    "ppr": {
+      "auc_roc": 0.4787480166536705,
+      "auc_pr": 0.019093495380487643,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "baseline_merge_rate": {
+      "auc_roc": 0.44916413462212873,
+      "auc_pr": 0.02054584366761837,
+      "precision_at_25": 0.04,
+      "precision_at_50": 0.04
+    }
+  },
+  "strategy_c": {
+    "2022-07-01": {
+      "n_suspended": 58,
+      "jaccard_max": {
+        "auc_roc": 0.6059588487795606,
+        "auc_pr": 0.037115393409398865,
+        "precision_at_25": 0.0,
+        "precision_at_50": 0.0
+      },
+      "ppr": {
+        "auc_roc": 0.5223496428175439,
+        "auc_pr": 0.029418196346494015,
+        "precision_at_25": 0.04,
+        "precision_at_50": 0.02
+      },
+      "baseline_merge_rate": {
+        "auc_roc": 0.4831308507436681,
+        "auc_pr": 0.027515703258021475,
+        "precision_at_25": 0.0,
+        "precision_at_50": 0.06
+      }
+    },
+    "2023-01-01": {
+      "n_suspended": 92,
+      "jaccard_max": {
+        "auc_roc": 0.5606871217070796,
+        "auc_pr": 0.030058112152036656,
+        "precision_at_25": 0.0,
+        "precision_at_50": 0.0
+      },
+      "ppr": {
+        "auc_roc": 0.47990347752123375,
+        "auc_pr": 0.024250764597379723,
+        "precision_at_25": 0.04,
+        "precision_at_50": 0.02
+      },
+      "baseline_merge_rate": {
+        "auc_roc": 0.46156050837637597,
+        "auc_pr": 0.025528807568463496,
+        "precision_at_25": 0.04,
+        "precision_at_50": 0.02
+      }
+    },
+    "2024-01-01": {
+      "n_suspended": 204,
+      "jaccard_max": {
+        "auc_roc": 0.5557187785036037,
+        "auc_pr": 0.030171350343118766,
+        "precision_at_25": 0.12,
+        "precision_at_50": 0.06
+      },
+      "ppr": {
+        "auc_roc": 0.4423996541343076,
+        "auc_pr": 0.022609490752796845,
+        "precision_at_25": 0.0,
+        "precision_at_50": 0.0
+      },
+      "baseline_merge_rate": {
+        "auc_roc": 0.4585765201482583,
+        "auc_pr": 0.026347127939675606,
+        "precision_at_25": 0.0,
+        "precision_at_50": 0.04
+      }
+    }
+  }
+}
