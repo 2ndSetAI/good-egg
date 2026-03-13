@@ -1,7 +1,6 @@
 # Proximity-Based Suspension Detection — Results
 
-This report summarizes the results of proximity-based methods for detecting
-suspended GitHub accounts among authors with merged PRs.
+This report summarizes the results of proximity-based methods for detecting suspended GitHub accounts among authors with merged PRs.
 
 ## Methodology
 
@@ -243,10 +242,7 @@ Behavioral LR baseline: AUC = 0.5727
 
 ## 5. LLM Scoring Results (H5)
 
-Tests whether LLM (Gemini 3.1 Pro) scoring of PR titles and bodies adds signal
-beyond behavioral and graph-proximity features. Uses temporal cutoffs (Strategy C)
-to prevent lookahead bias: the LLM only sees PR titles and bodies created before
-the cutoff date.
+Tests whether LLM (Gemini 3.1 Pro) scoring of PR titles and bodies adds signal beyond behavioral and graph-proximity features. Uses temporal cutoffs (Strategy C) to prevent lookahead bias: the LLM only sees PR titles and bodies created before the cutoff date.
 
 ### Prompt Variants
 
@@ -254,8 +250,7 @@ the cutoff date.
 - **V2** (titles + bodies): Titles + first 500 chars of body for up to 10 PRs
 - **V3** (full profile): V2 + author metadata (total_prs, merge_rate, total_repos, career_span)
 
-Model: `gemini/gemini-3.1-pro-preview`, temperature=1.0, 30,131 total API calls
-across 3 cutoffs × 3 variants. Score failures dropped (not defaulted).
+Model: `gemini/gemini-3.1-pro-preview`, temperature=1.0, 30,131 total API calls across 3 cutoffs × 3 variants. Score failures dropped (not defaulted).
 
 ### Standalone LLM Scoring
 
@@ -265,10 +260,7 @@ across 3 cutoffs × 3 variants. Score failures dropped (not defaulted).
 | 2023-01-01 | 3,619 (92 susp) | 0.5168 | 0.5167 | 0.5045 |
 | 2024-01-01 | 7,642 (204 susp) | 0.5372 | 0.5469 | 0.5408 |
 
-V2 (titles + bodies) is the best or tied-best variant at every cutoff. Standalone
-AUC ranges 0.50–0.57, comparable to behavioral feature baselines but not strong
-on its own. V3 (full profile) does not improve over V2, suggesting the metadata
-block does not help the LLM beyond what it can infer from PR text.
+V2 (titles + bodies) is the best or tied-best variant at every cutoff. Standalone AUC ranges 0.50–0.57, comparable to behavioral feature baselines but not strong on its own. V3 (full profile) does not improve over V2, suggesting the metadata block does not help the LLM beyond what it can infer from PR text.
 
 ### Combined Models (LR + LLM ± Jaccard, F10 features)
 
@@ -278,36 +270,21 @@ block does not help the LLM beyond what it can infer from PR text.
 | 2023-01-01 | 0.5277 | 0.5321 | 0.5160 | 0.5222 |
 | 2024-01-01 | 0.5357 | 0.5510 | 0.5630 | 0.5771 |
 
-At the 2024-01-01 cutoff (largest population), LLM+Jaccard combined reaches
-AUC 0.577, a +0.026 improvement over Jaccard alone (0.551). Three of 24 DeLong
-tests are significant after Holm-Bonferroni correction — all from the 2024-01-01
-cutoff. At earlier cutoffs with smaller populations, no tests reach significance.
+At the 2024-01-01 cutoff (largest population), LLM+Jaccard combined reaches AUC 0.577, a +0.026 improvement over Jaccard alone (0.551). Three of 24 DeLong tests are significant after Holm-Bonferroni correction — all from the 2024-01-01 cutoff. At earlier cutoffs with smaller populations, no tests reach significance.
 
 ### Second-Phase Re-ranking
 
-LLM re-ranking of top-N candidates from the first-phase model (LR+Jaccard) was
-tested at top-100, top-200, and top-500 with alpha sweeps blending first-phase
-and LLM scores (z-normalized). Results are uniformly negative: LLM re-ranking
-does not improve precision at any operating point across any cutoff or variant.
+LLM re-ranking of top-N candidates from the first-phase model (LR+Jaccard) was tested at top-100, top-200, and top-500 with alpha sweeps blending first-phase and LLM scores (z-normalized). Results are uniformly negative: LLM re-ranking does not improve precision at any operating point across any cutoff or variant.
 
 ### H5 Verdict
 
 **H5**: LLM scoring of PR text adds signal beyond behavioral + graph features
 
-**Verdict**: WEAKLY SUPPORTED — On the largest population (2024-01-01, 7,642
-authors), LLM combined with Jaccard achieves the best single-cutoff AUC (0.577)
-and 3/24 DeLong tests survive Holm-Bonferroni correction. However, the effect
-is small (+0.026 over Jaccard alone), does not replicate at earlier cutoffs with
-smaller populations, and second-phase re-ranking is ineffective. The LLM provides
-marginal incremental value as a combined LR feature but is not useful as a
-standalone detector or re-ranker on the merged-PR population.
+**Verdict**: WEAKLY SUPPORTED — On the largest population (2024-01-01, 7,642 authors), LLM combined with Jaccard achieves the best single-cutoff AUC (0.577) and 3/24 DeLong tests survive Holm-Bonferroni correction. However, the effect is small (+0.026 over Jaccard alone), does not replicate at earlier cutoffs with smaller populations, and second-phase re-ranking is ineffective. The LLM provides marginal incremental value as a combined LR feature but is not useful as a standalone detector or re-ranker on the merged-PR population.
 
 ## 6. Conclusion: Negative Result
 
-This branch explored whether suspended GitHub accounts can be detected among
-authors who have merged PRs, using behavioral features, graph proximity, k-NN
-similarity, and LLM-based PR text analysis. The answer is **no** — not at a
-level that would justify a production feature.
+This branch explored whether suspended GitHub accounts can be detected among authors who have merged PRs, using behavioral features, graph proximity, k-NN similarity, and LLM-based PR text analysis. The answer is **no** — not at a level that would justify a production feature.
 
 ### What we tested
 
@@ -322,48 +299,25 @@ level that would justify a production feature.
 
 ### Why it doesn't work
 
-1. **AUC barely above chance.** Best result is 0.608 (LR+Jaccard, Strategy B).
-   Random is 0.50. This is statistically above chance but not operationally useful.
+1. **AUC barely above chance.** Best result is 0.608 (LR+Jaccard, Strategy B). Random is 0.50. This is statistically above chance but not operationally useful.
 
-2. **Precision is near zero.** Best P@25 is 0.08 (2/25 correct). Flagging the
-   top 25 most suspicious accounts produces a 92% false positive rate.
+2. **Precision is near zero.** Best P@25 is 0.08 (2/25 correct). Flagging the top 25 most suspicious accounts produces a 92% false positive rate.
 
-3. **Signal doesn't survive temporal holdout.** Strategy B (no temporal
-   constraint) gives 0.608; Strategy C (temporal, the honest test) gives 0.577
-   at best. The signal weakens under realistic conditions.
+3. **Signal doesn't survive temporal holdout.** Strategy B (no temporal constraint) gives 0.608; Strategy C (temporal, the honest test) gives 0.577 at best. The signal weakens under realistic conditions.
 
-4. **LLM scoring added almost nothing.** 30,131 Gemini API calls across 3
-   prompt variants. Best contribution: +0.026 AUC over Jaccard alone, only
-   significant at one of three cutoffs. Second-phase re-ranking was completely
-   ineffective.
+4. **LLM scoring added almost nothing.** 30,131 Gemini API calls across 3 prompt variants. Best contribution: +0.026 AUC over Jaccard alone, only significant at one of three cutoffs. Second-phase re-ranking was completely ineffective.
 
-5. **Base rate is the fundamental problem.** With ~2.5% prevalence of suspended
-   accounts in the merged-PR population, even a moderately good classifier
-   produces overwhelming false positives. Useful precision would require AUC
-   well above 0.85.
+5. **Base rate is the fundamental problem.** With ~2.5% prevalence of suspended accounts in the merged-PR population, even a moderately good classifier produces overwhelming false positives. Useful precision would require AUC well above 0.85.
 
 ### Why the merged-PR population is hard
 
-The prior bot-detection work (stage 6) achieved AUC 0.619 on the full
-population, but that included zero-PR suspended accounts that are trivially
-separable. Once restricted to authors who got PRs merged — meaning they passed
-code review — the population becomes too homogeneous to distinguish. Suspended
-accounts with merged PRs look like active accounts with merged PRs, because
-in both cases a human reviewer accepted their work.
+The prior bot-detection work (stage 6) achieved AUC 0.619 on the full population, but that included zero-PR suspended accounts that are trivially separable. Once restricted to authors who got PRs merged — meaning they passed code review — the population becomes too homogeneous to distinguish. Suspended accounts with merged PRs look like active accounts with merged PRs, because in both cases a human reviewer accepted their work.
 
 ### What was learned
 
-- Jaccard repo overlap is the strongest single signal (AUC 0.595), suggesting
-  suspended accounts do cluster in certain repositories. But the effect is too
-  weak to act on.
-- Behavioral features (PR metadata, contribution patterns) carry minimal signal
-  in this population.
-- LLM analysis of PR titles and bodies cannot reliably distinguish suspended
-  from active authors when both have merged contributions.
-- The 8-feature Bad Egg scoring model (commit d4c1278) provides a reasonable
-  heuristic for the full population but should not be expected to perform well
-  on the merged-PR subset specifically.
+- Jaccard repo overlap is the strongest single signal (AUC 0.595), suggesting suspended accounts do cluster in certain repositories. But the effect is too weak to act on.
+- Behavioral features (PR metadata, contribution patterns) carry minimal signal in this population.
+- LLM analysis of PR titles and bodies cannot reliably distinguish suspended from active authors when both have merged contributions.
+- The 8-feature Bad Egg scoring model (commit d4c1278) provides a reasonable heuristic for the full population but should not be expected to perform well on the merged-PR subset specifically.
 
-**This branch is not intended for merge.** It documents a thorough negative
-result that establishes the limits of suspension detection on the merged-PR
-population.
+**This branch is not intended for merge.** It documents a thorough negative result that establishes the limits of suspension detection on the merged-PR population.
