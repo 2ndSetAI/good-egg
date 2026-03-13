@@ -302,17 +302,68 @@ smaller populations, and second-phase re-ranking is ineffective. The LLM provide
 marginal incremental value as a combined LR feature but is not useful as a
 standalone detector or re-ranker on the merged-PR population.
 
-## 6. Summary
+## 6. Conclusion: Negative Result
 
-**Best overall method**: jaccard_max (Strategy B merged (Graph)), AUC = 0.5952
+This branch explored whether suspended GitHub accounts can be detected among
+authors who have merged PRs, using behavioral features, graph proximity, k-NN
+similarity, and LLM-based PR text analysis. The answer is **no** — not at a
+level that would justify a production feature.
 
-**Best combined method**: LR(F10) + LLM(V2) + Jaccard at 2024-01-01 cutoff,
-AUC = 0.5771
+### What we tested
 
-The best methods exceed the AUC > 0.55 threshold, suggesting proximity-based
-detection has *some* signal on the merged-PR population. However, the practical
-value is limited — precision at operational thresholds (P@25, P@50) remains low
-across all methods. LLM scoring provides marginal incremental value when combined
-with Jaccard but is not useful standalone or for re-ranking.
+| Method | Best AUC | Best P@25 | Viable? |
+|--------|----------|-----------|---------|
+| Behavioral LR (F16) | 0.573 | 0.00 | No |
+| k-NN proximity | 0.570 | 0.08 | No |
+| Jaccard repo overlap | 0.595 | 0.08 | No |
+| LR + Jaccard combined | 0.608 | — | No |
+| LLM standalone (V2) | 0.570 | 0.04 | No |
+| LLM + Jaccard combined | 0.577 | — | No |
 
-**Stage 12 replication** (all-authors, F16, cosine, k=5): AUC = 0.5573 (original stage 12: 0.595)
+### Why it doesn't work
+
+1. **AUC barely above chance.** Best result is 0.608 (LR+Jaccard, Strategy B).
+   Random is 0.50. This is statistically above chance but not operationally useful.
+
+2. **Precision is near zero.** Best P@25 is 0.08 (2/25 correct). Flagging the
+   top 25 most suspicious accounts produces a 92% false positive rate.
+
+3. **Signal doesn't survive temporal holdout.** Strategy B (no temporal
+   constraint) gives 0.608; Strategy C (temporal, the honest test) gives 0.577
+   at best. The signal weakens under realistic conditions.
+
+4. **LLM scoring added almost nothing.** 30,131 Gemini API calls across 3
+   prompt variants. Best contribution: +0.026 AUC over Jaccard alone, only
+   significant at one of three cutoffs. Second-phase re-ranking was completely
+   ineffective.
+
+5. **Base rate is the fundamental problem.** With ~2.5% prevalence of suspended
+   accounts in the merged-PR population, even a moderately good classifier
+   produces overwhelming false positives. Useful precision would require AUC
+   well above 0.85.
+
+### Why the merged-PR population is hard
+
+The prior bot-detection work (stage 6) achieved AUC 0.619 on the full
+population, but that included zero-PR suspended accounts that are trivially
+separable. Once restricted to authors who got PRs merged — meaning they passed
+code review — the population becomes too homogeneous to distinguish. Suspended
+accounts with merged PRs look like active accounts with merged PRs, because
+in both cases a human reviewer accepted their work.
+
+### What was learned
+
+- Jaccard repo overlap is the strongest single signal (AUC 0.595), suggesting
+  suspended accounts do cluster in certain repositories. But the effect is too
+  weak to act on.
+- Behavioral features (PR metadata, contribution patterns) carry minimal signal
+  in this population.
+- LLM analysis of PR titles and bodies cannot reliably distinguish suspended
+  from active authors when both have merged contributions.
+- The 8-feature Bad Egg scoring model (commit d4c1278) provides a reasonable
+  heuristic for the full population but should not be expected to perform well
+  on the merged-PR subset specifically.
+
+**This branch is not intended for merge.** It documents a thorough negative
+result that establishes the limits of suspension detection on the merged-PR
+population.
