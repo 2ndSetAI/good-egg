@@ -156,7 +156,10 @@ class BadEggModelConfig(BaseModel):
       log1p(median_additions), log1p(median_files_changed).
 
     Fitted on 12,898 labeled authors (323 suspended / 12,575 active)
-    with balanced class weights.  CV AUC 0.643.
+    with balanced class weights. CV AUC 0.643 on the full population
+    (including zero-PR accounts). On the merged-PR-only population,
+    discriminative power is minimal (AUC ~0.57). See
+    experiments/bot_detection/proximity_results/PROXIMITY_ANALYSIS.md.
     """
     intercept: float = 1.8988
     merge_rate_weight: float = -0.1699

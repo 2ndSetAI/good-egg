@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import os
+import statistics
 from collections import defaultdict
 
 import networkx as nx
@@ -277,7 +278,7 @@ class TrustScorer:
         top_contributions = self._build_top_contributions(user_data)
         language_match = self._check_language_match(user_data, context_language)
 
-        return TrustScore(
+        result = TrustScore(
             user_login=login,
             context_repo=context_repo,
             raw_score=merge_rate,
@@ -296,6 +297,11 @@ class TrustScorer:
             component_scores={"merge_rate": merge_rate},
             fresh_account=fresh_account,
         )
+
+        if self.config.bad_egg.enabled and user_data.merged_prs:
+            result.suspicion_score = self._compute_suspicion_score(user_data)
+
+        return result
 
     # ------------------------------------------------------------------
     # Fresh account advisory
@@ -356,31 +362,13 @@ class TrustScorer:
         total_repos = len({pr.repo_name_with_owner for pr in user_data.merged_prs})
 
         # Feature 7: median_additions (log-transformed)
-        additions = sorted(pr.additions for pr in user_data.merged_prs)
-        n = len(additions)
-        if n > 0:
-            mid = n // 2
-            median_adds = (
-                (additions[mid - 1] + additions[mid]) / 2.0
-                if n % 2 == 0
-                else float(additions[mid])
-            )
-        else:
-            median_adds = 0.0
+        additions = [pr.additions for pr in user_data.merged_prs]
+        median_adds = statistics.median(additions) if additions else 0.0
         log_median_additions = math.log1p(median_adds)
 
         # Feature 8: median_files_changed (log-transformed)
-        files = sorted(pr.changed_files for pr in user_data.merged_prs)
-        n_f = len(files)
-        if n_f > 0:
-            mid_f = n_f // 2
-            median_files = (
-                (files[mid_f - 1] + files[mid_f]) / 2.0
-                if n_f % 2 == 0
-                else float(files[mid_f])
-            )
-        else:
-            median_files = 0.0
+        files = [pr.changed_files for pr in user_data.merged_prs]
+        median_files = statistics.median(files) if files else 0.0
         log_median_files = math.log1p(median_files)
 
         # Logistic regression
