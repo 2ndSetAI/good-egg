@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import os
+import statistics
 from collections import defaultdict
 
 import networkx as nx
@@ -13,6 +14,8 @@ from good_egg.graph_builder import TrustGraphBuilder
 from good_egg.models import (
     ContributionSummary,
     FreshAccountAdvisory,
+    SuspicionLevel,
+    SuspicionScore,
     TrustLevel,
     TrustScore,
     UserContributionData,
@@ -123,7 +126,7 @@ class TrustScorer:
         top_contributions = self._build_top_contributions(user_data)
         language_match = self._check_language_match(user_data, context_language)
 
-        return TrustScore(
+        result = TrustScore(
             user_login=login,
             context_repo=context_repo,
             raw_score=raw_score,
@@ -142,6 +145,11 @@ class TrustScorer:
             scoring_model="v1",
             fresh_account=fresh_account,
         )
+
+        if self.config.bad_egg.enabled and user_data.merged_prs:
+            result.suspicion_score = self._compute_suspicion_score(user_data)
+
+        return result
 
     # ------------------------------------------------------------------
     # v2 scoring path (Better Egg)
@@ -215,7 +223,7 @@ class TrustScorer:
             component_scores["merge_rate"] = merge_rate
         component_scores["log_account_age"] = log_account_age
 
-        return TrustScore(
+        result = TrustScore(
             user_login=login,
             context_repo=context_repo,
             raw_score=logit,
@@ -236,6 +244,11 @@ class TrustScorer:
             component_scores=component_scores,
             fresh_account=fresh_account,
         )
+
+        if self.config.bad_egg.enabled and user_data.merged_prs:
+            result.suspicion_score = self._compute_suspicion_score(user_data)
+
+        return result
 
     # ------------------------------------------------------------------
     # v3 scoring path (Diet Egg)
@@ -265,7 +278,7 @@ class TrustScorer:
         top_contributions = self._build_top_contributions(user_data)
         language_match = self._check_language_match(user_data, context_language)
 
-        return TrustScore(
+        result = TrustScore(
             user_login=login,
             context_repo=context_repo,
             raw_score=merge_rate,
@@ -285,6 +298,11 @@ class TrustScorer:
             fresh_account=fresh_account,
         )
 
+        if self.config.bad_egg.enabled and user_data.merged_prs:
+            result.suspicion_score = self._compute_suspicion_score(user_data)
+
+        return result
+
     # ------------------------------------------------------------------
     # Fresh account advisory
     # ------------------------------------------------------------------
@@ -301,6 +319,135 @@ class TrustScorer:
             account_age_days=age_days,
             created_at=user_data.profile.created_at,
         )
+
+    # ------------------------------------------------------------------
+    # Bad Egg: suspension advisory score
+    # ------------------------------------------------------------------
+
+    def _compute_suspicion_score(
+        self, user_data: UserContributionData,
+    ) -> SuspicionScore:
+        """Compute advisory suspension risk score using 8-feature LR model."""
+        cfg = self.config.bad_egg
+
+        # Feature 1: merge_rate
+        merged_count = len(user_data.merged_prs)
+        closed_count = user_data.closed_pr_count
+        total_prs = merged_count + closed_count
+        merge_rate = merged_count / total_prs if total_prs > 0 else 0.0
+
+        # Feature 2: total_prs (log-transformed)
+        log_total_prs = math.log1p(total_prs)
+
+        # Feature 3: career_span_days (log-transformed)
+        if len(user_data.merged_prs) >= 2:
+            dates = [pr.merged_at for pr in user_data.merged_prs]
+            span = (max(dates) - min(dates)).total_seconds() / 86400.0
+        else:
+            span = 0.0
+        log_career_span = math.log1p(span)
+
+        # Feature 4: mean_title_length
+        if user_data.merged_prs:
+            mean_title_len = sum(
+                len(pr.title) for pr in user_data.merged_prs
+            ) / len(user_data.merged_prs)
+        else:
+            mean_title_len = 0.0
+
+        # Feature 5: isolation_score (from bipartite contributor graph)
+        isolation_score = self._compute_isolation_score(user_data)
+
+        # Feature 6: total_repos
+        total_repos = len({pr.repo_name_with_owner for pr in user_data.merged_prs})
+
+        # Feature 7: median_additions (log-transformed)
+        additions = [pr.additions for pr in user_data.merged_prs]
+        median_adds = statistics.median(additions) if additions else 0.0
+        log_median_additions = math.log1p(median_adds)
+
+        # Feature 8: median_files_changed (log-transformed)
+        files = [pr.changed_files for pr in user_data.merged_prs]
+        median_files = statistics.median(files) if files else 0.0
+        log_median_files = math.log1p(median_files)
+
+        # Logistic regression
+        m = cfg.model
+        logit = (
+            m.intercept
+            + m.merge_rate_weight * merge_rate
+            + m.total_prs_weight * log_total_prs
+            + m.career_span_days_weight * log_career_span
+            + m.mean_title_length_weight * mean_title_len
+            + m.isolation_score_weight * isolation_score
+            + m.total_repos_weight * total_repos
+            + m.median_additions_weight * log_median_additions
+            + m.median_files_changed_weight * log_median_files
+        )
+        probability = 1.0 / (1.0 + math.exp(-logit))
+
+        # Classify tier
+        t = cfg.thresholds
+        if probability >= t.high:
+            level = SuspicionLevel.HIGH
+        elif probability >= t.elevated:
+            level = SuspicionLevel.ELEVATED
+        else:
+            level = SuspicionLevel.NORMAL
+
+        return SuspicionScore(
+            raw_score=logit,
+            probability=probability,
+            suspicion_level=level,
+            component_scores={
+                "merge_rate": merge_rate,
+                "log_total_prs": log_total_prs,
+                "log_career_span_days": log_career_span,
+                "mean_title_length": mean_title_len,
+                "isolation_score": isolation_score,
+                "total_repos": float(total_repos),
+                "log_median_additions": log_median_additions,
+                "log_median_files_changed": log_median_files,
+            },
+        )
+
+    @staticmethod
+    def _compute_isolation_score(user_data: UserContributionData) -> float:
+        """Fraction of author's repos where no other multi-repo contributor works."""
+        login = user_data.profile.login.lower()
+        user_repos = set(user_data.repo_contributors.keys())
+
+        if not user_repos:
+            return 1.0
+
+        # Build lookup: contributor -> set of repos they appear in
+        contributor_repos: dict[str, set[str]] = defaultdict(set)
+        for repo, contributors in user_data.repo_contributors.items():
+            for c in contributors:
+                if c.lower() != login:
+                    contributor_repos[c.lower()].add(repo)
+
+        # Multi-repo contributors: appear in 2+ of this author's repos
+        multi_repo_contributors = {
+            c for c, repos in contributor_repos.items() if len(repos) >= 2
+        }
+
+        # A repo is isolated if none of its contributors are multi-repo
+        isolated = 0
+        for repo in user_repos:
+            repo_contribs = {
+                c.lower() for c in user_data.repo_contributors.get(repo, [])
+                if c.lower() != login
+            }
+            if not repo_contribs & multi_repo_contributors:
+                isolated += 1
+
+        # Also count repos where we skipped fetching (popular repos) as non-isolated
+        all_contributed = set(user_data.contributed_repos.keys())
+        skipped_repos = all_contributed - user_repos
+        total = len(user_repos) + len(skipped_repos)
+
+        return isolated / total if total > 0 else 1.0
 
     # ------------------------------------------------------------------
     # Internal helpers

@@ -19,6 +19,21 @@ class TrustLevel(StrEnum):
     EXISTING_CONTRIBUTOR = "EXISTING_CONTRIBUTOR"
 
 
+class SuspicionLevel(StrEnum):
+    """Suspension advisory risk levels."""
+    HIGH = "HIGH"
+    ELEVATED = "ELEVATED"
+    NORMAL = "NORMAL"
+
+
+class SuspicionScore(BaseModel):
+    """Advisory suspension risk score."""
+    raw_score: float = 0.0
+    probability: float = 0.0
+    suspicion_level: SuspicionLevel = SuspicionLevel.NORMAL
+    component_scores: dict[str, float] = {}
+
+
 class UserProfile(BaseModel):
     """GitHub user profile data."""
     login: str
@@ -67,6 +82,7 @@ class UserContributionData(BaseModel):
     merged_prs: list[MergedPR] = []
     contributed_repos: dict[str, RepoMetadata] = {}
     closed_pr_count: int = 0
+    repo_contributors: dict[str, list[str]] = {}
 
 
 class ContributionSummary(BaseModel):
@@ -103,3 +119,4 @@ class TrustScore(BaseModel):
     scoring_model: str = "v1"
     component_scores: dict[str, float] = {}
     fresh_account: FreshAccountAdvisory | None = None
+    suspicion_score: SuspicionScore | None = None

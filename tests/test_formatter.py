@@ -14,6 +14,8 @@ from good_egg.formatter import (
 from good_egg.models import (
     ContributionSummary,
     FreshAccountAdvisory,
+    SuspicionLevel,
+    SuspicionScore,
     TrustLevel,
     TrustScore,
 )
@@ -486,3 +488,84 @@ class TestFreshAccountFormatting:
         result = format_json(score)
         parsed = json.loads(result)
         assert parsed["fresh_account"] is None
+
+
+class TestSuspicionAdvisoryFormatting:
+    def _make_score_with_suspicion(
+        self, level: SuspicionLevel, probability: float = 0.12
+    ) -> TrustScore:
+        ss = SuspicionScore(
+            raw_score=1.0,
+            probability=probability,
+            suspicion_level=level,
+            component_scores={
+                "merge_rate": 0.5,
+                "log_median_additions": 3.0,
+                "isolation_score": 0.8,
+            },
+        )
+        return _make_score(suspicion_score=ss)
+
+    def test_markdown_shows_advisory_for_high(self) -> None:
+        score = self._make_score_with_suspicion(SuspicionLevel.HIGH, 0.12)
+        md = format_markdown_comment(score)
+        assert "Suspension Advisory" in md
+        assert "**HIGH**" in md
+        assert "12%" in md
+        assert "Does not confirm malicious intent" in md
+
+    def test_markdown_shows_advisory_for_elevated(self) -> None:
+        score = self._make_score_with_suspicion(SuspicionLevel.ELEVATED, 0.07)
+        md = format_markdown_comment(score)
+        assert "Suspension Advisory" in md
+        assert "**ELEVATED**" in md
+        assert "7%" in md
+
+    def test_markdown_omits_advisory_for_normal(self) -> None:
+        score = self._make_score_with_suspicion(SuspicionLevel.NORMAL, 0.02)
+        md = format_markdown_comment(score)
+        assert "Suspension Advisory" not in md
+
+    def test_markdown_omits_advisory_when_none(self) -> None:
+        score = _make_score()
+        md = format_markdown_comment(score)
+        assert "Suspension Advisory" not in md
+
+    def test_cli_shows_suspicion_high(self) -> None:
+        score = self._make_score_with_suspicion(SuspicionLevel.HIGH, 0.12)
+        out = format_cli_output(score)
+        assert "Suspicion: HIGH (12%)" in out
+
+    def test_cli_shows_suspicion_elevated(self) -> None:
+        score = self._make_score_with_suspicion(SuspicionLevel.ELEVATED, 0.07)
+        out = format_cli_output(score)
+        assert "Suspicion: ELEVATED (7%)" in out
+
+    def test_cli_hides_normal_non_verbose(self) -> None:
+        score = self._make_score_with_suspicion(SuspicionLevel.NORMAL, 0.02)
+        out = format_cli_output(score, verbose=False)
+        assert "Suspicion" not in out
+
+    def test_cli_shows_normal_verbose(self) -> None:
+        score = self._make_score_with_suspicion(SuspicionLevel.NORMAL, 0.02)
+        out = format_cli_output(score, verbose=True)
+        assert "Suspicion: NORMAL (2%)" in out
+
+    def test_check_run_includes_advisory_for_high(self) -> None:
+        score = self._make_score_with_suspicion(SuspicionLevel.HIGH, 0.12)
+        _, summary = format_check_run_summary(score)
+        assert "Suspension Advisory" in summary
+        assert "HIGH" in summary
+
+    def test_check_run_omits_advisory_for_normal(self) -> None:
+        score = self._make_score_with_suspicion(SuspicionLevel.NORMAL, 0.02)
+        _, summary = format_check_run_summary(score)
+        assert "Suspension Advisory" not in summary
+
+    def test_json_includes_suspicion_score(self) -> None:
+        score = self._make_score_with_suspicion(SuspicionLevel.HIGH, 0.12)
+        result = format_json(score)
+        parsed = json.loads(result)
+        assert parsed["suspicion_score"] is not None
+        assert parsed["suspicion_score"]["suspicion_level"] == "HIGH"
+        assert parsed["suspicion_score"]["probability"] == 0.12

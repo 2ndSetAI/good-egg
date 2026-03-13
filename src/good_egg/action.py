@@ -45,6 +45,11 @@ async def run_action() -> None:
         os.environ.get("INPUT_SKIP-KNOWN-CONTRIBUTORS")
         or os.environ.get("INPUT_SKIP_KNOWN_CONTRIBUTORS")
     )
+    bad_egg_input = (
+        os.environ.get("INPUT_BAD-EGG")
+        or os.environ.get("INPUT_BAD_EGG")
+        or "true"
+    )
 
     if not token:
         print("::error::GITHUB_TOKEN is required")
@@ -87,6 +92,10 @@ async def run_action() -> None:
             update={"skip_known_contributors": skip_known_input.lower() in (
                 "true", "1", "yes",
             )}
+        )
+    if bad_egg_input.lower() not in ("true", "1", "yes"):
+        config = config.model_copy(
+            update={"bad_egg": config.bad_egg.model_copy(update={"enabled": False})}
         )
     cache = Cache(ttls=config.cache_ttl.to_seconds())
 
@@ -131,6 +140,10 @@ async def run_action() -> None:
     _set_output("user", score.user_login)
     _set_output("scoring-model", score.scoring_model)
     _set_output("skipped", "true" if skipped else "false")
+    suspicion_level = ""
+    if score.suspicion_score is not None:
+        suspicion_level = score.suspicion_score.suspicion_level.value
+    _set_output("suspicion-level", suspicion_level)
 
     # Summary
     pct = score.normalized_score * 100

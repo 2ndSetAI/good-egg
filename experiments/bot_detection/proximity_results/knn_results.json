@@ -1,0 +1,766 @@
+{
+  "strategy_a": {
+    "knn_F10_cosine_k3": {
+      "feature_set": "F10",
+      "metric": "cosine",
+      "k": 3,
+      "n_seeds": 44,
+      "auc_roc": 0.4044881181989606,
+      "auc_pr": 0.014414108607487588,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "knn_F10_cosine_k5": {
+      "feature_set": "F10",
+      "metric": "cosine",
+      "k": 5,
+      "n_seeds": 44,
+      "auc_roc": 0.40509920102178865,
+      "auc_pr": 0.0144340615900681,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "knn_F10_cosine_k10": {
+      "feature_set": "F10",
+      "metric": "cosine",
+      "k": 10,
+      "n_seeds": 44,
+      "auc_roc": 0.40046646081990483,
+      "auc_pr": 0.014307517621694065,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "knn_F10_cosine_k15": {
+      "feature_set": "F10",
+      "metric": "cosine",
+      "k": 15,
+      "n_seeds": 44,
+      "auc_roc": 0.39800899096835807,
+      "auc_pr": 0.014244318522801305,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "knn_F10_euclidean_k3": {
+      "feature_set": "F10",
+      "metric": "euclidean",
+      "k": 3,
+      "n_seeds": 44,
+      "auc_roc": 0.41992760373766874,
+      "auc_pr": 0.014802489878207266,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "knn_F10_euclidean_k5": {
+      "feature_set": "F10",
+      "metric": "euclidean",
+      "k": 5,
+      "n_seeds": 44,
+      "auc_roc": 0.42058578969665716,
+      "auc_pr": 0.01483345415353403,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "knn_F10_euclidean_k10": {
+      "feature_set": "F10",
+      "metric": "euclidean",
+      "k": 10,
+      "n_seeds": 44,
+      "auc_roc": 0.4181891206291749,
+      "auc_pr": 0.014773148101088443,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "knn_F10_euclidean_k15": {
+      "feature_set": "F10",
+      "metric": "euclidean",
+      "k": 15,
+      "n_seeds": 44,
+      "auc_roc": 0.42099266574817884,
+      "auc_pr": 0.01486616322340496,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "knn_F16_cosine_k3": {
+      "feature_set": "F16",
+      "metric": "cosine",
+      "k": 3,
+      "n_seeds": 44,
+      "auc_roc": 0.4169836577276469,
+      "auc_pr": 0.014739879251986585,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "knn_F16_cosine_k5": {
+      "feature_set": "F16",
+      "metric": "cosine",
+      "k": 5,
+      "n_seeds": 44,
+      "auc_roc": 0.41519220106246224,
+      "auc_pr": 0.014690648830818845,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "knn_F16_cosine_k10": {
+      "feature_set": "F16",
+      "metric": "cosine",
+      "k": 10,
+      "n_seeds": 44,
+      "auc_roc": 0.4102059776814998,
+      "auc_pr": 0.014554505782506456,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "knn_F16_cosine_k15": {
+      "feature_set": "F16",
+      "metric": "cosine",
+      "k": 15,
+      "n_seeds": 44,
+      "auc_roc": 0.40637021695257247,
+      "auc_pr": 0.014457937614959608,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "knn_F16_euclidean_k3": {
+      "feature_set": "F16",
+      "metric": "euclidean",
+      "k": 3,
+      "n_seeds": 44,
+      "auc_roc": 0.43600088503578094,
+      "auc_pr": 0.01522210944790348,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "knn_F16_euclidean_k5": {
+      "feature_set": "F16",
+      "metric": "euclidean",
+      "k": 5,
+      "n_seeds": 44,
+      "auc_roc": 0.4357385331468403,
+      "auc_pr": 0.015220105266873136,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "knn_F16_euclidean_k10": {
+      "feature_set": "F16",
+      "metric": "euclidean",
+      "k": 10,
+      "n_seeds": 44,
+      "auc_roc": 0.43781847904951743,
+      "auc_pr": 0.015292436729887173,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "knn_F16_euclidean_k15": {
+      "feature_set": "F16",
+      "metric": "euclidean",
+      "k": 15,
+      "n_seeds": 44,
+      "auc_roc": 0.4412888759863879,
+      "auc_pr": 0.015417066303233279,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "knn_F16_no_mr_cosine_k3": {
+      "feature_set": "F16_no_mr",
+      "metric": "cosine",
+      "k": 3,
+      "n_seeds": 44,
+      "auc_roc": 0.42301090234932825,
+      "auc_pr": 0.014948110265062093,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "knn_F16_no_mr_cosine_k5": {
+      "feature_set": "F16_no_mr",
+      "metric": "cosine",
+      "k": 5,
+      "n_seeds": 44,
+      "auc_roc": 0.42075596200607923,
+      "auc_pr": 0.014881769150889488,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "knn_F16_no_mr_cosine_k10": {
+      "feature_set": "F16_no_mr",
+      "metric": "cosine",
+      "k": 10,
+      "n_seeds": 44,
+      "auc_roc": 0.41376792522426054,
+      "auc_pr": 0.01467172196158133,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "knn_F16_no_mr_cosine_k15": {
+      "feature_set": "F16_no_mr",
+      "metric": "cosine",
+      "k": 15,
+      "n_seeds": 44,
+      "auc_roc": 0.4075128523772338,
+      "auc_pr": 0.014501252637293344,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "knn_F16_no_mr_euclidean_k3": {
+      "feature_set": "F16_no_mr",
+      "metric": "euclidean",
+      "k": 3,
+      "n_seeds": 44,
+      "auc_roc": 0.42279719108763936,
+      "auc_pr": 0.014848649599265452,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "knn_F16_no_mr_euclidean_k5": {
+      "feature_set": "F16_no_mr",
+      "metric": "euclidean",
+      "k": 5,
+      "n_seeds": 44,
+      "auc_roc": 0.42384058845095396,
+      "auc_pr": 0.014881123034618608,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "knn_F16_no_mr_euclidean_k10": {
+      "feature_set": "F16_no_mr",
+      "metric": "euclidean",
+      "k": 10,
+      "n_seeds": 44,
+      "auc_roc": 0.4265827736982237,
+      "auc_pr": 0.0149654661071134,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "knn_F16_no_mr_euclidean_k15": {
+      "feature_set": "F16_no_mr",
+      "metric": "euclidean",
+      "k": 15,
+      "n_seeds": 44,
+      "auc_roc": 0.429439152602001,
+      "auc_pr": 0.015054734880267947,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "baseline_merge_rate": {
+      "auc_roc": 0.4257166071261594,
+      "auc_pr": 0.017834975292600683,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.02
+    },
+    "baseline_lr_F10": {
+      "auc_roc": 0.6115228248239957,
+      "auc_pr": 0.025476938671775345,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "baseline_lr_F16": {
+      "auc_roc": 0.6257008688082613,
+      "auc_pr": 0.026719348425251546,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.02
+    },
+    "baseline_lr_F16_no_mr": {
+      "auc_roc": 0.6255722786442628,
+      "auc_pr": 0.026697287622769957,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.04
+    }
+  },
+  "strategy_b_merged": {
+    "knn_F10_cosine_k3": {
+      "feature_set": "F10",
+      "metric": "cosine",
+      "k": 3,
+      "auc_roc": 0.5648716624427376,
+      "auc_pr": 0.026332979818528224,
+      "precision_at_25": 0.04,
+      "precision_at_50": 0.02
+    },
+    "knn_F10_cosine_k5": {
+      "feature_set": "F10",
+      "metric": "cosine",
+      "k": 5,
+      "auc_roc": 0.5668110316501503,
+      "auc_pr": 0.02643964429154735,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.02
+    },
+    "knn_F10_cosine_k10": {
+      "feature_set": "F10",
+      "metric": "cosine",
+      "k": 10,
+      "auc_roc": 0.5669114257626796,
+      "auc_pr": 0.02637048832190663,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "knn_F10_cosine_k15": {
+      "feature_set": "F10",
+      "metric": "cosine",
+      "k": 15,
+      "auc_roc": 0.5660563879848627,
+      "auc_pr": 0.026641563810612598,
+      "precision_at_25": 0.08,
+      "precision_at_50": 0.06
+    },
+    "knn_F10_euclidean_k3": {
+      "feature_set": "F10",
+      "metric": "euclidean",
+      "k": 3,
+      "auc_roc": 0.5639198562426322,
+      "auc_pr": 0.025244977861022855,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.02
+    },
+    "knn_F10_euclidean_k5": {
+      "feature_set": "F10",
+      "metric": "euclidean",
+      "k": 5,
+      "auc_roc": 0.5635480354572501,
+      "auc_pr": 0.025455849589558262,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.02
+    },
+    "knn_F10_euclidean_k10": {
+      "feature_set": "F10",
+      "metric": "euclidean",
+      "k": 10,
+      "auc_roc": 0.5621852760219226,
+      "auc_pr": 0.025425453360181642,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "knn_F10_euclidean_k15": {
+      "feature_set": "F10",
+      "metric": "euclidean",
+      "k": 15,
+      "auc_roc": 0.5609975499085639,
+      "auc_pr": 0.02537096891219008,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.02
+    },
+    "knn_F16_cosine_k3": {
+      "feature_set": "F16",
+      "metric": "cosine",
+      "k": 3,
+      "auc_roc": 0.5665501069766156,
+      "auc_pr": 0.027397133050288222,
+      "precision_at_25": 0.04,
+      "precision_at_50": 0.02
+    },
+    "knn_F16_cosine_k5": {
+      "feature_set": "F16",
+      "metric": "cosine",
+      "k": 5,
+      "auc_roc": 0.5658208431430134,
+      "auc_pr": 0.02711022269851017,
+      "precision_at_25": 0.04,
+      "precision_at_50": 0.02
+    },
+    "knn_F16_cosine_k10": {
+      "feature_set": "F16",
+      "metric": "cosine",
+      "k": 10,
+      "auc_roc": 0.5621796499508595,
+      "auc_pr": 0.026313873065709755,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.04
+    },
+    "knn_F16_cosine_k15": {
+      "feature_set": "F16",
+      "metric": "cosine",
+      "k": 15,
+      "auc_roc": 0.5605738442455983,
+      "auc_pr": 0.028492629877942433,
+      "precision_at_25": 0.08,
+      "precision_at_50": 0.06
+    },
+    "knn_F16_euclidean_k3": {
+      "feature_set": "F16",
+      "metric": "euclidean",
+      "k": 3,
+      "auc_roc": 0.5698498601671294,
+      "auc_pr": 0.02697154657365128,
+      "precision_at_25": 0.04,
+      "precision_at_50": 0.02
+    },
+    "knn_F16_euclidean_k5": {
+      "feature_set": "F16",
+      "metric": "euclidean",
+      "k": 5,
+      "auc_roc": 0.56729199821416,
+      "auc_pr": 0.026623800369012823,
+      "precision_at_25": 0.04,
+      "precision_at_50": 0.04
+    },
+    "knn_F16_euclidean_k10": {
+      "feature_set": "F16",
+      "metric": "euclidean",
+      "k": 10,
+      "auc_roc": 0.5637968328220485,
+      "auc_pr": 0.026097416626795336,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.06
+    },
+    "knn_F16_euclidean_k15": {
+      "feature_set": "F16",
+      "metric": "euclidean",
+      "k": 15,
+      "auc_roc": 0.5619487309896622,
+      "auc_pr": 0.02572090231622353,
+      "precision_at_25": 0.04,
+      "precision_at_50": 0.04
+    },
+    "knn_F16_no_mr_cosine_k3": {
+      "feature_set": "F16_no_mr",
+      "metric": "cosine",
+      "k": 3,
+      "auc_roc": 0.5629135396651138,
+      "auc_pr": 0.02730182510756448,
+      "precision_at_25": 0.04,
+      "precision_at_50": 0.04
+    },
+    "knn_F16_no_mr_cosine_k5": {
+      "feature_set": "F16_no_mr",
+      "metric": "cosine",
+      "k": 5,
+      "auc_roc": 0.5608635243934563,
+      "auc_pr": 0.026892239404064537,
+      "precision_at_25": 0.04,
+      "precision_at_50": 0.02
+    },
+    "knn_F16_no_mr_cosine_k10": {
+      "feature_set": "F16_no_mr",
+      "metric": "cosine",
+      "k": 10,
+      "auc_roc": 0.557111060018051,
+      "auc_pr": 0.026177410114500563,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.04
+    },
+    "knn_F16_no_mr_cosine_k15": {
+      "feature_set": "F16_no_mr",
+      "metric": "cosine",
+      "k": 15,
+      "auc_roc": 0.5561067438213549,
+      "auc_pr": 0.028385220632449804,
+      "precision_at_25": 0.08,
+      "precision_at_50": 0.06
+    },
+    "knn_F16_no_mr_euclidean_k3": {
+      "feature_set": "F16_no_mr",
+      "metric": "euclidean",
+      "k": 3,
+      "auc_roc": 0.5611669571594692,
+      "auc_pr": 0.02660610314413787,
+      "precision_at_25": 0.04,
+      "precision_at_50": 0.02
+    },
+    "knn_F16_no_mr_euclidean_k5": {
+      "feature_set": "F16_no_mr",
+      "metric": "euclidean",
+      "k": 5,
+      "auc_roc": 0.5576524130781398,
+      "auc_pr": 0.026233114680906118,
+      "precision_at_25": 0.04,
+      "precision_at_50": 0.04
+    },
+    "knn_F16_no_mr_euclidean_k10": {
+      "feature_set": "F16_no_mr",
+      "metric": "euclidean",
+      "k": 10,
+      "auc_roc": 0.5537074120485688,
+      "auc_pr": 0.025690353154214196,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.06
+    },
+    "knn_F16_no_mr_euclidean_k15": {
+      "feature_set": "F16_no_mr",
+      "metric": "euclidean",
+      "k": 15,
+      "auc_roc": 0.5522593863806822,
+      "auc_pr": 0.025321533523377543,
+      "precision_at_25": 0.04,
+      "precision_at_50": 0.04
+    },
+    "baseline_merge_rate": {
+      "auc_roc": 0.44916413462212873,
+      "auc_pr": 0.02054584366761837,
+      "precision_at_25": 0.04,
+      "precision_at_50": 0.04
+    },
+    "baseline_lr_F10": {
+      "auc_roc": 0.5585613986262634,
+      "auc_pr": 0.024074913396397203,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.02
+    },
+    "baseline_lr_F16": {
+      "auc_roc": 0.5726884630661563,
+      "auc_pr": 0.02530329263349593,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.0
+    },
+    "baseline_lr_F16_no_mr": {
+      "auc_roc": 0.5708554891137401,
+      "auc_pr": 0.025466340204404955,
+      "precision_at_25": 0.0,
+      "precision_at_50": 0.04
+    }
+  },
+  "strategy_b_all_authors": {
+    "knn_F16_cosine_k5": {
+      "feature_set": "F16",
+      "metric": "cosine",
+      "k": 5,
+      "auc_roc": 0.5573032346377934,
+      "auc_pr": 0.03025566169051945,
+      "precision_at_25": 0.08,
+      "precision_at_50": 0.08
+    },
+    "baseline_merge_rate": {
+      "auc_roc": 0.5137408840604576,
+      "auc_pr": 0.0255277355942943,
+      "precision_at_25": 0.08,
+      "precision_at_50": 0.1
+    },
+    "baseline_lr_F16": {
+      "auc_roc": 0.6213897965252053,
+      "auc_pr": 0.039980753620119616,
+      "precision_at_25": 0.08,
+      "precision_at_50": 0.1
+    }
+  },
+  "strategy_c": {
+    "2022-07-01": {
+      "n_suspended": 58,
+      "knn_F10_cosine_k5": {
+        "feature_set": "F10",
+        "metric": "cosine",
+        "k": 5,
+        "auc_roc": 0.5347916303676364,
+        "auc_pr": 0.028312011303451727,
+        "precision_at_25": 0.0,
+        "precision_at_50": 0.02
+      },
+      "knn_F10_cosine_k10": {
+        "feature_set": "F10",
+        "metric": "cosine",
+        "k": 10,
+        "auc_roc": 0.5200212250328671,
+        "auc_pr": 0.02684416872932269,
+        "precision_at_25": 0.0,
+        "precision_at_50": 0.0
+      },
+      "knn_F16_cosine_k5": {
+        "feature_set": "F16",
+        "metric": "cosine",
+        "k": 5,
+        "auc_roc": 0.47143332330160137,
+        "auc_pr": 0.026437394559032663,
+        "precision_at_25": 0.04,
+        "precision_at_50": 0.02
+      },
+      "knn_F16_cosine_k10": {
+        "feature_set": "F16",
+        "metric": "cosine",
+        "k": 10,
+        "auc_roc": 0.47623271506185355,
+        "auc_pr": 0.024034136022781045,
+        "precision_at_25": 0.0,
+        "precision_at_50": 0.0
+      },
+      "baseline_merge_rate": {
+        "auc_roc": 0.4831308507436681,
+        "auc_pr": 0.027515703258021475,
+        "precision_at_25": 0.0,
+        "precision_at_50": 0.06
+      },
+      "baseline_lr_F10": {
+        "auc_roc": 0.47252229420429886,
+        "auc_pr": 0.023907372219780787,
+        "precision_at_25": 0.04,
+        "precision_at_50": 0.02
+      },
+      "baseline_lr_F16": {
+        "auc_roc": 0.4805846387784518,
+        "auc_pr": 0.03696074400731085,
+        "precision_at_25": 0.08,
+        "precision_at_50": 0.04
+      }
+    },
+    "2023-01-01": {
+      "n_suspended": 92,
+      "knn_F10_cosine_k5": {
+        "feature_set": "F10",
+        "metric": "cosine",
+        "k": 5,
+        "auc_roc": 0.5189038596664243,
+        "auc_pr": 0.02524322746836556,
+        "precision_at_25": 0.0,
+        "precision_at_50": 0.0
+      },
+      "knn_F10_cosine_k10": {
+        "feature_set": "F10",
+        "metric": "cosine",
+        "k": 10,
+        "auc_roc": 0.5246052193636667,
+        "auc_pr": 0.026944777843714116,
+        "precision_at_25": 0.04,
+        "precision_at_50": 0.02
+      },
+      "knn_F16_cosine_k5": {
+        "feature_set": "F16",
+        "metric": "cosine",
+        "k": 5,
+        "auc_roc": 0.5062006138977576,
+        "auc_pr": 0.024503940878847726,
+        "precision_at_25": 0.0,
+        "precision_at_50": 0.0
+      },
+      "knn_F16_cosine_k10": {
+        "feature_set": "F16",
+        "metric": "cosine",
+        "k": 10,
+        "auc_roc": 0.5089156938400661,
+        "auc_pr": 0.025477075455066778,
+        "precision_at_25": 0.0,
+        "precision_at_50": 0.04
+      },
+      "baseline_merge_rate": {
+        "auc_roc": 0.46156050837637597,
+        "auc_pr": 0.025528807568463496,
+        "precision_at_25": 0.0,
+        "precision_at_50": 0.02
+      },
+      "baseline_lr_F10": {
+        "auc_roc": 0.5006795404395903,
+        "auc_pr": 0.025634042410773817,
+        "precision_at_25": 0.0,
+        "precision_at_50": 0.0
+      },
+      "baseline_lr_F16": {
+        "auc_roc": 0.5345517806733152,
+        "auc_pr": 0.027039085941844482,
+        "precision_at_25": 0.0,
+        "precision_at_50": 0.0
+      }
+    },
+    "2024-01-01": {
+      "n_suspended": 204,
+      "knn_F10_cosine_k5": {
+        "feature_set": "F10",
+        "metric": "cosine",
+        "k": 5,
+        "auc_roc": 0.5365459036532064,
+        "auc_pr": 0.029377995875937122,
+        "precision_at_25": 0.0,
+        "precision_at_50": 0.02
+      },
+      "knn_F10_cosine_k10": {
+        "feature_set": "F10",
+        "metric": "cosine",
+        "k": 10,
+        "auc_roc": 0.5376214615988907,
+        "auc_pr": 0.038588231900023445,
+        "precision_at_25": 0.08,
+        "precision_at_50": 0.04
+      },
+      "knn_F16_cosine_k5": {
+        "feature_set": "F16",
+        "metric": "cosine",
+        "k": 5,
+        "auc_roc": 0.5232747576040366,
+        "auc_pr": 0.030004999500581067,
+        "precision_at_25": 0.0,
+        "precision_at_50": 0.02
+      },
+      "knn_F16_cosine_k10": {
+        "feature_set": "F16",
+        "metric": "cosine",
+        "k": 10,
+        "auc_roc": 0.5248498700367482,
+        "auc_pr": 0.0387611499988658,
+        "precision_at_25": 0.08,
+        "precision_at_50": 0.04
+      },
+      "baseline_merge_rate": {
+        "auc_roc": 0.4585765201482583,
+        "auc_pr": 0.026347127939675606,
+        "precision_at_25": 0.04,
+        "precision_at_50": 0.04
+      },
+      "baseline_lr_F10": {
+        "auc_roc": 0.5516215090499765,
+        "auc_pr": 0.030733820462660773,
+        "precision_at_25": 0.0,
+        "precision_at_50": 0.04
+      },
+      "baseline_lr_F16": {
+        "auc_roc": 0.5496690945805587,
+        "auc_pr": 0.030074286160196112,
+        "precision_at_25": 0.0,
+        "precision_at_50": 0.04
+      }
+    }
+  },
+  "delong_comparisons": {
+    "strategy_a": {
+      "best_knn": "knn_F16_euclidean_k15",
+      "best_knn_auc": 0.4412888759863879,
+      "baselines": {
+        "baseline_merge_rate": {
+          "auc": 0.4257166071261594,
+          "delta": 0.0155722688602285
+        },
+        "baseline_lr_F10": {
+          "auc": 0.6115228248239957,
+          "delta": -0.17023394883760778
+        },
+        "baseline_lr_F16": {
+          "auc": 0.6257008688082613,
+          "delta": -0.18441199282187337
+        },
+        "baseline_lr_F16_no_mr": {
+          "auc": 0.6255722786442628,
+          "delta": -0.1842834026578749
+        }
+      }
+    },
+    "strategy_b_merged": {
+      "best_knn": "knn_F16_euclidean_k3",
+      "best_knn_auc": 0.5698498601671294,
+      "baselines": {
+        "baseline_merge_rate": {
+          "auc": 0.44916413462212873,
+          "delta": 0.12068572554500062
+        },
+        "baseline_lr_F10": {
+          "auc": 0.5585613986262634,
+          "delta": 0.011288461540865935
+        },
+        "baseline_lr_F16": {
+          "auc": 0.5726884630661563,
+          "delta": -0.002838602899026932
+        },
+        "baseline_lr_F16_no_mr": {
+          "auc": 0.5708554891137401,
+          "delta": -0.0010056289466107149
+        }
+      }
+    },
+    "strategy_b_all_authors": {
+      "best_knn": "knn_F16_cosine_k5",
+      "best_knn_auc": 0.5573032346377934,
+      "baselines": {
+        "baseline_merge_rate": {
+          "auc": 0.5137408840604576,
+          "delta": 0.04356235057733582
+        },
+        "baseline_lr_F16": {
+          "auc": 0.6213897965252053,
+          "delta": -0.06408656188741191
+        }
+      }
+    }
+  }
+}

@@ -38,6 +38,12 @@ def main() -> None:
     default=False,
     help="Force full scoring even for known contributors",
 )
+@click.option(
+    "--no-bad-egg",
+    is_flag=True,
+    default=False,
+    help="Disable suspension advisory score",
+)
 def score(
     username: str,
     repo: str,
@@ -47,6 +53,7 @@ def score(
     output_json: bool,
     scoring_model: str | None,
     force_score: bool,
+    no_bad_egg: bool,
 ) -> None:
     """Score a GitHub user's trustworthiness relative to a repository."""
     if not token:
@@ -64,6 +71,10 @@ def score(
         config = config.model_copy(update={"scoring_model": scoring_model})
     if force_score:
         config = config.model_copy(update={"skip_known_contributors": False})
+    if no_bad_egg:
+        config = config.model_copy(
+            update={"bad_egg": config.bad_egg.model_copy(update={"enabled": False})}
+        )
     cache = Cache(ttls=config.cache_ttl.to_seconds())
 
     result = asyncio.run(

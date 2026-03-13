@@ -8,10 +8,16 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from good_egg.config import GoodEggConfig
+from good_egg.config import (
+    BadEggConfig,
+    BadEggModelConfig,
+    BadEggThresholds,
+    GoodEggConfig,
+)
 from good_egg.models import (
     MergedPR,
     RepoMetadata,
+    SuspicionLevel,
     TrustLevel,
     UserContributionData,
     UserProfile,
@@ -46,12 +52,14 @@ def _make_contribution_data(
     merged_prs: list[MergedPR] | None = None,
     repos: dict[str, RepoMetadata] | None = None,
     closed_pr_count: int = 0,
+    repo_contributors: dict[str, list[str]] | None = None,
 ) -> UserContributionData:
     return UserContributionData(
         profile=_make_profile(login=login, is_bot=is_bot, days_old=days_old),
         merged_prs=merged_prs or [],
         contributed_repos=repos or {},
         closed_pr_count=closed_pr_count,
+        repo_contributors=repo_contributors or {},
     )
 
 
@@ -880,6 +888,221 @@ class TestV3Scoring:
         assert result.normalized_score == 1.0
 
 
+class TestSuspicionScoring:
+    def test_suspicion_score_computed_when_enabled(self) -> None:
+        scorer = TrustScorer(_make_config())
+        prs, repos = _sample_prs_and_repos()
+        data = _make_contribution_data(merged_prs=prs, repos=repos)
+        result = scorer.score(data, "org/repo")
+
+        assert result.suspicion_score is not None
+        assert result.suspicion_score.probability >= 0.0
+        assert result.suspicion_score.probability <= 1.0
+
+    def test_suspicion_score_none_when_disabled(self) -> None:
+        config = GoodEggConfig(bad_egg=BadEggConfig(enabled=False))
+        scorer = TrustScorer(config)
+        prs, repos = _sample_prs_and_repos()
+        data = _make_contribution_data(merged_prs=prs, repos=repos)
+        result = scorer.score(data, "org/repo")
+
+        assert result.suspicion_score is None
+
+    def test_suspicion_score_none_for_bot(self) -> None:
+        scorer = TrustScorer(_make_config())
+        data = _make_contribution_data(is_bot=True)
+        result = scorer.score(data, "org/repo")
+
+        assert result.suspicion_score is None
+
+    def test_suspicion_score_none_for_no_prs(self) -> None:
+        scorer = TrustScorer(_make_config())
+        data = _make_contribution_data(merged_prs=[])
+        result = scorer.score(data, "org/repo")
+
+        assert result.suspicion_score is None
+
+    def test_suspicion_score_with_v2(self) -> None:
+        config = GoodEggConfig(scoring_model="v2")
+        scorer = TrustScorer(config)
+        prs, repos = _sample_prs_and_repos()
+        data = _make_contribution_data(merged_prs=prs, repos=repos, closed_pr_count=5)
+        result = scorer.score(data, "org/repo")
+
+        assert result.suspicion_score is not None
+        assert result.scoring_model == "v2"
+
+    def test_tier_classification_high(self) -> None:
+        zero_model = BadEggModelConfig(
+            intercept=2.0,
+            merge_rate_weight=0.0,
+            total_prs_weight=0.0,
+            career_span_days_weight=0.0,
+            mean_title_length_weight=0.0,
+            isolation_score_weight=0.0,
+            total_repos_weight=0.0,
+            median_additions_weight=0.0,
+            median_files_changed_weight=0.0,
+        )
+        config = GoodEggConfig(
+            bad_egg=BadEggConfig(
+                model=zero_model,
+                thresholds=BadEggThresholds(high=0.10, elevated=0.05),
+            )
+        )
+        scorer = TrustScorer(config)
+        prs, repos = _sample_prs_and_repos()
+        data = _make_contribution_data(merged_prs=prs, repos=repos)
+        result = scorer.score(data, "org/repo")
+
+        # With intercept=2.0 and all other weights=0, sigmoid(2.0) ~ 0.88
+        assert result.suspicion_score is not None
+        assert result.suspicion_score.suspicion_level == SuspicionLevel.HIGH
+
+    def test_tier_classification_elevated(self) -> None:
+        zero_model = BadEggModelConfig(
+            intercept=-2.9,
+            merge_rate_weight=0.0,
+            total_prs_weight=0.0,
+            career_span_days_weight=0.0,
+            mean_title_length_weight=0.0,
+            isolation_score_weight=0.0,
+            total_repos_weight=0.0,
+            median_additions_weight=0.0,
+            median_files_changed_weight=0.0,
+        )
+        config = GoodEggConfig(
+            bad_egg=BadEggConfig(
+                model=zero_model,
+                thresholds=BadEggThresholds(high=0.10, elevated=0.05),
+            )
+        )
+        scorer = TrustScorer(config)
+        prs, repos = _sample_prs_and_repos()
+        data = _make_contribution_data(merged_prs=prs, repos=repos)
+        result = scorer.score(data, "org/repo")
+
+        # sigmoid(-2.9) ~ 0.052, between 0.05 and 0.10
+        assert result.suspicion_score is not None
+        assert result.suspicion_score.suspicion_level == SuspicionLevel.ELEVATED
+
+    def test_tier_classification_normal(self) -> None:
+        zero_model = BadEggModelConfig(
+            intercept=-5.0,
+            merge_rate_weight=0.0,
+            total_prs_weight=0.0,
+            career_span_days_weight=0.0,
+            mean_title_length_weight=0.0,
+            isolation_score_weight=0.0,
+            total_repos_weight=0.0,
+            median_additions_weight=0.0,
+            median_files_changed_weight=0.0,
+        )
+        config = GoodEggConfig(
+            bad_egg=BadEggConfig(
+                model=zero_model,
+                thresholds=BadEggThresholds(high=0.10, elevated=0.05),
+            )
+        )
+        scorer = TrustScorer(config)
+        prs, repos = _sample_prs_and_repos()
+        data = _make_contribution_data(merged_prs=prs, repos=repos)
+        result = scorer.score(data, "org/repo")
+
+        # sigmoid(-5.0) ~ 0.0067, below 0.05
+        assert result.suspicion_score is not None
+        assert result.suspicion_score.suspicion_level == SuspicionLevel.NORMAL
+
+    def test_merge_rate_computation(self) -> None:
+        scorer = TrustScorer(_make_config())
+        prs, repos = _sample_prs_and_repos()
+        data = _make_contribution_data(
+            merged_prs=prs, repos=repos, closed_pr_count=3,
+        )
+        result = scorer.score(data, "org/repo")
+
+        assert result.suspicion_score is not None
+        expected = len(prs) / (len(prs) + 3)
+        assert (
+            abs(result.suspicion_score.component_scores["merge_rate"] - expected)
+            < 1e-9
+        )
+
+    def test_median_additions_odd(self) -> None:
+        scorer = TrustScorer(_make_config())
+        prs = [
+            MergedPR(
+                repo_name_with_owner="org/repo",
+                title="PR",
+                merged_at=datetime(2024, 1, 1, tzinfo=UTC),
+                additions=10,
+            ),
+            MergedPR(
+                repo_name_with_owner="org/repo",
+                title="PR",
+                merged_at=datetime(2024, 2, 1, tzinfo=UTC),
+                additions=30,
+            ),
+            MergedPR(
+                repo_name_with_owner="org/repo",
+                title="PR",
+                merged_at=datetime(2024, 3, 1, tzinfo=UTC),
+                additions=50,
+            ),
+        ]
+        repos = {
+            "org/repo": RepoMetadata(
+                name_with_owner="org/repo", stargazer_count=100,
+            ),
+        }
+        data = _make_contribution_data(merged_prs=prs, repos=repos)
+        result = scorer.score(data, "org/repo")
+
+        assert result.suspicion_score is not None
+        expected = math.log1p(30.0)  # median of [10, 30, 50]
+        assert (
+            abs(
+                result.suspicion_score.component_scores["log_median_additions"]
+                - expected
+            )
+            < 1e-9
+        )
+
+    def test_median_additions_even(self) -> None:
+        scorer = TrustScorer(_make_config())
+        prs = [
+            MergedPR(
+                repo_name_with_owner="org/repo",
+                title="PR",
+                merged_at=datetime(2024, 1, 1, tzinfo=UTC),
+                additions=10,
+            ),
+            MergedPR(
+                repo_name_with_owner="org/repo",
+                title="PR",
+                merged_at=datetime(2024, 2, 1, tzinfo=UTC),
+                additions=30,
+            ),
+        ]
+        repos = {
+            "org/repo": RepoMetadata(
+                name_with_owner="org/repo", stargazer_count=100,
+            ),
+        }
+        data = _make_contribution_data(merged_prs=prs, repos=repos)
+        result = scorer.score(data, "org/repo")
+
+        assert result.suspicion_score is not None
+        expected = math.log1p(20.0)  # average of [10, 30]
+        assert (
+            abs(
+                result.suspicion_score.component_scores["log_median_additions"]
+                - expected
+            )
+            < 1e-9
+        )
+
+
 class TestFreshAccountAdvisory:
     def test_fresh_account_flagged_under_365(self) -> None:
         config = GoodEggConfig(scoring_model="v3")
@@ -973,3 +1196,123 @@ class TestFreshAccountAdvisory:
 
         assert result.fresh_account is not None
         assert result.fresh_account.is_fresh is True
+
+
+class TestIsolationScore:
+    def test_all_isolated(self) -> None:
+        """All repos have no overlapping contributors -> isolation = 1.0."""
+        scorer = TrustScorer(_make_config())
+        prs = [
+            MergedPR(
+                repo_name_with_owner="org/repo-a",
+                title="PR",
+                merged_at=datetime(2024, 1, 1, tzinfo=UTC),
+            ),
+            MergedPR(
+                repo_name_with_owner="org/repo-b",
+                title="PR",
+                merged_at=datetime(2024, 2, 1, tzinfo=UTC),
+            ),
+        ]
+        repos = {
+            "org/repo-a": RepoMetadata(
+                name_with_owner="org/repo-a", stargazer_count=100,
+            ),
+            "org/repo-b": RepoMetadata(
+                name_with_owner="org/repo-b", stargazer_count=100,
+            ),
+        }
+        data = _make_contribution_data(
+            merged_prs=prs, repos=repos,
+            repo_contributors={
+                "org/repo-a": ["alice"],
+                "org/repo-b": ["bob"],
+            },
+        )
+        score = scorer._compute_isolation_score(data)
+        assert score == 1.0
+
+    def test_none_isolated(self) -> None:
+        """All repos share a multi-repo contributor -> isolation = 0.0."""
+        scorer = TrustScorer(_make_config())
+        data = _make_contribution_data(
+            merged_prs=[
+                MergedPR(
+                    repo_name_with_owner="org/repo-a",
+                    title="PR",
+                    merged_at=datetime(2024, 1, 1, tzinfo=UTC),
+                ),
+                MergedPR(
+                    repo_name_with_owner="org/repo-b",
+                    title="PR",
+                    merged_at=datetime(2024, 2, 1, tzinfo=UTC),
+                ),
+            ],
+            repos={
+                "org/repo-a": RepoMetadata(
+                    name_with_owner="org/repo-a", stargazer_count=100,
+                ),
+                "org/repo-b": RepoMetadata(
+                    name_with_owner="org/repo-b", stargazer_count=100,
+                ),
+            },
+            repo_contributors={
+                "org/repo-a": ["shared-dev"],
+                "org/repo-b": ["shared-dev"],
+            },
+        )
+        score = scorer._compute_isolation_score(data)
+        assert score == 0.0
+
+    def test_no_repo_contributors(self) -> None:
+        """No repo_contributors data -> isolation defaults to 1.0."""
+        scorer = TrustScorer(_make_config())
+        data = _make_contribution_data(
+            merged_prs=[
+                MergedPR(
+                    repo_name_with_owner="org/repo",
+                    title="PR",
+                    merged_at=datetime(2024, 1, 1, tzinfo=UTC),
+                ),
+            ],
+            repos={
+                "org/repo": RepoMetadata(
+                    name_with_owner="org/repo", stargazer_count=100,
+                ),
+            },
+        )
+        score = scorer._compute_isolation_score(data)
+        assert score == 1.0
+
+    def test_skipped_popular_repos_non_isolated(self) -> None:
+        """Repos in contributed_repos but not in repo_contributors count as non-isolated."""
+        scorer = TrustScorer(_make_config())
+        data = _make_contribution_data(
+            merged_prs=[
+                MergedPR(
+                    repo_name_with_owner="org/small",
+                    title="PR",
+                    merged_at=datetime(2024, 1, 1, tzinfo=UTC),
+                ),
+                MergedPR(
+                    repo_name_with_owner="org/popular",
+                    title="PR",
+                    merged_at=datetime(2024, 2, 1, tzinfo=UTC),
+                ),
+            ],
+            repos={
+                "org/small": RepoMetadata(
+                    name_with_owner="org/small", stargazer_count=100,
+                ),
+                "org/popular": RepoMetadata(
+                    name_with_owner="org/popular", stargazer_count=10000,
+                ),
+            },
+            repo_contributors={
+                "org/small": ["alice"],
+                # org/popular skipped (too popular)
+            },
+        )
+        score = scorer._compute_isolation_score(data)
+        # 1 isolated (small) + 1 non-isolated (popular skipped) = 0.5
+        assert score == 0.5
