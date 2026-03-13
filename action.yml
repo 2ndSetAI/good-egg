@@ -54,16 +54,9 @@ runs:
       with:
         python-version: '3.12'
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v4
-
     - name: Install good-egg
       shell: bash
-      env:
-        SETUPTOOLS_SCM_PRETEND_VERSION: '0.0.0'
-      run: |
-        cd ${{ github.action_path }}
-        uv sync --frozen
+      run: pip install 'good-egg>=2,<3'
 
     - name: Run Good Egg
       id: score
@@ -76,9 +69,7 @@ runs:
         INPUT_FAIL-ON-LOW: ${{ inputs.fail-on-low }}
         INPUT_SCORING_MODEL: ${{ inputs.scoring-model }}
         INPUT_SKIP_KNOWN_CONTRIBUTORS: ${{ inputs.skip-known-contributors }}
-      run: |
-        cd ${{ github.action_path }}
-        uv run python -m good_egg.action
+      run: python -m good_egg.action
 
 branding:
   icon: 'shield'
