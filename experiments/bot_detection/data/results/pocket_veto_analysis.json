@@ -1,0 +1,447 @@
+{
+  "universal_threshold_days": 90,
+  "characterization": {
+    "state_totals": {
+      "CLOSED": 34637,
+      "MERGED": 146033,
+      "OPEN": 19502
+    },
+    "outcome_totals": {
+      "merged": 146033,
+      "pocket_veto": 30894,
+      "rejected": 23245
+    },
+    "state_outcome_crosstab": [
+      {
+        "state": "CLOSED",
+        "outcome": "pocket_veto",
+        "n": 11392
+      },
+      {
+        "state": "CLOSED",
+        "outcome": "rejected",
+        "n": 23245
+      },
+      {
+        "state": "MERGED",
+        "outcome": "merged",
+        "n": 146033
+      },
+      {
+        "state": "OPEN",
+        "outcome": "pocket_veto",
+        "n": 19502
+      }
+    ],
+    "stale_threshold_distribution": [
+      {
+        "threshold_days": 30.0,
+        "n": 179748
+      },
+      {
+        "threshold_days": 51.44804763793945,
+        "n": 7325
+      },
+      {
+        "threshold_days": 62.094017028808594,
+        "n": 4728
+      },
+      {
+        "threshold_days": 32.073368072509766,
+        "n": 4034
+      },
+      {
+        "threshold_days": 30.195825576782227,
+        "n": 1035
+      },
+      {
+        "threshold_days": 73.39346313476562,
+        "n": 790
+      },
+      {
+        "threshold_days": 30.832239151000977,
+        "n": 426
+      },
+      {
+        "threshold_days": 40.00093460083008,
+        "n": 398
+      },
+      {
+        "threshold_days": 33.224021911621094,
+        "n": 296
+      },
+      {
+        "threshold_days": 104.15167236328125,
+        "n": 197
+      },
+      {
+        "threshold_days": 34.333587646484375,
+        "n": 176
+      },
+      {
+        "threshold_days": 30.21098518371582,
+        "n": 150
+      },
+      {
+        "threshold_days": 33.63052749633789,
+        "n": 150
+      },
+      {
+        "threshold_days": 41.0978889465332,
+        "n": 137
+      },
+      {
+        "threshold_days": 30.72226905822754,
+        "n": 130
+      },
+      {
+        "threshold_days": 39.4652099609375,
+        "n": 127
+      },
+      {
+        "threshold_days": 58.54113006591797,
+        "n": 122
+      },
+      {
+        "threshold_days": 92.92449951171875,
+        "n": 118
+      },
+      {
+        "threshold_days": 64.95616912841797,
+        "n": 85
+      }
+    ],
+    "repos_total": 96,
+    "repos_using_default_30d": 78,
+    "repos_calibrated": 18,
+    "per_repo_calibration_check": {
+      "mean_delta_vs_2x_median_ttc": 31.311005377063044,
+      "median_delta_vs_2x_median_ttc": 28.69724537037037,
+      "n_repos_with_closed_prs": 96
+    },
+    "open_pr_age_quantiles_days": {
+      "p10": 72.75832986111112,
+      "p25": 138.96756076388888,
+      "p50": 245.59493055555555,
+      "p75": 481.70465856481485,
+      "p90": 923.2952430555556,
+      "p95": 1096.9740763888894
+    }
+  },
+  "distributions": {
+    "merge_rate_v3": {
+      "mean": 0.5567027952888478,
+      "median": 0.75,
+      "p10": 0.0,
+      "p25": 0.0,
+      "p75": 1.0,
+      "p90": 1.0
+    },
+    "merge_rate_universal": {
+      "mean": 0.5368757212868577,
+      "median": 0.6666666666666666,
+      "p10": 0.0,
+      "p25": 0.0,
+      "p75": 1.0,
+      "p90": 1.0
+    },
+    "merge_rate_per_repo": {
+      "mean": 0.5332918174688098,
+      "median": 0.6182486417385746,
+      "p10": 0.0,
+      "p25": 0.0,
+      "p75": 1.0,
+      "p90": 1.0
+    },
+    "merge_rate_idle_universal": {
+      "mean": 0.5514260290930824,
+      "median": 0.7,
+      "p10": 0.0,
+      "p25": 0.0,
+      "p75": 1.0,
+      "p90": 1.0
+    },
+    "merge_rate_idle_per_repo": {
+      "mean": 0.5505710864785152,
+      "median": 0.6729415904292751,
+      "p10": 0.0,
+      "p25": 0.0,
+      "p75": 1.0,
+      "p90": 1.0
+    },
+    "merge_rate_universal_30d": {
+      "mean": 0.5332379062475792,
+      "median": 0.6153846153846154,
+      "p10": 0.0,
+      "p25": 0.0,
+      "p75": 1.0,
+      "p90": 1.0
+    },
+    "merge_rate_universal_60d": {
+      "mean": 0.5355565622443484,
+      "median": 0.6363636363636364,
+      "p10": 0.0,
+      "p25": 0.0,
+      "p75": 1.0,
+      "p90": 1.0
+    },
+    "merge_rate_universal_90d": {
+      "mean": 0.5368757212868577,
+      "median": 0.6666666666666666,
+      "p10": 0.0,
+      "p25": 0.0,
+      "p75": 1.0,
+      "p90": 1.0
+    },
+    "merge_rate_universal_180d": {
+      "mean": 0.5409542251449829,
+      "median": 0.6666666666666666,
+      "p10": 0.0,
+      "p25": 0.0,
+      "p75": 1.0,
+      "p90": 1.0
+    }
+  },
+  "shift_analysis": {
+    "n_authors": 31296,
+    "merge_rate_universal": {
+      "mean_delta": -0.019827074001990234,
+      "median_delta": 0.0,
+      "n_dropped_gt_0.05": 2370,
+      "n_dropped_gt_0.10": 1836,
+      "n_dropped_gt_0.25": 895,
+      "n_unchanged": 28493
+    },
+    "merge_rate_per_repo": {
+      "mean_delta": -0.023410977820038193,
+      "median_delta": 0.0,
+      "n_dropped_gt_0.05": 2663,
+      "n_dropped_gt_0.10": 2111,
+      "n_dropped_gt_0.25": 1094,
+      "n_unchanged": 28179
+    },
+    "merge_rate_idle_universal": {
+      "mean_delta": -0.005276766195765481,
+      "median_delta": 0.0,
+      "n_dropped_gt_0.05": 607,
+      "n_dropped_gt_0.10": 459,
+      "n_dropped_gt_0.25": 241,
+      "n_unchanged": 30434
+    },
+    "merge_rate_idle_per_repo": {
+      "mean_delta": -0.006131708810332761,
+      "median_delta": 0.0,
+      "n_dropped_gt_0.05": 705,
+      "n_dropped_gt_0.10": 529,
+      "n_dropped_gt_0.25": 279,
+      "n_unchanged": 30305
+    }
+  },
+  "signal_evaluation": {
+    "n_labeled": 31293,
+    "n_suspended": 739,
+    "n_active": 30554,
+    "merge_rate_v3": {
+      "cv_auc": 0.5493659354900655,
+      "fold_auc_std": 0.01149119403429272,
+      "mean_merge_rate_suspended": 0.5136005337296283,
+      "mean_merge_rate_active": 0.557734499146874,
+      "cohens_d_active_vs_suspended": 0.09623777997840265,
+      "n_suspended": 739,
+      "n_active": 30554
+    },
+    "merge_rate_universal": {
+      "cv_auc": 0.548848295654899,
+      "fold_auc_std": 0.011339429192468128,
+      "mean_merge_rate_suspended": 0.5011117987116154,
+      "mean_merge_rate_active": 0.5377443527572696,
+      "cohens_d_active_vs_suspended": 0.08114560040346083,
+      "n_suspended": 739,
+      "n_active": 30554
+    },
+    "merge_rate_per_repo": {
+      "cv_auc": 0.5486495526055911,
+      "fold_auc_std": 0.011542410042848126,
+      "mean_merge_rate_suspended": 0.5010423916595617,
+      "mean_merge_rate_active": 0.534091457487316,
+      "cohens_d_active_vs_suspended": 0.0734021937818801,
+      "n_suspended": 739,
+      "n_active": 30554
+    },
+    "merge_rate_idle_universal": {
+      "cv_auc": 0.5488917644689147,
+      "fold_auc_std": 0.011813844138263785,
+      "mean_merge_rate_suspended": 0.5128096256371848,
+      "mean_merge_rate_active": 0.552348716801441,
+      "cohens_d_active_vs_suspended": 0.08659711664734189,
+      "n_suspended": 739,
+      "n_active": 30554
+    },
+    "merge_rate_idle_per_repo": {
+      "cv_auc": 0.5487741351566113,
+      "fold_auc_std": 0.011853501921961123,
+      "mean_merge_rate_suspended": 0.5128096256371848,
+      "mean_merge_rate_active": 0.5514730120143265,
+      "cohens_d_active_vs_suspended": 0.08473831668514915,
+      "n_suspended": 739,
+      "n_active": 30554
+    }
+  },
+  "example_authors": [
+    {
+      "login": "wuhang2014",
+      "account_status": "active",
+      "total_prs": 9,
+      "merged": 1.0,
+      "closed": 0.0,
+      "open_total": 8.0,
+      "open_stale_per_repo": 8.0,
+      "open_stale_universal": 8.0,
+      "open_stale_idle_universal": 0.0,
+      "open_stale_idle_per_repo": 0.0,
+      "merge_rate_v3": 1.0,
+      "merge_rate_universal": 0.1111111111111111,
+      "merge_rate_per_repo": 0.1111111111111111,
+      "merge_rate_idle_universal": 1.0,
+      "merge_rate_idle_per_repo": 1.0
+    },
+    {
+      "login": "simondanielsson",
+      "account_status": "active",
+      "total_prs": 7,
+      "merged": 1.0,
+      "closed": 0.0,
+      "open_total": 6.0,
+      "open_stale_per_repo": 6.0,
+      "open_stale_universal": 6.0,
+      "open_stale_idle_universal": 1.0,
+      "open_stale_idle_per_repo": 1.0,
+      "merge_rate_v3": 1.0,
+      "merge_rate_universal": 0.14285714285714285,
+      "merge_rate_per_repo": 0.14285714285714285,
+      "merge_rate_idle_universal": 0.5,
+      "merge_rate_idle_per_repo": 0.5
+    },
+    {
+      "login": "sahelib25",
+      "account_status": "active",
+      "total_prs": 6,
+      "merged": 1.0,
+      "closed": 0.0,
+      "open_total": 5.0,
+      "open_stale_per_repo": 5.0,
+      "open_stale_universal": 5.0,
+      "open_stale_idle_universal": 0.0,
+      "open_stale_idle_per_repo": 0.0,
+      "merge_rate_v3": 1.0,
+      "merge_rate_universal": 0.16666666666666666,
+      "merge_rate_per_repo": 0.16666666666666666,
+      "merge_rate_idle_universal": 1.0,
+      "merge_rate_idle_per_repo": 1.0
+    },
+    {
+      "login": "Copilot",
+      "account_status": "suspended",
+      "total_prs": 438,
+      "merged": 177.0,
+      "closed": 38.0,
+      "open_total": 223.0,
+      "open_stale_per_repo": 223.0,
+      "open_stale_universal": 204.0,
+      "open_stale_idle_universal": 4.0,
+      "open_stale_idle_per_repo": 4.0,
+      "merge_rate_v3": 0.8232558139534883,
+      "merge_rate_universal": 0.4224343675417661,
+      "merge_rate_per_repo": 0.4041095890410959,
+      "merge_rate_idle_universal": 0.8082191780821918,
+      "merge_rate_idle_per_repo": 0.8082191780821918
+    },
+    {
+      "login": "iycheng",
+      "account_status": "suspended",
+      "total_prs": 423,
+      "merged": 295.0,
+      "closed": 110.0,
+      "open_total": 18.0,
+      "open_stale_per_repo": 18.0,
+      "open_stale_universal": 18.0,
+      "open_stale_idle_universal": 0.0,
+      "open_stale_idle_per_repo": 0.0,
+      "merge_rate_v3": 0.7283950617283951,
+      "merge_rate_universal": 0.6973995271867612,
+      "merge_rate_per_repo": 0.6973995271867612,
+      "merge_rate_idle_universal": 0.7283950617283951,
+      "merge_rate_idle_per_repo": 0.7283950617283951
+    },
+    {
+      "login": "amd-jmacaran",
+      "account_status": "suspended",
+      "total_prs": 105,
+      "merged": 105.0,
+      "closed": 0.0,
+      "open_total": 0.0,
+      "open_stale_per_repo": 0.0,
+      "open_stale_universal": 0.0,
+      "open_stale_idle_universal": 0.0,
+      "open_stale_idle_per_repo": 0.0,
+      "merge_rate_v3": 1.0,
+      "merge_rate_universal": 1.0,
+      "merge_rate_per_repo": 1.0,
+      "merge_rate_idle_universal": 1.0,
+      "merge_rate_idle_per_repo": 1.0
+    },
+    {
+      "login": "harupy",
+      "account_status": "active",
+      "total_prs": 2771,
+      "merged": 2151.0,
+      "closed": 327.0,
+      "open_total": 293.0,
+      "open_stale_per_repo": 293.0,
+      "open_stale_universal": 281.0,
+      "open_stale_idle_universal": 0.0,
+      "open_stale_idle_per_repo": 0.0,
+      "merge_rate_v3": 0.8680387409200968,
+      "merge_rate_universal": 0.7796303008336354,
+      "merge_rate_per_repo": 0.776254059906171,
+      "merge_rate_idle_universal": 0.8680387409200968,
+      "merge_rate_idle_per_repo": 0.8680387409200968
+    },
+    {
+      "login": "baskaryan",
+      "account_status": "active",
+      "total_prs": 1494,
+      "merged": 1295.0,
+      "closed": 153.0,
+      "open_total": 46.0,
+      "open_stale_per_repo": 46.0,
+      "open_stale_universal": 46.0,
+      "open_stale_idle_universal": 0.0,
+      "open_stale_idle_per_repo": 0.0,
+      "merge_rate_v3": 0.8943370165745856,
+      "merge_rate_universal": 0.8668005354752343,
+      "merge_rate_per_repo": 0.8668005354752343,
+      "merge_rate_idle_universal": 0.8943370165745856,
+      "merge_rate_idle_per_repo": 0.8943370165745856
+    }
+  ],
+  "recommendation": {
+    "decision": "Keep v3 as-is",
+    "rationale": "No variant beats v3 CV AUC 0.5494 by >0.005 (aucs={'merge_rate_v3': 0.5494, 'merge_rate_universal': 0.5488, 'merge_rate_per_repo': 0.5486, 'merge_rate_idle_universal': 0.5489, 'merge_rate_idle_per_repo': 0.5488}). Cohen's d also fails to improve (base=0.096, best_alt=0.087).",
+    "cv_aucs": {
+      "merge_rate_v3": 0.5493659354900655,
+      "merge_rate_universal": 0.548848295654899,
+      "merge_rate_per_repo": 0.5486495526055911,
+      "merge_rate_idle_universal": 0.5488917644689147,
+      "merge_rate_idle_per_repo": 0.5487741351566113
+    },
+    "cohens_d": {
+      "merge_rate_v3": 0.09623777997840265,
+      "merge_rate_universal": 0.08114560040346083,
+      "merge_rate_per_repo": 0.0734021937818801,
+      "merge_rate_idle_universal": 0.08659711664734189,
+      "merge_rate_idle_per_repo": 0.08473831668514915
+    },
+    "universal_threshold_days": 90
+  }
+}
